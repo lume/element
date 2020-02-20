@@ -42,7 +42,7 @@
 	"homepage": "http://github.com/infamous/element#readme",
 	"dependencies": {
 		"@babel/runtime": "7.0.0-beta.46",
-		"@lume/variable": "^0.0.1",
+		"@lume/variable": "^0.0.2",
 		"@types/react": "^16.9.20",
 		"create-emotion": "^10.0.27",
 		"lowclass": "^4.9.2",
