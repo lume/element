@@ -359,3 +359,5 @@ export function defer(func: () => unknown): Promise<unknown> {
 	// "defer" is used as a semantic label for Promise.resolve().then
 	return Promise.resolve().then(func)
 }
+
+export const version = '0.0.0'
