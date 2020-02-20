@@ -1,0 +1,81 @@
+{
+	"name": "@lume/element",
+	"version": "0.0.0",
+	"description": "Create Custom Elements with reactivity and automatic re-rendering.",
+	"type": "module",
+	"main": "dist/index.js",
+	"types": "src/index.ts",
+	"exports COMMENT:": "This removes 'dist' from import statements, as well as replaces the 'main' field. See https://github.com/nodejs/node/issues/14970#issuecomment-571887546",
+	"exports": {
+		".": "./dist/index.js",
+		"./": "./dist/"
+	},
+	"scripts": {
+		"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX BUILDER SCRIPTS": "",
+		"test": "LOCAL_DEV=true builder run npm:test",
+		"test:debug": "LOCAL_DEV=true builder run npm:test-debug",
+		"tsc": "LOCAL_DEV=true builder run tsc",
+		"tsc:watch": "LOCAL_DEV=true builder run tsc:watch",
+		"prettier": "LOCAL_DEV=true builder run prettier",
+		"release:patch": "LOCAL_DEV=true builder run release:patch",
+		"release:minor": "LOCAL_DEV=true builder run release:minor",
+		"release:major": "LOCAL_DEV=true builder run release:major",
+		"version": "LOCAL_DEV=true builder run npm:version",
+		"postversion": "LOCAL_DEV=true builder run npm:postversion",
+		"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX LUME SCRIPTS": "",
+		"clean": "lume clean",
+		"build": "lume build",
+		"dev": "lume dev",
+		"typecheck": "lume typecheck",
+		"typecheck:watch": "lume typecheckWatch",
+		"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX OTHER SCRIPTS": ""
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+ssh://git@github.com/infamous/element.git"
+	},
+	"author": "Joe Pea <joe@trusktr.io>",
+	"license": "MIT",
+	"bugs": {
+		"url": "https://github.com/infamous/element/issues"
+	},
+	"homepage": "http://github.com/infamous/element#readme",
+	"dependencies": {
+		"@babel/runtime": "7.0.0-beta.46",
+		"@lume/variable": "^0.0.0",
+		"@types/react": "^16.9.20",
+		"create-emotion": "^10.0.27",
+		"lowclass": "^4.9.2",
+		"react": "^16.12.0",
+		"solid-js": "^0.16.8"
+	},
+	"devDependencies": {
+		"builder": "^5.0.0",
+		"builder-js-package": "^1.0.0",
+		"prettier": "^1.19.1"
+	},
+	"keywords": [
+		"custom elements",
+		"custom-elements",
+		"web components",
+		"web-components",
+		"html",
+		"shadowdom",
+		"shadow-dom",
+		"ui",
+		"ui components",
+		"ui-components",
+		"frp",
+		"functional reactive programming",
+		"functional-reactive-programming",
+		"reactive programming",
+		"reactive-programming",
+		"reactive coding",
+		"reactive-coding",
+		"reactive variables",
+		"reactive-variables",
+		"reactivity",
+		"reactive computation",
+		"reactive-computation"
+	]
+}

@@ -1,0 +1,7 @@
+{
+	"extends": "./node_modules/builder-js-package/config/tsconfig.json",
+	"compileOnSave": true,
+	"compilerOptions": {
+		"declaration": false // TODO, set back to true after removing class-factory mixins
+	}
+}
