@@ -360,4 +360,4 @@ export function defer(func: () => unknown): Promise<unknown> {
 	return Promise.resolve().then(func)
 }
 
-export const version = '0.0.3'
+export const version = '0.0.4'
