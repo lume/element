@@ -1,6 +1,6 @@
 {
 	"name": "@lume/element",
-	"version": "0.0.2",
+	"version": "0.0.3",
 	"description": "Create Custom Elements with reactivity and automatic re-rendering.",
 	"type": "module",
 	"main": "dist/index.js",
