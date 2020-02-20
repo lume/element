@@ -17,9 +17,6 @@
 		"tsc": "LOCAL_DEV=true builder run tsc",
 		"tsc:watch": "LOCAL_DEV=true builder run tsc:watch",
 		"prettier": "LOCAL_DEV=true builder run prettier",
-		"release:patch": "LOCAL_DEV=true builder run release:patch",
-		"release:minor": "LOCAL_DEV=true builder run release:minor",
-		"release:major": "LOCAL_DEV=true builder run release:major",
 		"version": "LOCAL_DEV=true builder run npm:version",
 		"postversion": "LOCAL_DEV=true builder run npm:postversion",
 		"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX LUME SCRIPTS": "",
@@ -28,6 +25,9 @@
 		"dev": "lume dev",
 		"typecheck": "lume typecheck",
 		"typecheck:watch": "lume typecheckWatch",
+		"release:patch": "lume releasePatch",
+		"release:minor": "lume releaseMinor",
+		"release:major": "lume releaseMajor",
 		"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX OTHER SCRIPTS": ""
 	},
 	"repository": {
