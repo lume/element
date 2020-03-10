@@ -2,6 +2,9 @@
 	"name": "@lume/element",
 	"version": "0.0.4",
 	"description": "Create Custom Elements with reactivity and automatic re-rendering.",
+	"author": "Joe Pea <joe@trusktr.io>",
+	"license": "MIT",
+	"homepage": "http://github.com/infamous/element#readme",
 	"type": "module",
 	"main": "dist/index.js",
 	"types": "src/index.ts",
@@ -29,16 +32,6 @@
 		"OTHER SCRIPTS XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX": "",
 		"prepack": "npm run build"
 	},
-	"repository": {
-		"type": "git",
-		"url": "git+ssh://git@github.com/infamous/element.git"
-	},
-	"author": "Joe Pea <joe@trusktr.io>",
-	"license": "MIT",
-	"bugs": {
-		"url": "https://github.com/infamous/element/issues"
-	},
-	"homepage": "http://github.com/infamous/element#readme",
 	"dependencies": {
 		"@babel/runtime": "7.0.0-beta.46",
 		"@lume/variable": "^0.0.2",
@@ -51,6 +44,13 @@
 	"devDependencies": {
 		"builder-js-package": "^1.0.0",
 		"prettier": "^1.19.1"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+ssh://git@github.com/infamous/element.git"
+	},
+	"bugs": {
+		"url": "https://github.com/infamous/element/issues"
 	},
 	"keywords": [
 		"custom elements",
