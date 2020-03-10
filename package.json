@@ -33,7 +33,6 @@
 		"prepack": "npm run build"
 	},
 	"dependencies": {
-		"@babel/runtime": "7.0.0-beta.46",
 		"@lume/variable": "^0.0.2",
 		"@types/react": "^16.9.20",
 		"create-emotion": "^10.0.27",
