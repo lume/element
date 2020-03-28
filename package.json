@@ -36,7 +36,7 @@
 		"@lume/variable": "^0.0.2",
 		"@types/react": "^16.9.20",
 		"create-emotion": "^10.0.27",
-		"lowclass": "^4.9.2",
+		"lowclass": "^4.9.3",
 		"react": "^16.12.0",
 		"solid-js": "^0.16.8"
 	},
