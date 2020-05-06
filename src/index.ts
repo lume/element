@@ -58,7 +58,7 @@ export class Element extends HTMLElement {
 
 	protected makeStyle?(): string
 	protected elementStyle?(): string
-	protected template?(): Element
+	protected template?(): JSX.Element | HTMLElement
 
 	/**
 	 * Subclasses can override this to provide an alternate Node to render into
@@ -304,12 +304,12 @@ function mapAttributeToProp(ctor: typeof Element, attr: string, prop: string, ha
 		// using defineProperty so that it is non-writable, non-enumerable, non-configurable
 		Object.defineProperty(ctor.prototype, '__attributesToProps', {
 			value: {
+				// prettier-ignore
 				__proto__:
-					// prettier-ignore
 					ctor.prototype.
-            // @ts-ignore, private access
-            __attributesToProps ||
-            Object.prototype,
+						// @ts-ignore, private access
+						__attributesToProps ||
+							Object.prototype
 			},
 		})
 	}
