@@ -38,7 +38,7 @@
 		"create-emotion": "^10.0.27",
 		"lowclass": "^4.9.3",
 		"react": "^16.12.0",
-		"solid-js": "^0.16.8"
+		"solid-js": "^0.18.0"
 	},
 	"devDependencies": {
 		"@lume/cli": "^2.0.0",
