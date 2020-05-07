@@ -3,6 +3,9 @@ import {render} from 'solid-js/dom'
 import {Constructor, Mixin, MixinResult} from 'lowclass'
 import createEmotion, {Emotion} from 'create-emotion'
 
+// This is the actual DOM Element type, base class for both HTMLElements and SVGElements
+type _Element = typeof window.Element
+
 export * from '@lume/variable'
 export * from './element-type-helpers'
 
@@ -58,7 +61,7 @@ export class Element extends HTMLElement {
 
 	protected makeStyle?(): string
 	protected elementStyle?(): string
-	protected template?(): JSX.Element | HTMLElement
+	protected template?(): JSX.Element | _Element | (JSX.Element | _Element)[]
 
 	/**
 	 * Subclasses can override this to provide an alternate Node to render into
