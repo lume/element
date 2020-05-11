@@ -33,11 +33,9 @@
 		"prepack": "npm run build"
 	},
 	"dependencies": {
-		"@lume/variable": "^0.0.4",
-		"@types/react": "^16.9.20",
+		"@lume/variable": "^0.0.7",
 		"create-emotion": "^10.0.27",
 		"lowclass": "^4.9.3",
-		"react": "^16.12.0",
 		"solid-js": "^0.18.0"
 	},
 	"devDependencies": {
