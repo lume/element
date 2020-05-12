@@ -45,8 +45,29 @@ DOM elements without necessarily creating new custom elements.
 
 ## Install and Setup
 
-This section is TODO, and will explain how to set up an environment that
-supports JSX syntax, which is needed for things to work.
+This assumes some familiarity with JavScript build tools. (TODO, make this
+more beginner-friendly.)
+
+Install the [Babel transpiler](http://babeljs.io), and
+[`babel-preset-solid`](https://npmjs.com/babel-preset-solid) which is a Babel
+preset that gives us reactive HTML-like markup inside JavaScript known as
+"JSX":
+
+```sh
+npm install @babel/core babel-preset-solid
+```
+
+Configure Babel to use the preset, and tell the preset to use `@lume/element`
+for runtime imports inside your project's `.babelrc` file or in your
+[Webpack](http://webpack.js.org) `babel-loader` config:
+
+```json
+{
+  "presets": [
+    ['solid', { moduleName: '@lume/element' }]
+  ]
+}
+```
 
 ## Basic Usage
 
@@ -146,7 +167,8 @@ name).
 import {
 	Element, // A base class for LUME custom elements
 	attribute, // A property decorator to map attributes to properties
-	reactive, // A property decorator to make a property reactive
+  reactive, // A property decorator to make a property reactive
+  css, // A no-op identity function (useful to enable CSS syntax highlighting in various text editors)
 } from '@lume/element'
 
 @customElement('greeting-card') // defines the element tag name
@@ -156,40 +178,61 @@ class GreetingCard extends Element {
 	// name is the dash-case version of the property name).
 	@reactive @attribute firstName = 'Roger'
 
+	// Define the structure of the DOM tree that we want rendered on screen by
+	// providing a template property. This template property should simply
+	// reference a DOM element (which we can create with JSX), and that DOM
+	// element will be, by default, appended into the ShadowRoot of our custom
+	// element.
+	//
+	// To take advantage of reactivity in our template, simply use the same
+	// technique here as we did in the section above titled "Manipulating and
+	// composing trees of elements", by using reactive variables or properties
+  // in the places where they should be "rendered".
+  //
+  // Any time the `.firstName` reactive property's value changes, the DOM will
+  // be automatically updated, thanks how the JSX works (it compiles to reactive
+  // computations).
+	template = (
+    <div>
+      <span>
+        Hello <i>{this.firstName}</i>
+      </span>
+    </div>
+  )
+
+  // Apply styling to your element and its content with the static `css` property.
+  // Because the property is static, this style is re-used across all instances of the element.
+  // Styles are by default scoped to your element's content.
+  static css = css`
+    :host { background: skyblue } /* Give greeting-card a background. */
+    div { color: pink }
+  `
+
+  // If you need instance-specific styling, use a non-static `css` property.
+  // This style has higher specificity than styles in the static `css` property.
+  // In this example, the divs in each instance of this element will have borders of random sizes.
+  css = css`
+    div { border: ${Math.random() * 5}px solid teal }
+  `
+
 	// connectedCallback is a method that fires any time this custom element is
 	// connected into a web site's live DOM tree.
 	connectedCallback() {
+    super.connectedCallback() // Don't forget to call the super method!
+
 		// Once the element is connected, let's update the `.firstName` prop after a
 		// couple of seconds, and we'll see the change on screen change.
 		setTimeout(() => (this.firstName = 'Zaya'), 2000)
 
 		// And show that it works with by setting HTML attributes too, two seconds later.
 		setTimeout(() => this.setAttribute('first-name', 'Raquel'), 4000)
-	}
+  }
 
-	// Define the structure of the DOM tree that we want rendered on screen by
-	// providing a template() method. This template() method should simply
-	// return an DOM element, and that DOM element will be, by default, appended
-	// into the ShadowRoot of our custom element.
-	//
-	// To take advantage of reactivity in our template, simply use the same
-	// technique here as we did in the section above titled "Manipulating and
-	// composing trees of elements", by using reactive variables or properties
-	// in the places where they should be "rendered".
-	template() {
-		// any time the `.firstName` reactive property's value changes, the DOM
-		// will be automatically updated, thanks how the JSX works (it comiles
-		// to reactive computations).
-		const result = (
-			<div>
-				<span>
-					Hello <i>{this.firstName}</i>
-				</span>
-			</div>
-		)
-
-		return result
-	}
+  // Use the disconnectedCallback to clean anything up when the element is removed from the DOM.
+  disconnectedCallback() {
+    super.disconnectedCallback()
+    // ... clean up ...
+  }
 }
 ```
 
@@ -200,44 +243,73 @@ component:
 <greeting-card first-name="Raynor"></greeting-card>
 ```
 
-Just like in the section [Manipulating and composing trees of
-elements](#manipulating-and-composing-trees-of-elements), inside a custom
-element's `template()` method we can assign bits and pieces of DOM to
-variables, and we can also use other custom elements and functional
-components. For example the following is an alternative way to write the
-previous `template()` method.
+An element's `template` can also be a function (method). Just like in the
+section [Manipulating and composing trees of
+elements](#manipulating-and-composing-trees-of-elements), inside an element's
+`template()` method we can assign bits and pieces of DOM to variables, and we
+can also use other custom elements and functional components. Similary, the `css` property can also be a method.
+
+The following shows an alternative way to write the previous `template` and
+`css` properties as a methods.
 
 ```jsx
 @customElement('greeting-card')
 class GreetingCard extends Element {
 	// ... same as before ...
 
+  // This time 'template' is a function.
 	template() {
 		const greeting = (
 			<span>
 				Hello <i>{this.firstName}</i>
 			</span>
-		)
+    )
 
-		const result = <div>{greeting}</div>
+    console.log(greeting instanceof HTMLSpanElement) // true
+
+    const result = <div>{greeting}</div>
+
+    console.log(result instanceof HTMLDivElement) // true
 
 		return result
-	}
+  }
+
+  // ... same as before ...
+
+  css() {
+    const thickness = Math.random() * 5
+
+    return css`
+      div { border: ${thickness}px solid teal }
+    `
+  }
+
+  // ... same as before ...
 }
 ```
 
 ### TypeScript
 
+Load the required global JSX types by writing
+
+```ts
+import type {} from '@lume/element/dist/jsx'
+```
+
+at least once somewhere in your project. The entry point is a good place for
+it.
+
 In TypeScript, all JSX expressions return the type `JSX.Element`. But with
-`@lume/element`, JSX expressions return actual DOM nodes, and we want the
-variable types to reflect that fact. For this we have a set of convenience
-helpers to cast JSX types to DOM element types.
+`@lume/element`, JSX expressions return actual DOM nodes, and we want the JSX
+expression types to reflect that fact. For this we have a set of convenience
+helpers to cast JSX expressions to DOM element types.
 
 Modifying the very first example from above for TypeScript, it would look
 like the following.
 
 ```tsx
 import {variable, div} from '@lume/element'
+import type {} from '@lume/element/dist/jsx'
 
 const count = variable(0)
 
@@ -255,10 +327,11 @@ document.body.appendChild(el)
 ```
 
 The main difference is that the `div()` helper function explicitly returns
-the type `HTMLDivElement` so that the `el` will be typed as `HTMLDivElement`
-instead of `JSX.Element`. Under the hood, the `div()` function doesn't do
-anything, it simply returns whatever you pass into it (an identity function
-at runtime), and serves only as a convenient type cast helper.
+the type `HTMLDivElement` so that the `el` variable will be typed as
+`HTMLDivElement` instead of `JSX.Element`. Under the hood, the `div()`
+function doesn't do anything, it simply returns whatever you pass into it (an
+identity function at runtime), and serves only as a convenient type cast
+helper.
 
 We should remember to use the correct type helper depending on what the root
 element of the JSX expression is. For for example, if the root was a `<menu>`
@@ -299,4 +372,45 @@ import {variable} from '@lume/element'
 // ...
 
 const el = ((<menu>...</menu>) as any) as HTMLMenuElement
+```
+
+#### Type definitions for custom elements
+
+To give your Custom Elements type support for use with DOM APIs and in JSX,
+use the following template.
+
+```tsx
+import {/* ... */} from '@lume/element'
+import type {} from '@lume/element/dist/jsx' // Only needed if you didn't import somewhere else already.
+
+// Define the attributes that your element accepts
+export interface LoginAttributes extends JSX.HTMLAttributes<CoolElement> {
+  prop1?: string
+  prop2?: boolean
+}
+
+export class CoolElement extends Element {
+  // ... Define your class as described above ...
+}
+
+customElements.define('cool-element', CoolElement)
+
+// Add your element to the list of known HTML elements. This makes it possible
+// for APIs like document.createElement('cool-element') to return the expected
+// type.
+declare global {
+  interface HTMLElementTagNameMap {
+    'cool-element': CoolElement
+  }
+}
+
+// Also register the name for TypeScript recognize the element as a valid JSX
+// tag.
+declare global {
+  namespace JSX {
+    interface IntrinsicElements {
+      'cool-element': LoginAttributes
+    }
+  }
+}
 ```

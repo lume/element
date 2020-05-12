@@ -1,13 +1,11 @@
-import * as React from 'react'
-import {render} from 'solid-js/dom'
-import {Constructor, Mixin, MixinResult} from 'lowclass'
-import createEmotion, {Emotion} from 'create-emotion'
-
-// This is the actual DOM Element type, base class for both HTMLElements and SVGElements
-type _Element = typeof window.Element
+import {render} from '@lume/variable'
+import {Constructor} from 'lowclass'
 
 export * from '@lume/variable'
+export * from './WithEmotion'
 export * from './element-type-helpers'
+
+let ctor: typeof Element
 
 export class Element extends HTMLElement {
 	constructor() {
@@ -59,9 +57,10 @@ export class Element extends HTMLElement {
 		}
 	}
 
-	protected makeStyle?(): string
+	protected template?: Template
 	protected elementStyle?(): string
-	protected template?(): JSX.Element | _Element | (JSX.Element | _Element)[]
+	protected css?: string | (() => string)
+	protected static css?: string | (() => string)
 
 	/**
 	 * Subclasses can override this to provide an alternate Node to render into
@@ -80,9 +79,11 @@ export class Element extends HTMLElement {
 
 		this.__setStyle()
 
-		// TODO the cast to Element should not be needed, will be fixed by
-		// https://github.com/ryansolid/solid/issues/87
-		if (this.template) this.__dispose = render(this.template.bind(this), this.root as Element)
+		const template = this.template
+
+		// TODO This needs testing to ensure it works with DOM or the result of JSX alike.
+		if (template)
+			this.__dispose = render(typeof template === 'function' ? template.bind(this) : () => template, this.root)
 	}
 
 	protected disconnectedCallback() {
@@ -98,14 +99,17 @@ export class Element extends HTMLElement {
 
 		const style = document.createElement('style')
 
-		style.innerHTML = `
-      ${hostSelector} {
-        display: block;
-        ${this.elementStyle ? this.elementStyle() : ''}
-      }
+		ctor = this.constructor as typeof Element
 
-      ${this.makeStyle ? this.makeStyle() : ''}
-    `
+		style.innerHTML = `
+			${hostSelector} {
+				display: block;
+				${this.elementStyle ? this.elementStyle() : ''}
+			}
+
+			${typeof ctor.css === 'function' ? (ctor.css = ctor.css()) : ctor.css || ''}
+			${typeof this.css === 'function' ? this.css() : this.css || ''}
+`
 
 		if (this.__hasShadow) {
 			// If this element has a shadow root, put the style there. This is the
@@ -167,77 +171,6 @@ export class Element extends HTMLElement {
 		}
 	}
 }
-
-// prettier-ignore
-const base26Chars = [
-  'a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z'
-]
-
-/**
- * Given an array of characters `baseChars` with length X, convert an int
- * `value` to base X, using the chars in the array for the digit representation.
- */
-// We need this because Emotion.js accepts only letters in the createEmotion key
-// option.
-// Based on https://stackoverflow.com/a/923814/454780
-function integerToString(value: number, baseChars: string[]): string {
-	value = Math.floor(value)
-
-	let result = ''
-	const targetBase = baseChars.length
-
-	do {
-		result = baseChars[value % targetBase] + result
-		value = value / targetBase
-	} while (value > 1)
-
-	return result
-}
-
-let emotionCount = 0
-
-const emotions = new WeakMap<WithEmotion, Emotion>()
-
-// eslint-disable-next-line typescript/explicit-function-return-type
-function WithEmotionMixin<T extends Constructor<Element>>(Base?: T) {
-	if (!Base) Base = Constructor(Element)
-
-	class WithEmotion extends Constructor<Element>(Base) {
-		get emotion(): ReturnType<typeof createEmotion> {
-			let emotion = emotions.get(this)
-
-			if (!emotion) {
-				emotions.set(
-					this,
-					(emotion = createEmotion({
-						// The key option is required when there will be multiple instances
-						// of Emotion in a single app, and we need one instance of Emotion
-						// per element instance, for now.
-						key: this.tagName.toLowerCase() + '-' + integerToString(++emotionCount, base26Chars),
-
-						// The `as HTMLElement` cast is needed because the type def for
-						// `createEmotion` is too specific, and does not accept just Node
-						// (f.e. shadow roots are Node, but not HTMLElement, and we may want
-						// to attach the generated <style> elements to this element's shadow
-						// root)
-						container: this.root as HTMLElement,
-					})),
-				)
-			}
-
-			return emotion
-		}
-
-		get css(): ReturnType<typeof createEmotion>['css'] {
-			return this.emotion.css
-		}
-	}
-
-	return WithEmotion as MixinResult<typeof WithEmotion, T>
-}
-
-export const WithEmotion = Mixin(WithEmotionMixin, Element)
-export interface WithEmotion extends InstanceType<typeof WithEmotion> {}
 
 /**
  * A class decorator that defines the target class as a custom element with the
@@ -343,18 +276,6 @@ function camelCaseToDash(str: string): string {
 	return str.replace(/([a-zA-Z])(?=[A-Z])/g, '$1-').toLowerCase()
 }
 
-// define the slot element type, for use with ShadowDOM
-export interface HTMLSlotElementAttributes extends React.HTMLAttributes<HTMLSlotElement> {
-	name?: string
-}
-declare global {
-	namespace JSX {
-		interface IntrinsicElements {
-			slot: React.DetailedHTMLProps<HTMLSlotElementAttributes, HTMLSlotElement>
-		}
-	}
-}
-
 /**
  * Execute the given `func`tion on the next micro "tick" of the JS engine.
  */
@@ -362,5 +283,53 @@ export function defer(func: () => unknown): Promise<unknown> {
 	// "defer" is used as a semantic label for Promise.resolve().then
 	return Promise.resolve().then(func)
 }
+
+/**
+ * This is an identity "template string tag function", which hen applied to a
+ * template string returns the equivalent of not having used a template tag on
+ * a template string to begin with.
+ *
+ * For example, The following two strings are equivalent:
+ *
+ * ```js
+ * const number = 42
+ * const string1 = `meaning of life: ${number}`
+ * const string2 = identityTemplateTag`meaning of life: ${number}`
+ * ```
+ *
+ * This can be useful when assigning it to variables like `css` or `html` in
+ * order to trigger syntax checking and highlighting inside template strings
+ * without actually doing anything to the string (a no-op).
+ */
+export function identityTemplateTag(stringsParts: TemplateStringsArray, ...values: any[]): string {
+	// unfortunately, it does incur some unnecessary runtime overhead in order to
+	// receive the string parts and the interpolated values and concatenate them
+	// all together into the same string as if we hadn't used a template tag.
+
+	let str = ''
+
+	for (let i = 0; i < values.length; i++) str += stringsParts[i] + String(values[i])
+
+	return str + stringsParts[stringsParts.length - 1]
+}
+
+/**
+ * A no-op (identity) template tag useful for marking CSS strings for syntax
+ * highlighting. For example:
+ *
+ * ```js
+ * const style = css`
+ *   .el {
+ *     background: skyblue;
+ *   }
+ * `
+ * ```
+ */
+export const css = identityTemplateTag
+
+// This is the actual DOM Element type, base class for both HTMLElements and SVGElements
+type JSXOrDOM = JSX.Element | globalThis.Element
+type TemplateContent = JSXOrDOM | JSXOrDOM[]
+type Template = TemplateContent | (() => TemplateContent)
 
 export const version = '0.0.10'
