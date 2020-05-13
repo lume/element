@@ -4,6 +4,8 @@ Create Custom Elements with reactivity and automatic re-rendering.
 
 #### `npm install @lume/element --save`
 
+![](https://github.com/lume/element/workflows/Build%20and%20Test/badge.svg)
+
 ## Intro
 
 [Custom](https://developers.google.com/web/fundamentals/web-components/customelements)
