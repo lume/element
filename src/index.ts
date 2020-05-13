@@ -332,4 +332,4 @@ type JSXOrDOM = JSX.Element | globalThis.Element
 type TemplateContent = JSXOrDOM | JSXOrDOM[]
 type Template = TemplateContent | (() => TemplateContent)
 
-export const version = '0.0.11'
+export const version = '0.0.12'
