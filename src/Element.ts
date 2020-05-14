@@ -37,7 +37,7 @@ export class Element extends HTMLElement {
 					// override only value descriptors (we assume a getter/setter descriptor is intentional and meant to override or extend our getter/setter)
 					const descriptor = Object.getOwnPropertyDescriptor(this, propName)!
 
-					if (descriptor.value) {
+					if ('value' in descriptor) {
 						// delete the value descriptor...
 						delete this[propName]
 
