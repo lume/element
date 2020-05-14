@@ -58,13 +58,19 @@ export class Element extends HTMLElement {
 	protected css?: string | (() => string)
 	protected static css?: string | (() => string)
 
+	private __root: Node | null = null
+
 	/**
 	 * Subclasses can override this to provide an alternate Node to render into
 	 * (f.e. a subclass can `return this` to render into itself instead of making a root)
 	 */
 	protected get root(): Node {
+		if (this.__root) return this.__root
 		if (this.shadowRoot) return this.shadowRoot
 		return this.attachShadow({mode: 'open'})
+	}
+	protected set root(v: Node) {
+		this.__root = v
 	}
 
 	private __dispose?: () => void
