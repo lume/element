@@ -65,9 +65,7 @@ for runtime imports inside your project's `.babelrc` file or in your
 
 ```json
 {
-  "presets": [
-    ['solid', { moduleName: '@lume/element' }]
-  ]
+	"presets": [["solid", {"moduleName": "@lume/element"}]]
 }
 ```
 
@@ -169,8 +167,8 @@ name).
 import {
 	Element, // A base class for LUME custom elements
 	attribute, // A property decorator to map attributes to properties
-  reactive, // A property decorator to make a property reactive
-  css, // A no-op identity function (useful to enable CSS syntax highlighting in various text editors)
+	reactive, // A property decorator to make a property reactive
+	css, // A no-op identity function (useful to enable CSS syntax highlighting in various text editors)
 } from '@lume/element'
 
 @customElement('greeting-card') // defines the element tag name
@@ -189,38 +187,44 @@ class GreetingCard extends Element {
 	// To take advantage of reactivity in our template, simply use the same
 	// technique here as we did in the section above titled "Manipulating and
 	// composing trees of elements", by using reactive variables or properties
-  // in the places where they should be "rendered".
-  //
-  // Any time the `.firstName` reactive property's value changes, the DOM will
-  // be automatically updated, thanks how the JSX works (it compiles to reactive
-  // computations).
+	// in the places where they should be "rendered".
+	//
+	// Any time the `.firstName` reactive property's value changes, the DOM will
+	// be automatically updated, thanks how the JSX works (it compiles to reactive
+	// computations).
 	template = (
-    <div>
-      <span>
-        Hello <i>{this.firstName}</i>
-      </span>
-    </div>
-  )
+		<div>
+			<span>
+				Hello <i>{this.firstName}</i>
+			</span>
+		</div>
+	)
 
-  // Apply styling to your element and its content with the static `css` property.
-  // Because the property is static, this style is re-used across all instances of the element.
-  // Styles are by default scoped to your element's content.
-  static css = css`
-    :host { background: skyblue } /* Give greeting-card a background. */
-    div { color: pink }
-  `
+	// Apply styling to your element and its content with the static `css` property.
+	// Because the property is static, this style is re-used across all instances of the element.
+	// Styles are by default scoped to your element's content.
+	static css = css`
+		:host {
+			background: skyblue;
+		} /* Give greeting-card a background. */
+		div {
+			color: pink;
+		}
+	`
 
-  // If you need instance-specific styling, use a non-static `css` property.
-  // This style has higher specificity than styles in the static `css` property.
-  // In this example, the divs in each instance of this element will have borders of random sizes.
-  css = css`
-    div { border: ${Math.random() * 5}px solid teal }
-  `
+	// If you need instance-specific styling, use a non-static `css` property.
+	// This style has higher specificity than styles in the static `css` property.
+	// In this example, the divs in each instance of this element will have borders of random sizes.
+	css = css`
+		div {
+			border: ${Math.random() * 5}px solid teal;
+		}
+	`
 
 	// connectedCallback is a method that fires any time this custom element is
 	// connected into a web site's live DOM tree.
 	connectedCallback() {
-    super.connectedCallback() // Don't forget to call the super method!
+		super.connectedCallback() // Don't forget to call the super method!
 
 		// Once the element is connected, let's update the `.firstName` prop after a
 		// couple of seconds, and we'll see the change on screen change.
@@ -228,13 +232,13 @@ class GreetingCard extends Element {
 
 		// And show that it works with by setting HTML attributes too, two seconds later.
 		setTimeout(() => this.setAttribute('first-name', 'Raquel'), 4000)
-  }
+	}
 
-  // Use the disconnectedCallback to clean anything up when the element is removed from the DOM.
-  disconnectedCallback() {
-    super.disconnectedCallback()
-    // ... clean up ...
-  }
+	// Use the disconnectedCallback to clean anything up when the element is removed from the DOM.
+	disconnectedCallback() {
+		super.disconnectedCallback()
+		// ... clean up ...
+	}
 }
 ```
 
@@ -259,34 +263,36 @@ The following shows an alternative way to write the previous `template` and
 class GreetingCard extends Element {
 	// ... same as before ...
 
-  // This time 'template' is a function.
+	// This time 'template' is a function.
 	template() {
 		const greeting = (
 			<span>
 				Hello <i>{this.firstName}</i>
 			</span>
-    )
+		)
 
-    console.log(greeting instanceof HTMLSpanElement) // true
+		console.log(greeting instanceof HTMLSpanElement) // true
 
-    const result = <div>{greeting}</div>
+		const result = <div>{greeting}</div>
 
-    console.log(result instanceof HTMLDivElement) // true
+		console.log(result instanceof HTMLDivElement) // true
 
 		return result
-  }
+	}
 
-  // ... same as before ...
+	// ... same as before ...
 
-  css() {
-    const thickness = Math.random() * 5
+	css() {
+		const thickness = Math.random() * 5 // random per instance of the element
 
-    return css`
-      div { border: ${thickness}px solid teal }
-    `
-  }
+		return css`
+			div {
+				border: ${thickness}px solid teal;
+			}
+		`
+	}
 
-  // ... same as before ...
+	// ... same as before ...
 }
 ```
 
