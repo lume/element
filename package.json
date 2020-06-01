@@ -7,7 +7,7 @@
 	"homepage": "http://github.com/lume/element#readme",
 	"type": "module",
 	"main": "dist/index.js",
-	"types": "src/index.ts",
+	"types": "dist/index.d.ts",
 	"exports COMMENT:": "This removes 'dist' from import statements, as well as replaces the 'main' field. See https://github.com/nodejs/node/issues/14970#issuecomment-571887546",
 	"exports": {
 		".": "./dist/index.js",
