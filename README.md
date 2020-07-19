@@ -171,7 +171,7 @@ import {
 	css, // A no-op identity function (useful to enable CSS syntax highlighting in various text editors)
 } from '@lume/element'
 
-@customElement('greeting-card') // defines the element tag name
+@element('greeting-card') // defines the element tag name
 class GreetingCard extends Element {
 	// Make the firstName property a reactive variable, and also map any value
 	// from an attribute named 'first-name' back to this property (the attribute
@@ -259,7 +259,7 @@ The following shows an alternative way to write the previous `template` and
 `css` properties as a methods.
 
 ```jsx
-@customElement('greeting-card')
+@element('greeting-card')
 class GreetingCard extends Element {
 	// ... same as before ...
 

@@ -180,7 +180,7 @@ export class Element extends HTMLElement {
  * Element rules.
  */
 // eslint-disable-next-line typescript/explicit-function-return-type
-export function customElement(tagName: string) {
+export function element(tagName: string) {
 	return function<C extends Constructor<HTMLElement>>(Ctor: C): C {
 		customElements.define(tagName, Ctor)
 		return Ctor
