@@ -164,13 +164,19 @@ export class Element extends HTMLElement {
 	// and that way we can always add an implementation later when needed.
 	protected adoptedCallback() {}
 
-	protected attributeChangedCallback(attr: string, _oldVal: string, newVal: string) {
-		// map attribute to property
-		const prop = this.__attributesToProps && this.__attributesToProps[attr]
-		if (prop) {
-			const handler = prop.attributeHandler
-			;(this as any)[prop.name] = handler && handler.from ? handler.from(newVal) : newVal
-		}
+	protected attributeChangedCallback(attr: string, _oldVal: string | null, newVal: string | null) {
+		_attrChanged(this, attr, _oldVal, newVal)
+	}
+}
+
+function _attrChanged(self: Element, attr: string, _oldVal: string | null, newVal: string | null) {
+	// map from attribute to property
+	// @ts-ignore private access
+	const prop = self.__attributesToProps && self.__attributesToProps[attr]
+
+	if (prop) {
+		const handler = prop.attributeHandler
+		;(self as any)[prop.name] = handler && handler.from ? handler.from(newVal) : newVal
 	}
 }
 
@@ -188,8 +194,11 @@ export function element(tagName: string) {
 }
 
 type AttributeHandler = {
-	to?: (prop: unknown) => string
-	from?: (v: string) => unknown
+	// TODO `to` handler currently does nothing. If it is present, then prop
+	// changes should reflect back to the attribute. In most cases, this is
+	// undesirable (for performance).
+	to?: (prop: unknown) => string | null
+	from?: (v: string | null) => unknown
 }
 
 /**
@@ -214,16 +223,33 @@ export function attribute(handlerOrProto: any, propName?: string): any {
 	}
 }
 
-function _attribute({constructor}: any /*CustomElementPrototype*/, propName: string, handler?: AttributeHandler): void {
-	const ctor = constructor as typeof Element
+function _attribute(prototype: any /*CustomElementPrototype*/, propName: string, handler?: AttributeHandler): void {
+	const ctor = prototype.constructor as typeof Element
 
-	// TODO this will fail on constructors that have only a `static get
-	// observedAttributes()`. Set a descriptor instead?
-	if (!ctor.hasOwnProperty('observedAttributes')) ctor.observedAttributes = [...(ctor.observedAttributes || [])]
+	if (!prototype.__hasAttributeChangedCallback) {
+		prototype.__hasAttributeChangedCallback = true
+		prototype.attributeChangedCallback = function(attr: string, oldVal: string | null, newVal: string | null) {
+			// equivalent to super.attributeChangedCallback?()
+			prototype.__proto__ &&
+				prototype.__proto__.attributeChangedCallback &&
+				prototype.__proto__.attributeChangedCallback.call(this, attr, oldVal, newVal)
+
+			_attrChanged(this, attr, oldVal, newVal)
+		}
+	}
+
+	if (!ctor.hasOwnProperty('observedAttributes')) {
+		Object.defineProperty(ctor, 'observedAttributes', {
+			// read the super value just in case there is one.
+			value: [...(ctor.observedAttributes || [])],
+			writable: true,
+			configurable: true,
+			enumerable: true,
+		})
+	}
 
 	const attrName = camelCaseToDash(propName)
 
-	// if (!ctor.observedAttributes!.indexOf(attr)) ctor.observedAttributes = [...ctor.observedAttributes!, attr]
 	if (!ctor.observedAttributes!.includes(attrName)) ctor.observedAttributes!.push(attrName)
 
 	mapAttributeToProp(ctor, attrName, propName, handler)
