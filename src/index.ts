@@ -4,4 +4,4 @@ export * from './Element'
 export * from './WithEmotion'
 export * from './element-type-helpers'
 
-export const version = '0.0.17'
+export const version = '0.1.0'
