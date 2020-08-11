@@ -379,3 +379,11 @@ export const css = identityTemplateTag
 type JSXOrDOM = JSX.Element | globalThis.Element
 type TemplateContent = JSXOrDOM | JSXOrDOM[]
 type Template = TemplateContent | (() => TemplateContent)
+
+export function numberAttribute(defaultValue: number) {
+	return attribute({from: str => (str == null ? defaultValue : +str)})
+}
+
+export function booleanAttribute(defaultValue: boolean) {
+	return attribute({from: str => (str == null ? defaultValue : str !== 'false')})
+}
