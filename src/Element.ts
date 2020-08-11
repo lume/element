@@ -209,21 +209,39 @@ type AttributeHandler = {
  * attribute value changes (f.e. with setAttribute), then the property will
  * have this value set onto it.
  */
-export function attribute(prototype: any /*CustomElementPrototype*/, propName: string): any
+export function attribute(
+	prototype: any /*CustomElementPrototype*/,
+	propName: string,
+	descriptor?: PropertyDescriptor,
+): any
 export function attribute(handler?: AttributeHandler): (proto: any, propName: string) => any
-export function attribute(handlerOrProto: any, propName?: string): any {
+export function attribute(handlerOrProto: any, propName?: string, descriptor?: PropertyDescriptor): any {
 	if (handlerOrProto && propName) {
 		// if being used as a decorator directly
-		_attribute(handlerOrProto, propName)
+		const prototype = handlerOrProto
+		return _attribute(prototype, propName, descriptor)
 	} else {
 		// if being used as a decorator factory
-		return (proto: any, propName: string) => {
-			_attribute(proto, propName, handlerOrProto)
+		return (proto: any, propName: string, descriptor?: PropertyDescriptor): any => {
+			const handler = handlerOrProto
+			return _attribute(proto, propName, descriptor, handler)
 		}
 	}
 }
 
-function _attribute(prototype: any /*CustomElementPrototype*/, propName: string, handler?: AttributeHandler): void {
+// TODO Do similar as with the following attributeChangedCallback prototype
+// patch, but also with (dis)connected callbacks which can call an instance's
+// template method, so users don't have to extend from the Element base class.
+// Extnding from the Element base class will be the method that non-decorator
+// users must use.
+// TODO Document both decorator and non-decorator usages.
+
+function _attribute(
+	prototype: any /*CustomElementPrototype*/,
+	propName: string,
+	descriptor: PropertyDescriptor | undefined,
+	attributeHandler?: AttributeHandler,
+): any {
 	const ctor = prototype.constructor as typeof Element
 
 	if (!prototype.__hasAttributeChangedCallback) {
@@ -252,7 +270,9 @@ function _attribute(prototype: any /*CustomElementPrototype*/, propName: string,
 
 	if (!ctor.observedAttributes!.includes(attrName)) ctor.observedAttributes!.push(attrName)
 
-	mapAttributeToProp(ctor, attrName, propName, handler)
+	mapAttributeToProp(ctor, attrName, propName, attributeHandler)
+
+	if (descriptor) return descriptor
 }
 
 // type CustomElementPrototype = {
