@@ -33,7 +33,7 @@
 		"prepack": "npm run build"
 	},
 	"dependencies": {
-		"@lume/variable": "^0.0.8",
+		"@lume/variable": "^0.1.0",
 		"create-emotion": "^10.0.27",
 		"lowclass": "^4.9.3",
 		"solid-js": "0.18.0"
