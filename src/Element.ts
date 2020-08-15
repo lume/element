@@ -3,15 +3,25 @@ import {Constructor} from 'lowclass'
 
 let ctor: typeof Element
 
-export class Element extends HTMLElement {
-	constructor() {
-		super()
-		this.__handleInitialPropertyValuesIfAny()
-	}
+// Throw a helpful error if no Custom Elements v1 API exists.
+if (!('customElements' in window)) {
+	// TODO: provide a link to the Docs.
+	throw new Error(`
+		Your browser does not support the Custom Elements API. You'll
+		need to install a Custom Elements polyfill.
+	`)
+}
 
+export class Element extends HTMLElement {
 	static observedAttributes?: string[]
 
 	private __attributesToProps?: Record<string, {name: string; attributeHandler?: AttributeHandler}>
+
+	constructor() {
+		super()
+		// TODO also handle initial attributes if needed.
+		this.__handleInitialPropertyValuesIfAny()
+	}
 
 	private __handleInitialPropertyValuesIfAny() {
 		// We need to delete value-descriptor properties and store the initial
@@ -89,75 +99,139 @@ export class Element extends HTMLElement {
 	}
 
 	protected disconnectedCallback() {
+		console.log('Element disconnectedCallback')
 		this.__dispose && this.__dispose()
 
 		this.__cleanupStyle()
 	}
 
-	private static __rootNodeRefCountPerTagName = new WeakMap<Node, Record<string, number>>()
+	private static __styleRootNodeRefCountPerTagName = new WeakMap<Node, Record<string, number>>()
+	private __styleRootNode: HTMLHeadElement | ShadowRoot | null = null
 
 	private __setStyle() {
-		const hostSelector = this.__hasShadow ? ':host' : this.tagName.toLowerCase()
-
-		const style = document.createElement('style')
-
 		ctor = this.constructor as typeof Element
-
-		style.innerHTML = `
-			${hostSelector} {
-				display: block;
-				${this.elementStyle ? this.elementStyle() : ''}
-			}
-
-			${typeof ctor.css === 'function' ? (ctor.css = ctor.css()) : ctor.css || ''}
-			${typeof this.css === 'function' ? this.css() : this.css || ''}
-`
+		const staticCSS = typeof ctor.css === 'function' ? (ctor.css = ctor.css()) : ctor.css || ''
+		const dynamicCSS = typeof this.css === 'function' ? this.css() : this.css || ''
 
 		if (this.__hasShadow) {
+			const hostSelector = ':host'
+			const staticStyle = document.createElement('style')
+
+			staticStyle.innerHTML = `
+				${hostSelector} {
+					display: block;
+					${this.elementStyle ? this.elementStyle() : ''}
+				}
+
+				${staticCSS}
+				${dynamicCSS}
+			`
+
 			// If this element has a shadow root, put the style there. This is the
 			// standard way to scope styles to a component.
 
-			this.root.appendChild(style)
+			this.root.appendChild(staticStyle)
 		} else {
-			// If this element doesn't have a shadow root, then we want to append the
-			// style only once to the rootNode where it lives (a ShadoowRoot or
-			// Document). If there are multiple of this same element in the rootNode,
-			// then the style will be added only once and will style all the elements
-			// in the same rootNode.
+			if (staticCSS) {
+				const hostSelector = this.tagName.toLowerCase()
+				const staticStyle = document.createElement('style')
 
-			const _rootNode = this.getRootNode()
-			const rootNode = _rootNode === document ? document.head : _rootNode
+				staticStyle.innerHTML = `
+					${hostSelector} {
+						display: block;
+						${this.elementStyle ? this.elementStyle() : ''}
+					}
 
-			let refCountPerTagName = Element.__rootNodeRefCountPerTagName.get(rootNode)
-			if (!refCountPerTagName) Element.__rootNodeRefCountPerTagName.set(rootNode, (refCountPerTagName = {}))
-			const refCount = refCountPerTagName[this.tagName] || 0
-			refCountPerTagName[this.tagName] = refCount + 1
+					${staticCSS.replace(':host', hostSelector)}
+				`
 
-			if (refCount === 0) {
-				style.id = this.tagName
-				rootNode.appendChild(style)
+				// If this element doesn't have a shadow root, then we want to append the
+				// style only once to the rootNode where it lives (a ShadoowRoot or
+				// Document). If there are multiple of this same element in the rootNode,
+				// then the style will be added only once and will style all the elements
+				// in the same rootNode.
+
+				// Because we're connected, getRootNode will return either the
+				// Document, or a ShadowRoot.
+				const rootNode = this.getRootNode()
+
+				this.__styleRootNode = ((rootNode === document ? document.head : rootNode) as unknown) as
+					| HTMLHeadElement
+					| ShadowRoot
+
+				let refCountPerTagName = Element.__styleRootNodeRefCountPerTagName.get(this.__styleRootNode)
+				if (!refCountPerTagName)
+					Element.__styleRootNodeRefCountPerTagName.set(this.__styleRootNode, (refCountPerTagName = {}))
+				const refCount = refCountPerTagName[this.tagName] || 0
+				refCountPerTagName[this.tagName] = refCount + 1
+
+				if (refCount === 0) {
+					console.log('Ref counting, add style tag for first element.')
+					staticStyle.id = this.tagName.toLowerCase()
+
+					this.__styleRootNode.appendChild(staticStyle)
+				}
+			}
+
+			if (dynamicCSS) {
+				// For dynamic per-instance styles, make one style element per
+				// element instance so it contains that element's unique styles,
+				// associated to a unique attribute selector.
+				const id = this.tagName.toLowerCase() + '-' + this.__id
+
+				// Add the unique attribute that the style selector will target.
+				this.setAttribute(id, '')
+
+				// TODO Instead of creating one style element per custom
+				// element, we can add the styles to a single style element. We
+				// can use the CSS OM instead of innerHTML to make it faster
+				// (but innerHTML is nice for dev mode, so allow option for
+				// both).
+				const dynamicStyle = (this.__dynammicStyle = document.createElement('style'))
+
+				dynamicStyle.id = id
+				dynamicStyle.innerHTML = dynamicCSS.replace(':host', `[${id}]`)
+
+				const rootNode = this.getRootNode()
+
+				this.__styleRootNode = ((rootNode === document ? document.head : rootNode) as unknown) as
+					| HTMLHeadElement
+					| ShadowRoot
+
+				rootNode.appendChild(dynamicStyle)
 			}
 		}
 	}
 
+	private static __elementId = 0
+	private __id = Element.__elementId++
+	private __dynammicStyle: HTMLStyleElement | null = null
+
 	private __cleanupStyle() {
-		if (this.__hasShadow) return
+		do {
+			if (this.__hasShadow) break
 
-		const rootNode = this.getRootNode()
-		const refCountPerTagName = Element.__rootNodeRefCountPerTagName.get(rootNode)
+			const refCountPerTagName = Element.__styleRootNodeRefCountPerTagName.get(this.__styleRootNode!)
 
-		if (!refCountPerTagName) return
+			if (!refCountPerTagName) break
 
-		const refCount = refCountPerTagName[this.tagName]
+			let refCount = refCountPerTagName[this.tagName]
 
-		if (refCount === undefined) return
+			if (refCount === undefined) break
 
-		refCountPerTagName[this.tagName] = refCount - 1
+			refCountPerTagName[this.tagName] = --refCount
 
-		if (refCount === 0) {
-			const style = (rootNode as Element).querySelector('#' + this.tagName)
-			if (style) rootNode.removeChild(style)
-		}
+			if (refCount === 0) {
+				delete refCountPerTagName[this.tagName]
+
+				// TODO PERF maybe we can improve performance by saving the style
+				// instance, instead of querying for it.
+				const style = this.__styleRootNode!.querySelector('#' + this.tagName)
+				style?.remove()
+			}
+		} while (false)
+
+		if (this.__dynammicStyle) this.__dynammicStyle.remove()
 	}
 
 	// not used currently, but we'll leave this hear so that child classes can call super,
