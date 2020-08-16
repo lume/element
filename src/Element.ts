@@ -1,5 +1,6 @@
 import {render} from '@lume/variable'
 import {Constructor} from 'lowclass'
+import {identityTemplateTag, defer, camelCaseToDash} from './utils'
 
 let ctor: typeof Element
 
@@ -19,22 +20,31 @@ export class Element extends HTMLElement {
 
 	constructor() {
 		super()
-		// TODO also handle initial attributes if needed.
+
+		// XXX We could remove this and instead use a `@initialize`-based
+		// decorator when the new decorators land, which would allow us to run
+		// this logic during construction without requiring the user to extend
+		// from a specific base class (Element).
 		this.__handleInitialPropertyValuesIfAny()
+
+		// XXX Should we handle initial attributes too?
 	}
 
 	private __handleInitialPropertyValuesIfAny() {
-		// We need to delete value-descriptor properties and store the initial
-		// values in the storage for our reactive variable accessors.
+		// We need to delete initial value-descriptor properties (if they exist)
+		// and store the initial values in the storage for our reactive variable
+		// accessors.
 		//
-		// If we don't do this, then DOM APIs like cloneNode will create our node
-		// without first upgrading it and set property values, which means those
-		// values will be set as value descriptor properties on the instance instead
-		// of interacting with our accessors (i.e. overriding our accessors that the
-		// instance will gain once the upgrade process places our prototype in the
-		// instance's prototype chain).
+		// If we don't do this, then DOM APIs like cloneNode will create our
+		// node without first upgrading it, and then if someone sets a property
+		// (while our reactive accessors are not yet present in the class
+		// prototype) it means those values will be set as value descriptor
+		// properties on the instance instead of interacting with our accessors
+		// (i.e. the new properties will override our accessors that the
+		// instance will gain on its prototype chain once the upgrade process
+		// places our class prototype in the instance's prototype chain).
 		//
-		// This can also happen if you set properties on an element that isn't
+		// This can also happen if we set properties on an element that isn't
 		// upgraded into a custom element yet, and thus will not yet have our
 		// accessors.
 
@@ -44,18 +54,23 @@ export class Element extends HTMLElement {
 				const propName = prop.name as keyof this
 
 				if (this.hasOwnProperty(propName)) {
-					// override only value descriptors (we assume a getter/setter descriptor is intentional and meant to override or extend our getter/setter)
 					const descriptor = Object.getOwnPropertyDescriptor(this, propName)!
 
+					// override only value descriptors (we assume a
+					// getter/setter descriptor is intentional and meant to
+					// override or extend our getter/setter so we leave those
+					// alone)
 					if ('value' in descriptor) {
 						// delete the value descriptor...
 						delete this[propName]
 
 						// ...and re-assign the value so that it goes through an inherited accessor
 						//
-						// NOTE, deferring allows preexisting preupgrade values to be
-						// handled *after* default constructor values are have been set
-						// during Custom Element upgrade.
+						// NOTE, deferring allows preexisting preupgrade values
+						// to be handled *after* class fields have been set
+						// during Custom Element upgrade (because otherwise
+						// those would override the pre-existing values we're
+						// trying to assign here).
 						defer(() => (this[propName] = descriptor.value))
 					}
 				}
@@ -86,7 +101,7 @@ export class Element extends HTMLElement {
 	private __dispose?: () => void
 	private __hasShadow = true
 
-	protected connectedCallback() {
+	connectedCallback() {
 		this.__hasShadow = this.root instanceof ShadowRoot
 
 		this.__setStyle()
@@ -98,7 +113,7 @@ export class Element extends HTMLElement {
 			this.__dispose = render(typeof template === 'function' ? template.bind(this) : () => template, this.root)
 	}
 
-	protected disconnectedCallback() {
+	disconnectedCallback() {
 		console.log('Element disconnectedCallback')
 		this.__dispose && this.__dispose()
 
@@ -234,24 +249,9 @@ export class Element extends HTMLElement {
 		if (this.__dynammicStyle) this.__dynammicStyle.remove()
 	}
 
-	// not used currently, but we'll leave this hear so that child classes can call super,
-	// and that way we can always add an implementation later when needed.
-	protected adoptedCallback() {}
-
-	protected attributeChangedCallback(attr: string, _oldVal: string | null, newVal: string | null) {
-		_attrChanged(this, attr, _oldVal, newVal)
-	}
-}
-
-function _attrChanged(self: Element, attr: string, _oldVal: string | null, newVal: string | null) {
-	// map from attribute to property
-	// @ts-ignore private access
-	const prop = self.__attributesToProps && self.__attributesToProps[attr]
-
-	if (prop) {
-		const handler = prop.attributeHandler
-		;(self as any)[prop.name] = handler && handler.from ? handler.from(newVal) : newVal
-	}
+	// not used currently, but we'll leave this here so that child classes can
+	// call super, and that way we can add an implementation later when needed.
+	adoptedCallback() {}
 }
 
 /**
@@ -306,9 +306,8 @@ export function attribute(handlerOrProto: any, propName?: string, descriptor?: P
 // TODO Do similar as with the following attributeChangedCallback prototype
 // patch, but also with (dis)connected callbacks which can call an instance's
 // template method, so users don't have to extend from the Element base class.
-// Extnding from the Element base class will be the method that non-decorator
+// Extending from the Element base class will be the method that non-decorator
 // users must use.
-// TODO Document both decorator and non-decorator usages.
 
 function _attribute(
 	prototype: any /*CustomElementPrototype*/,
@@ -320,13 +319,29 @@ function _attribute(
 
 	if (!prototype.__hasAttributeChangedCallback) {
 		prototype.__hasAttributeChangedCallback = true
-		prototype.attributeChangedCallback = function(attr: string, oldVal: string | null, newVal: string | null) {
-			// equivalent to super.attributeChangedCallback?()
-			prototype.__proto__ &&
-				prototype.__proto__.attributeChangedCallback &&
-				prototype.__proto__.attributeChangedCallback.call(this, attr, oldVal, newVal)
 
-			_attrChanged(this, attr, oldVal, newVal)
+		const originalAttrChanged = prototype.attributeChangedCallback
+
+		prototype.attributeChangedCallback = function(attr: string, oldVal: string | null, newVal: string | null) {
+			// If the class already has an attributeChangedCallback, let is run,
+			// and let is call or not call super.attributeChangedCallback.
+			if (originalAttrChanged) {
+				originalAttrChanged.call(this, attr, oldVal, newVal)
+			}
+			// Otherwise, let's not intentionally break inheritance and be sure
+			// we call the super method (if it exists).
+			else {
+				// This is equivalent to `super.attributeChangedCallback?()`
+				prototype.__proto__?.attributeChangedCallback?.call(this, attr, oldVal, newVal)
+			}
+
+			// map from attribute to property
+			const prop = this.__attributesToProps && this.__attributesToProps[attr]
+
+			if (prop) {
+				const handler = prop.attributeHandler
+				this[prop.name] = handler && handler.from ? handler.from(newVal) : newVal
+			}
 		}
 	}
 
@@ -363,11 +378,10 @@ function mapAttributeToProp(ctor: typeof Element, attr: string, prop: string, ha
 		Object.defineProperty(ctor.prototype, '__attributesToProps', {
 			value: {
 				// prettier-ignore
-				__proto__:
-					ctor.prototype.
-						// @ts-ignore, private access
-						__attributesToProps ||
-							Object.prototype
+				__proto__: ctor.prototype.
+					// @ts-ignore, private access
+					__attributesToProps
+						|| Object.prototype
 			},
 		})
 	}
@@ -376,9 +390,9 @@ function mapAttributeToProp(ctor: typeof Element, attr: string, prop: string, ha
 	if (
 		// prettier-ignore
 		ctor.prototype.
-      // @ts-ignore, private access
-      __attributesToProps!
-      [attr]
+			// @ts-ignore, private access
+			__attributesToProps!
+				[attr]
 	) {
 		console.warn(
 			'The `@attribute` decorator is overriding an already-existing attribute-to-property mapping for the "' +
@@ -389,50 +403,9 @@ function mapAttributeToProp(ctor: typeof Element, attr: string, prop: string, ha
 
 	// prettier-ignore
 	ctor.prototype.
-    // @ts-ignore, private access
-    __attributesToProps!
-    [attr] = {name: prop, attributeHandler: handler}
-}
-
-function camelCaseToDash(str: string): string {
-	return str.replace(/([a-zA-Z])(?=[A-Z])/g, '$1-').toLowerCase()
-}
-
-/**
- * Execute the given `func`tion on the next micro "tick" of the JS engine.
- */
-export function defer(func: () => unknown): Promise<unknown> {
-	// "defer" is used as a semantic label for Promise.resolve().then
-	return Promise.resolve().then(func)
-}
-
-/**
- * This is an identity "template string tag function", which hen applied to a
- * template string returns the equivalent of not having used a template tag on
- * a template string to begin with.
- *
- * For example, The following two strings are equivalent:
- *
- * ```js
- * const number = 42
- * const string1 = `meaning of life: ${number}`
- * const string2 = identityTemplateTag`meaning of life: ${number}`
- * ```
- *
- * This can be useful when assigning it to variables like `css` or `html` in
- * order to trigger syntax checking and highlighting inside template strings
- * without actually doing anything to the string (a no-op).
- */
-export function identityTemplateTag(stringsParts: TemplateStringsArray, ...values: any[]): string {
-	// unfortunately, it does incur some unnecessary runtime overhead in order to
-	// receive the string parts and the interpolated values and concatenate them
-	// all together into the same string as if we hadn't used a template tag.
-
-	let str = ''
-
-	for (let i = 0; i < values.length; i++) str += stringsParts[i] + String(values[i])
-
-	return str + stringsParts[stringsParts.length - 1]
+		// @ts-ignore, private access
+		__attributesToProps!
+			[attr] = {name: prop, attributeHandler: handler}
 }
 
 /**
@@ -449,7 +422,8 @@ export function identityTemplateTag(stringsParts: TemplateStringsArray, ...value
  */
 export const css = identityTemplateTag
 
-// This is the actual DOM Element type, base class for both HTMLElements and SVGElements
+// This is TypeScript-specific. Eventually Hegel would like to have better
+// support for JSX. We'd need to figure how to supports types for both systems.
 type JSXOrDOM = JSX.Element | globalThis.Element
 type TemplateContent = JSXOrDOM | JSXOrDOM[]
 type Template = TemplateContent | (() => TemplateContent)
