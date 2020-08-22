@@ -47,6 +47,9 @@ DOM elements without necessarily creating new custom elements.
 
 ## Install and Setup
 
+> STUB: This section needs expansion, but should be enough for anyone
+> familiar with common build tooling in the webdev/JS ecosystem.
+
 This assumes some familiarity with JavScript build tools. (TODO, make this
 more beginner-friendly.)
 
@@ -56,8 +59,11 @@ preset that gives us reactive HTML-like markup inside JavaScript known as
 "JSX":
 
 ```sh
-npm install @babel/core babel-preset-solid
+npm install @lume/element @babel/core babel-preset-solid
 ```
+
+If you'll be compiling with the Babel cli, also install `@babel/cli`. Or if
+you're using a tool like Webpack, you'll need `babel-loader`.
 
 Configure Babel to use the preset, and tell the preset to use `@lume/element`
 for runtime imports inside your project's `.babelrc` file or in your

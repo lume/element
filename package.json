@@ -39,7 +39,7 @@
 		"solid-js": "0.18.0"
 	},
 	"devDependencies": {
-		"@lume/cli": "^2.0.0",
+		"@lume/cli": "^2.1.2",
 		"prettier": "^1.19.1"
 	},
 	"repository": {
