@@ -289,17 +289,52 @@ export function attribute(
 	descriptor?: PropertyDescriptor,
 ): any
 export function attribute(handler?: AttributeHandler): (proto: any, propName: string) => any
-export function attribute(handlerOrProto: any, propName?: string, descriptor?: PropertyDescriptor): any {
+export function attribute(handlerOrProto?: any, propName?: string, descriptor?: PropertyDescriptor): any {
+	// This is true only if we're using the decorator in a Babel-compiled app
+	// with non-legacy decorators. TypeScript only has legacy decorators.
+	const isDecoratorV2 = handlerOrProto && 'kind' in handlerOrProto
+
+	if (isDecoratorV2) {
+		const classElement = handlerOrProto
+
+		return {
+			...classElement,
+			finisher(Class: Constructor) {
+				_attribute(Class.prototype, classElement.key)
+				return classElement.finisher?.(Class) ?? Class
+			},
+		}
+	}
+
 	if (handlerOrProto && propName) {
-		// if being used as a decorator directly
+		// if being used as a legacy decorator directly
 		const prototype = handlerOrProto
 		return _attribute(prototype, propName, descriptor)
-	} else {
-		// if being used as a decorator factory
-		return (proto: any, propName: string, descriptor?: PropertyDescriptor): any => {
-			const handler = handlerOrProto
-			return _attribute(proto, propName, descriptor, handler)
+	}
+
+	// `attribute` is being used as a decorator factory, possibly being passed a
+	// handler, like `@attribute({...})`
+
+	const handler = handlerOrProto
+
+	return (protoOrClassElement: any, propName?: string, descriptor?: PropertyDescriptor): any => {
+		// This is true only if we're using the decorator in a Babel-compiled app
+		// with non-legacy decorators. TypeScript only has legacy decorators.
+		const isDecoratorV2 = protoOrClassElement && 'kind' in protoOrClassElement
+
+		if (isDecoratorV2) {
+			const classElement = protoOrClassElement
+
+			return {
+				...classElement,
+				finisher(Class: Constructor) {
+					_attribute(Class.prototype, classElement.key, undefined, handler)
+					return classElement.finisher?.(Class) ?? Class
+				},
+			}
 		}
+
+		return _attribute(protoOrClassElement, propName!, descriptor, handler)
 	}
 }
 
@@ -312,7 +347,7 @@ export function attribute(handlerOrProto: any, propName?: string, descriptor?: P
 function _attribute(
 	prototype: any /*CustomElementPrototype*/,
 	propName: string,
-	descriptor: PropertyDescriptor | undefined,
+	descriptor?: PropertyDescriptor,
 	attributeHandler?: AttributeHandler,
 ): any {
 	const ctor = prototype.constructor as typeof Element
