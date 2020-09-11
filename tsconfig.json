@@ -4,6 +4,8 @@
 		// FIXME If we re-enable WithEmotion, this needs to be false if we
 		// continue to use mixins. See WithEmotion.ts; what should we do with
 		// it? See also https://github.com/microsoft/TypeScript/issues/35822
-		"declaration": true
+		"declaration": true,
+
+		"useDefineForClassFields": false
 	}
 }

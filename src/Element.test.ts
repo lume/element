@@ -1,5 +1,6 @@
 import {Element, element, attribute, numberAttribute, booleanAttribute} from './Element'
 import {reactive, autorun} from './index'
+// import {reactify} from '@lume/variable'
 
 describe('Element', () => {
 	it('can be extended by custom element classes', () => {
@@ -20,6 +21,7 @@ describe('Element', () => {
 	describe('reactive properties and attributes', () => {
 		it('reacts to updates using autorun', () => {
 			@element('foo-el')
+			@reactive
 			class FooEl extends HTMLElement {
 				@reactive foo = 123
 			}
@@ -42,6 +44,7 @@ describe('Element', () => {
 
 		it('attributes can be mapped to properties with @attribute', () => {
 			@element('foo-bar')
+			@reactive
 			class FooBar extends HTMLElement {
 				@reactive @attribute foo: string | null = '0'
 			}
@@ -118,6 +121,7 @@ describe('Element', () => {
 	describe('various types of attributes', () => {
 		it('@numberAttribute decorator for working with number values', () => {
 			@element('x-person')
+			@reactive
 			class Person extends HTMLElement {
 				// Currently the typed attributes need an arg for the default value.
 				@reactive @numberAttribute(0) age = 0
@@ -193,6 +197,7 @@ describe('Element', () => {
 
 		it('@booleanAttribute decorator for working with boolean values', () => {
 			@element('pet-lover')
+			@reactive
 			class PetLover extends HTMLElement {
 				// Boolean attributes are
 				// - true when they exist and have any value other than "false". f.e. foo="" and foo="null" result in a value of `true`.

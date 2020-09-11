@@ -1,0 +1,9 @@
+// The sole purpose of this file is for when testing the decorators against all
+// decorator build configurations of TypeScript and Babel (with TypeScript we
+// need to test with both values of "useDefineForClassFields").
+{
+	"extends": "./tsconfig.json",
+	"compilerOptions": {
+		"useDefineForClassFields": true
+	}
+}
