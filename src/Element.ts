@@ -1,6 +1,7 @@
 import {render} from '@lume/variable'
-import {Constructor} from 'lowclass'
 import {identityTemplateTag, defer, camelCaseToDash} from './utils'
+
+import type {Constructor} from 'lowclass'
 
 let ctor: typeof Element
 
