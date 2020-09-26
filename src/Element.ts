@@ -212,7 +212,7 @@ export class Element extends HTMLElement {
 					| HTMLHeadElement
 					| ShadowRoot
 
-				rootNode.appendChild(dynamicStyle)
+				this.__styleRootNode.appendChild(dynamicStyle)
 			}
 		}
 	}

@@ -7,7 +7,7 @@ export function defer(func: () => unknown): Promise<unknown> {
 }
 
 /**
- * This is an identity "template string tag function", which hen applied to a
+ * This is an identity "template string tag function", which when applied to a
  * template string returns the equivalent of not having used a template tag on
  * a template string to begin with.
  *
