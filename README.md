@@ -1,6 +1,11 @@
 # @lume/element
 
-Create Custom Elements with reactivity and automatic re-rendering.
+Easily create Custom Elements with simple templates and reactivity.
+
+Live Demos:
+
+-   [Using JSX and decorator syntax.](https://webcomponents.dev/edit/EJ5VTuaaO0Iwq3APUFMe)
+-   [Plain JS, template strings instead of JSX, no decorators.](https://webcomponents.dev/edit/yObgikY1CK2Ef2VUPYBA)
 
 #### `npm install @lume/element --save`
 
