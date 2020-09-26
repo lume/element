@@ -2,14 +2,14 @@
 
 Easily create Custom Elements with simple templates and reactivity.
 
-Live Demos:
-
--   [Using JSX and decorator syntax.](https://webcomponents.dev/edit/EJ5VTuaaO0Iwq3APUFMe)
--   [Plain JS, template strings instead of JSX, no decorators.](https://webcomponents.dev/edit/yObgikY1CK2Ef2VUPYBA)
-
 #### `npm install @lume/element --save`
 
 ![](https://github.com/lume/element/workflows/Build%20and%20Test/badge.svg)
+
+## Live demos
+
+-   [Using JSX and decorator syntax.](https://webcomponents.dev/edit/EJ5VTuaaO0Iwq3APUFMe)
+-   [Plain JS, template strings instead of JSX, no decorators.](https://webcomponents.dev/edit/yObgikY1CK2Ef2VUPYBA)
 
 ## Intro
 
