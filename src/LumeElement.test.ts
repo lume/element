@@ -1,5 +1,6 @@
-import {Element, element, attribute, numberAttribute, booleanAttribute} from './Element'
-import {reactive, autorun} from './index'
+import {Element, element, attribute, numberAttribute, booleanAttribute, reactive, autorun} from './index'
+
+// TODO test reactify just to double check (it is already tested in @lume/variable)
 // import {reactify} from '@lume/variable'
 
 describe('Element', () => {

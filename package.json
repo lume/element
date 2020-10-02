@@ -34,12 +34,11 @@
 	},
 	"dependencies": {
 		"@lume/variable": "^0.1.1",
-		"create-emotion": "^10.0.27",
 		"lowclass": "^4.9.3",
 		"solid-js": "0.18.0"
 	},
 	"devDependencies": {
-		"@lume/cli": "^0.1.0",
+		"@lume/cli": "^0.1.1",
 		"prettier": "^1.19.1"
 	},
 	"repository": {
