@@ -33,12 +33,12 @@
 		"prepack": "npm run build"
 	},
 	"dependencies": {
-		"@lume/variable": "^0.1.1",
+		"@lume/variable": "^0.2.0",
 		"lowclass": "^4.9.3",
 		"solid-js": "0.18.0"
 	},
 	"devDependencies": {
-		"@lume/cli": "^0.1.1",
+		"@lume/cli": "^0.1.2",
 		"prettier": "^1.19.1"
 	},
 	"repository": {
