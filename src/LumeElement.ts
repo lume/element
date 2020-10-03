@@ -1,4 +1,4 @@
-import {render} from '@lume/variable/dist/dom'
+import {render} from './dom'
 import {defer} from './_utils'
 
 import type {AttributeHandler} from './attribute'

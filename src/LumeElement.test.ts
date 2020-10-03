@@ -1,7 +1,7 @@
 import {Element, element, attribute, numberAttribute, booleanAttribute, reactive, autorun} from './index'
 
 // TODO test reactify just to double check (it is already tested in @lume/variable)
-// import {reactify} from '@lume/variable'
+// import {reactify} from './variable'
 
 describe('Element', () => {
 	it('can be extended by custom element classes', () => {
