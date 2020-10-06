@@ -399,37 +399,36 @@ To give your Custom Elements type support for use with DOM APIs and in JSX,
 use the following template.
 
 ```tsx
-import {/* ... */} from '@lume/element'
+import /* ... */ '@lume/element'
 import type {} from '@lume/element/dist/jsx' // Only needed if you didn't import somewhere else already.
 
 // Define the attributes that your element accepts
-export interface LoginAttributes extends JSX.HTMLAttributes<CoolElement> {
-  prop1?: string
-  prop2?: boolean
+export interface LoginAttributes<T = CoolElement> extends JSX.HTMLAttributes<T> {
+	prop1?: string
+	prop2?: boolean
 }
 
+@element('cool-element')
 export class CoolElement extends Element {
-  // ... Define your class as described above ...
+	// ... Define your class as described above ...
 }
-
-customElements.define('cool-element', CoolElement)
 
 // Add your element to the list of known HTML elements. This makes it possible
 // for APIs like document.createElement('cool-element') to return the expected
 // type.
 declare global {
-  interface HTMLElementTagNameMap {
-    'cool-element': CoolElement
-  }
+	interface HTMLElementTagNameMap {
+		'cool-element': CoolElement
+	}
 }
 
 // Also register the name for TypeScript recognize the element as a valid JSX
 // tag.
 declare global {
-  namespace JSX {
-    interface IntrinsicElements {
-      'cool-element': LoginAttributes
-    }
-  }
+	namespace JSX {
+		interface IntrinsicElements {
+			'cool-element': LoginAttributes
+		}
+	}
 }
 ```

@@ -17,6 +17,8 @@ if (!('customElements' in window)) {
 class LumeElement extends HTMLElement {
 	static observedAttributes?: string[]
 
+	// Note, this is used in the @attribute decorator, see attribute.ts.
+	// @ts-ignore, property is used
 	private __attributesToProps?: Record<string, {name: string; attributeHandler?: AttributeHandler}>
 
 	constructor() {
@@ -48,33 +50,34 @@ class LumeElement extends HTMLElement {
 		// This can also happen if we set properties on an element that isn't
 		// upgraded into a custom element yet, and thus will not yet have our
 		// accessors.
+		//
+		// Assumption: any enumerable own props must've been set on the
+		// element before it was upgraded. Builtin DOM properties are
+		// not enumerable.
+		for (const propName of Object.keys(this) as (keyof this)[]) {
+			const descriptor = Object.getOwnPropertyDescriptor(this, propName)!
 
-		if (this.__attributesToProps) {
-			for (const attr in this.__attributesToProps) {
-				const prop = this.__attributesToProps[attr]
-				const propName = prop.name as keyof this
+			// override only value descriptors (we assume a
+			// getter/setter descriptor is intentional and meant to
+			// override or extend our getter/setter so we leave those
+			// alone)
+			if ('value' in descriptor) {
+				// delete the value descriptor...
+				delete this[propName]
 
-				if (this.hasOwnProperty(propName)) {
-					const descriptor = Object.getOwnPropertyDescriptor(this, propName)!
-
-					// override only value descriptors (we assume a
-					// getter/setter descriptor is intentional and meant to
-					// override or extend our getter/setter so we leave those
-					// alone)
-					if ('value' in descriptor) {
-						// delete the value descriptor...
-						delete this[propName]
-
-						// ...and re-assign the value so that it goes through an inherited accessor
-						//
-						// NOTE, deferring allows preexisting preupgrade values
-						// to be handled *after* class fields have been set
-						// during Custom Element upgrade (because otherwise
-						// those would override the pre-existing values we're
-						// trying to assign here).
-						defer(() => (this[propName] = descriptor.value))
-					}
-				}
+				// ...and re-assign the value so that it goes through an inherited accessor
+				//
+				// NOTE, deferring allows preexisting preupgrade values
+				// to be handled *after* class fields have been set
+				// during Custom Element upgrade (because otherwise
+				// those would override the pre-existing values we're
+				// trying to assign here).
+				defer(() => (this[propName] = descriptor.value))
+			} else {
+				// XXX Handle the case of accessors being on the pre-upgrade
+				// instance? It is very unlikely, but possible someone might run
+				// Object.defineProperty on a pre-upgrade instance to create an
+				// accessor.
 			}
 		}
 	}

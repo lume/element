@@ -84,7 +84,7 @@ function _attribute(
 
 		const originalAttrChanged = prototype.attributeChangedCallback
 
-		prototype.attributeChangedCallback = function(attr: string, oldVal: string | null, newVal: string | null) {
+		prototype.attributeChangedCallback = function (attr: string, oldVal: string | null, newVal: string | null) {
 			// If the class already has an attributeChangedCallback, let is run,
 			// and let is call or not call super.attributeChangedCallback.
 			if (originalAttrChanged) {
@@ -131,6 +131,8 @@ function _attribute(
 // WeakMaps, but then we'd need to implement our own inheritance
 // (prototype-like) lookup for the attributes.
 function mapAttributeToProp(ctor: typeof LumeElement, attr: string, prop: string, handler?: AttributeHandler): void {
+	// Extend the current prototype's __attributesToProps object from the super
+	// prototypes __attributesToProps object.
 	if (!ctor.prototype.hasOwnProperty('__attributesToProps')) {
 		// using defineProperty so that it is non-writable, non-enumerable, non-configurable
 		Object.defineProperty(ctor.prototype, '__attributesToProps', {
@@ -139,7 +141,7 @@ function mapAttributeToProp(ctor: typeof LumeElement, attr: string, prop: string
 				__proto__: ctor.prototype.
 					// @ts-ignore, private access
 					__attributesToProps
-						|| Object.prototype
+						|| Object.prototype,
 			},
 		})
 	}

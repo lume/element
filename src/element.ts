@@ -16,7 +16,7 @@ import type {Constructor} from 'lowclass'
  * ```
  */
 export function element(tagName: string) {
-	return function(classOrClassElement: any): any {
+	return function (classOrClassElement: any): any {
 		// Newer v2 decorator (used in a Babel environment, no other tool supports them currently).
 		if ('kind' in classOrClassElement) {
 			const classElement = classOrClassElement

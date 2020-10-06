@@ -1,9 +1,12 @@
-import {Element, element, attribute, numberAttribute, booleanAttribute, reactive, autorun} from './index'
+import {Element, element, reactive, autorun} from './index'
+import {html as _html} from './html'
+
+const html = _html as any
 
 // TODO test reactify just to double check (it is already tested in @lume/variable)
 // import {reactify} from './variable'
 
-describe('Element', () => {
+describe('LumeElement', () => {
 	it('can be extended by custom element classes', () => {
 		let count = 0
 
@@ -19,240 +22,191 @@ describe('Element', () => {
 		expect(count).toBe(1)
 	})
 
-	describe('reactive properties and attributes', () => {
-		it('reacts to updates using autorun', () => {
-			@element('foo-el')
-			@reactive
-			class FooEl extends HTMLElement {
-				@reactive foo = 123
-			}
+	it('creates an open shadow root by default (once connected)', () => {
+		@element('has-shadow')
+		class MyEl extends Element {}
 
-			const f = new FooEl()
-
-			let count = 0
-
-			// Runs once initially, then re-runs any time f.foo has changed.
-			autorun(() => {
-				f.foo
-				count++
-			})
-
-			expect(count).toBe(1)
-
-			f.foo = 123
-			expect(count).toBe(2)
-		})
-
-		it('attributes can be mapped to properties with @attribute', () => {
-			@element('foo-bar')
-			@reactive
-			class FooBar extends HTMLElement {
-				@reactive @attribute foo: string | null = '0'
-			}
-
-			const f = new FooBar()
-
-			// Properties currently do not reflect back to attributes (no option
-			// for that yet).
-			expect(f.getAttribute('foo')).toBe(null)
-
-			document.body.insertAdjacentHTML('beforeend', `<foo-bar foo="good day!"></foo-bar>`)
-			const ff = document.body.lastElementChild! as FooBar
-
-			expect(ff.getAttribute('foo')).toBe('good day!')
-			expect(ff.foo).toBe('good day!')
-
-			let count = 0
-
-			// Runs once initially, then re-runs any time f.foo has changed.
-			autorun(() => {
-				f.foo
-				ff.foo
-				count++
-			})
-
-			f.setAttribute('foo', '123')
-			expect(count).toBe(2)
-			expect(f.foo).toBe('123')
-
-			f.setAttribute('foo', '456')
-			expect(count).toBe(3)
-			expect(f.foo).toBe('456')
-
-			f.removeAttribute('foo')
-			expect(count).toBe(4)
-			expect(f.foo).toBe(null)
-
-			ff.foo = 'good night!'
-			expect(count).toBe(5)
-			// Remember, properties do not reflect to attributes (no option for that yet).
-			expect(ff.getAttribute('foo')).toBe('good day!')
-			expect(ff.foo).toBe('good night!')
-		})
-
-		it('using @attribute without @reactive simply sets the property without reactivity', () => {
-			@element('pur-pose')
-			class Purpose extends HTMLElement {
-				@attribute purpose: string | null = '0'
-			}
-
-			const f = new Purpose()
-
-			let count = 0
-
-			autorun(() => {
-				f.purpose = 'Alive to discover.'
-				count++
-			})
-
-			expect(count).toBe(1)
-
-			f.setAttribute('purpose', 'Born to create!')
-			expect(count).toBe(1)
-			expect(f.purpose).toBe('Born to create!')
-
-			f.purpose = 'To inspire.'
-			expect(count).toBe(1)
-			expect(f.purpose).toBe('To inspire.')
-			// No option to reflect props to attributes yet.
-			expect(f.getAttribute('purpose')).toBe('Born to create!')
-		})
+		const el = new MyEl()
+		expect(el.shadowRoot).toBe(null)
+		document.body.append(el)
+		expect(el.shadowRoot).toBeInstanceOf(ShadowRoot)
 	})
 
-	describe('various types of attributes', () => {
-		it('@numberAttribute decorator for working with number values', () => {
-			@element('x-person')
-			@reactive
-			class Person extends HTMLElement {
-				// Currently the typed attributes need an arg for the default value.
-				@reactive @numberAttribute(0) age = 0
-				@numberAttribute(0) @reactive weight = 0
-				@numberAttribute(0) height = 0
+	it("allows opting out of a shadow root by defining the 'root' property", () => {
+		const attachShadow = Element.prototype.attachShadow
+		let calls = 0
+
+		Element.prototype.attachShadow = function (...args) {
+			calls++
+			return attachShadow.apply(this, args)
+		}
+
+		let div
+
+		@element('no-shadow')
+		class MyEl extends Element {
+			get root() {
+				return this
 			}
-
-			const p = new Person()
-
-			let count = 0
-
-			autorun(() => {
-				p.age
-				p.weight
-				count++
-			})
-			expect(count).toBe(1)
-
-			p.setAttribute('age', '43')
-			expect(count).toBe(2)
-			expect(p.age).toBe(43)
-
-			p.setAttribute('weight', '168')
-			expect(count).toBe(3)
-			expect(p.weight).toBe(168)
-
-			p.setAttribute('height', '5.9')
-			expect(count).toBe(3)
-			expect(p.height).toBe(5.9)
-
-			// Removing the attributes sets the prop values back to default.
-			p.removeAttribute('age')
-			p.removeAttribute('weight')
-			p.removeAttribute('height')
-			expect(count).toBe(5)
-			expect(p.age).toBe(0)
-			expect(p.weight).toBe(0)
-			expect(p.height).toBe(0)
-
-			// TODO should this work too? Currently attributeChangedCallback
-			// does the coercion (falls the attributeHandler.from() method).
-			// Should it instead be a setter? Measure performance.
-			// p.age = '43'
-			// expect(count).toBe(6)
-			// expect(p.age).toBe(43)
-
-			p.age = 44
-			expect(count).toBe(6)
-			expect(p.age).toBe(44)
-
-			// TODO should this work too? Currently attributeChangedCallback
-			// does the coercion (falls the attributeHandler.from() method).
-			// Should it instead be a setter? Measure performance.
-			// p.weight = '168'
-			// expect(count).toBe(8)
-			// expect(p.weight).toBe(168)
-
-			p.weight = 169
-			expect(count).toBe(7)
-			expect(p.weight).toBe(169)
-
-			// TODO should this work too? Currently attributeChangedCallback
-			// does the coercion (falls the attributeHandler.from() method).
-			// Should it instead be a setter? Measure performance.
-			// p.height = '5.9'
-			// expect(count).toBe(9)
-			// expect(p.height).toBe(5.9)
-
-			p.height = 6
-			expect(count).toBe(7)
-			expect(p.height).toBe(6)
-		})
-
-		it('@booleanAttribute decorator for working with boolean values', () => {
-			@element('pet-lover')
-			@reactive
-			class PetLover extends HTMLElement {
-				// Boolean attributes are
-				// - true when they exist and have any value other than "false". f.e. foo="" and foo="null" result in a value of `true`.
-				// - false when they exist and have the value "false". f.e. foo="false"
-				// When the attributes do not exist (getAttribute returns
-				// `null`) they have the value specified by the default arg
-				// passed into the decorator. If the default value is set to
-				// `true`, then removing the attribute results in a `true` value
-				// (this is different than traditional boolean attribute where
-				// the absence of an attribute means `false`). Set the default
-				// value to `false` to have the result be `false` when the
-				// attribute is not present or when it is explicitly set to
-				// "false".
-				@reactive @booleanAttribute(false) hasCat = false
-				@booleanAttribute(true) @reactive hasDog = true
+			template = () => {
+				div = document.createElement('div')
+				div.id = 'div'
+				return div
 			}
+		}
 
-			const p = new PetLover()
+		const el = new MyEl()
+		document.body.append(el)
+		expect(el.shadowRoot).toBe(null)
+		expect(calls).toBe(0)
+		// @ts-ignore
+		expect(el.querySelector('#div')).toBe(div)
+	})
 
-			let count = 0
+	it('it appends anything returned from template() to a ShadowRoot by default', () => {
+		@element('append-template')
+		class MyEl extends Element {
+			template = () => {
+				const div = document.createElement('div')
+				div.innerText = 'hello'
+				return div
+			}
+		}
 
-			autorun(() => {
-				p.hasCat
-				p.hasDog
-				count++
-			})
+		const el = new MyEl() as any
+		document.body.append(el)
 
-			expect(count).toBe(1)
+		expect(el.root.children.length).toBe(2)
+		// The first element is the style element that LumeElement creates
+		expect(el.root.firstElementChild.tagName.toLowerCase()).toBe('style')
+		// The DOM element returned from template()
+		expect(el.root.lastElementChild.outerHTML).toBe('<div>hello</div>')
+	})
 
-			// NOTE! The camelCase property names are mapped from dash-case attributes names.
-			p.setAttribute('has-cat', '')
-			expect(count).toBe(2)
-			expect(p.hasCat).toBe(true)
+	it('templates with reactivity (no JSX here, but we assume that that is tested in Solid.js)', () => {
+		@element('html-template')
+		// TODO remove this reactive class decorator, and see if we can throw a
+		// meaningful error instead of the error that happens due to not using
+		// the class decorator (i.e. forgeting to use it).
+		@reactive
+		class MyEl extends Element {
+			@reactive message = 'hello'
+			@reactive count = 0
+			template = () => html`<div count=${() => this.count}>${() => this.message}</div>`
+		}
 
-			p.setAttribute('has-cat', 'foo')
-			expect(count).toBe(3)
-			expect(p.hasCat).toBe(true)
+		const el = new MyEl() as any
+		document.body.append(el)
 
-			p.setAttribute('has-dog', 'false')
-			expect(count).toBe(4)
-			expect(p.hasDog).toBe(false)
+		expect(el.root.children.length).toBe(2)
+		// The first element is the style element that LumeElement creates
+		expect(el.root.firstElementChild.tagName.toLowerCase()).toBe('style')
+		// The DOM element returned from template()
+		expect(el.root.lastElementChild.outerHTML).toBe('<div>hello</div>')
 
-			p.setAttribute('has-dog', 'anything')
-			expect(count).toBe(5)
-			expect(p.hasDog).toBe(true)
+		el.message = 'goodbye'
+		el.count++
 
-			// Removing the attributes sets the prop values back to default.
-			p.removeAttribute('has-cat')
-			p.removeAttribute('has-dog')
-			expect(p.getAttribute('has-cat')).toBe(null)
-			expect(p.getAttribute('has-dog')).toBe(null)
-			expect(count).toBe(7)
-			expect(p.hasCat).toBe(false)
-			expect(p.hasDog).toBe(true)
+		expect(el.root.lastElementChild.outerHTML).toBe('<div>goodbye</div>')
+		// The html template sets a property, not an attribute (when an interpolation is used).
+		expect(el.root.lastElementChild.count).toBe(1)
+		expect(el.root.lastElementChild.getAttribute('count')).toBe(null)
+
+		// TODO Test hyphenated attributes when upgraded to SOlid 0.20+.
+		// expect(el.root.lastElementChild.getAttribute('the-count')).toBe('1')
+
+		/**
+		 * Simulate a click event.
+		 * @public
+		 * @param {Element} elem  the element to simulate a click on
+		 */
+		// var simulateClick = function (elem) {
+		// 	// Create our event (with options)
+		// 	var evt = new MouseEvent('click', {
+		// 		bubbles: true,
+		// 		cancelable: true,
+		// 		view: window
+		// 	});
+		// 	// If cancelled, don't dispatch our event
+		// 	var canceled = !elem.dispatchEvent(evt);
+		// };
+	})
+
+	// TODO
+	// test('attribute passing in templates')
+	// test('prop passing in templates')
+	// test('css prop')
+	// test('static css prop')
+
+	// This sort of thing doesn't usually happen in end-user code, but moreso
+	// during custom element upgrade processes during HTML parsing. Generally
+	// speaking, an end user won't define a custom element class between
+	// creating and using an element. Namely this ensures that frameworks (like
+	// Solid which uses cloneNode to create nodes based on JSX templates) will
+	// work because they set properties on elements before they are upgraded due
+	// to the fact that cloneNode skips upgrade (the cloned node must
+	// subsequently be connected to the DOM to get upgraded).
+	it('initializes pre-upgrade properties by deleting them and re-assigning them after construction', async () => {
+		const fooEl = document.createElement('foo-element') as FooElement
+
+		// fooEl is instanceof HTMLElement (not FooElement) at this point (ignore the type cast)
+		expect(fooEl).toBeInstanceOf(HTMLElement)
+
+		document.body.append(fooEl)
+
+		fooEl.foo = 1
+		fooEl.bar = 2
+
+		let handled = false
+
+		// This triggers the Custom Element upgrade process for fooEl.
+		@element('foo-element')
+		@reactive
+		// @ts-ignore, funky stuff for testing
+		class FooElement extends Element {
+			@reactive foo = 3
+			@reactive bar = 4
+
+			__handleInitialPropertyValuesIfAny() {
+				handled = true
+				// @ts-ignore, private access
+				super.__handleInitialPropertyValuesIfAny()
+			}
+		}
+
+		expect(handled).toBe(true)
+
+		// At this point, fooEl is now instanceof FooElement due to the Custom
+		// Element upgrade process.
+		expect(fooEl).toBeInstanceOf(FooElement)
+
+		// The pre-upgrade values are not set until the next microtask, so at
+		// this point the values are the ones from the class definition.
+		expect(fooEl.foo).toBe(3)
+		expect(fooEl.bar).toBe(4)
+
+		// We normally do not want to use any elements when they are in this
+		// state, but this autorun is for asserting that things are in the
+		// awkwards state that they currently are at this point.
+		let count = 0
+		autorun(() => {
+			fooEl.foo
+			fooEl.bar
+			count++
 		})
+		expect(count).toBe(1)
+		fooEl.foo = 10
+		fooEl.bar = 20
+		expect(count).toBe(3)
+		expect(fooEl.foo).toBe(10)
+		expect(fooEl.bar).toBe(20)
+
+		// defer to the next microtask
+		await null
+
+		// After the end of the macrotask, the pre-upgrade values will have been
+		// set by code deferred in LumeElement's constructor.
+		expect(fooEl.foo).toBe(1)
+		expect(fooEl.bar).toBe(2)
 	})
 })
