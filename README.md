@@ -321,13 +321,15 @@ it.
 In TypeScript, all JSX expressions return the type `JSX.Element`. But with
 `@lume/element`, JSX expressions return actual DOM nodes, and we want the JSX
 expression types to reflect that fact. For this we have a set of convenience
-helpers to cast JSX expressions to DOM element types.
+helpers to cast JSX expressions to DOM element types in the
+`@lume/element/dist/type-helpers` module.
 
 Modifying the very first example from above for TypeScript, it would look
 like the following.
 
 ```tsx
-import {variable, div} from '@lume/element'
+import {variable} from '@lume/element'
+import {div} from '@lume/element/dist/type-helpers'
 import type {} from '@lume/element/dist/jsx'
 
 const count = variable(0)
@@ -352,13 +354,13 @@ function doesn't do anything, it simply returns whatever you pass into it (an
 identity function at runtime), and serves only as a convenient type cast
 helper.
 
-We should remember to use the correct type helper depending on what the root
-element of the JSX expression is. For for example, if the root was a `<menu>`
-element then we'd use need to use the `menu()` helper like follows.
+Caution! :warning: Keep in mind to use the correct type helper depending on what the root
+element of the JSX expression is. For for example, if the root of a JSX is a `<menu>`
+element then we need to use the `menu()` helper like follows.
 
 ```tsx
-import {variable, menu} from '@lume/element'
-
+import {variable} from '@lume/element'
+import {div} from '@lume/element/dist/type-helpers'
 // ...
 
 // The type of `el` will be `HTMLMenuElement`.
@@ -369,25 +371,25 @@ const el = menu(
 )
 ```
 
-If we use the wrong helper, then it will effectively cast the expression to
-the wrong type. For example, in the next snippte the `el` variable will be of
+If the wrong helper is used, then it will effectively cast the expression to
+the wrong type. For example, in the next snippet the `el` variable will be of
 type `HTMLDivElement` despite the fact that at runtime we will be have an
 `HTMLMenuElement`.
 
 ```tsx
-import {variable, div} from '@lume/element'
-
+import {variable} from '@lume/element'
+import {div} from '@lume/element/dist/type-helpers'
 // ...
 
-// This is wrong, don't do this!
+// OOPS! This is wrong, don't do this! Helpers are not type safe.
 const el = div(<menu>...</menu>)
 ```
 
-Without the type helpers, we would need to write more verbose code like the following to have the proper types.
+Without the type helpers, we would need to write more verbose code like the
+following to have the proper types, but note that it is still not type safe:
 
 ```tsx
 import {variable} from '@lume/element'
-
 // ...
 
 const el = ((<menu>...</menu>) as any) as HTMLMenuElement
