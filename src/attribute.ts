@@ -28,7 +28,8 @@ export function attribute(handlerOrProto?: any, propName?: string, descriptor?: 
 			...classElement,
 			finisher(Class: Constructor) {
 				_attribute(Class.prototype, classElement.key)
-				return classElement.finisher?.(Class) ?? Class
+				// return classElement.finisher?.(Class) ?? Class
+				return (classElement.finisher && classElement.finisher(Class)) ?? Class
 			},
 		}
 	}
@@ -56,7 +57,8 @@ export function attribute(handlerOrProto?: any, propName?: string, descriptor?: 
 				...classElement,
 				finisher(Class: Constructor) {
 					_attribute(Class.prototype, classElement.key, undefined, handler)
-					return classElement.finisher?.(Class) ?? Class
+					// return classElement.finisher?.(Class) ?? Class
+					return (classElement.finisher && classElement.finisher(Class)) ?? Class
 				},
 			}
 		}
@@ -94,7 +96,10 @@ function _attribute(
 			// we call the super method (if it exists).
 			else {
 				// This is equivalent to `super.attributeChangedCallback?()`
-				prototype.__proto__?.attributeChangedCallback?.call(this, attr, oldVal, newVal)
+				// prototype.__proto__?.attributeChangedCallback?.call(this, attr, oldVal, newVal)
+				prototype.__proto__ &&
+					prototype.__proto__.attributeChangedCallback &&
+					prototype.__proto__.attributeChangedCallback.call(this, attr, oldVal, newVal)
 			}
 
 			// map from attribute to property

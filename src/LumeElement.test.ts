@@ -1,5 +1,6 @@
 import {Element, element, reactive, autorun} from './index'
 import {html as _html} from './html'
+import {attribute} from './attribute'
 
 const html = _html as any
 
@@ -112,7 +113,7 @@ describe('LumeElement', () => {
 		expect(el.root.lastElementChild.count).toBe(1)
 		expect(el.root.lastElementChild.getAttribute('count')).toBe(null)
 
-		// TODO Test hyphenated attributes when upgraded to SOlid 0.20+.
+		// TODO Test hyphenated attributes when upgraded to Solid 0.20+.
 		// expect(el.root.lastElementChild.getAttribute('the-count')).toBe('1')
 
 		/**
@@ -146,7 +147,7 @@ describe('LumeElement', () => {
 	// work because they set properties on elements before they are upgraded due
 	// to the fact that cloneNode skips upgrade (the cloned node must
 	// subsequently be connected to the DOM to get upgraded).
-	it('initializes pre-upgrade properties by deleting them and re-assigning them after construction', async () => {
+	it('initializes pre-upgrade properties by deleting them and re-assigning them after construction in a microtask', async () => {
 		const fooEl = document.createElement('foo-element') as FooElement
 
 		// fooEl is instanceof HTMLElement (not FooElement) at this point (ignore the type cast)
@@ -156,57 +157,135 @@ describe('LumeElement', () => {
 
 		fooEl.foo = 1
 		fooEl.bar = 2
+		fooEl.setAttribute('baz', '3')
+		fooEl.lorem = 4
+		fooEl.ipsum = 5
+		fooEl.ping = '456'
+		fooEl.setAttribute('ping', 'ping')
+		fooEl.pong = '456'
+		fooEl.setAttribute('pong', 'pong')
+		fooEl.bop = 'beep'
 
-		let handled = false
+		let initialValuesHandled = false
+		let attributeChangedCalled = false
 
 		// This triggers the Custom Element upgrade process for fooEl.
 		@element('foo-element')
 		@reactive
-		// @ts-ignore, funky stuff for testing
+		// @ts-ignore, ignore type error for testing
 		class FooElement extends Element {
-			@reactive foo = 3
+			// @ts-ignore, in case TS complains about overiding an accessor (valid JS)
+			root = this
+
+			// Use both decorators so that we ensure both features surive the element upgrade.
+			@reactive @attribute foo = 3
 			@reactive bar = 4
+			@reactive @attribute baz: string | number = 5
+			@reactive lorem = 6
+			ipsum = 7
+			@attribute ping = '123'
+			@reactive @attribute pong = '123'
+			@reactive @attribute beep = 'beep'
+			@reactive boop = 'boop'
+			@reactive bop = 'bop'
 
 			__handleInitialPropertyValuesIfAny() {
-				handled = true
+				initialValuesHandled = true
 				// @ts-ignore, private access
 				super.__handleInitialPropertyValuesIfAny()
 			}
+
+			attributeChangedCallback(a: string, o: string | null, n: string | null) {
+				attributeChangedCalled = true
+				super.attributeChangedCallback && super.attributeChangedCallback(a, o, n)
+			}
 		}
 
-		expect(handled).toBe(true)
+		expect(initialValuesHandled).toBe(true)
+		expect(attributeChangedCalled).toBe(true)
 
 		// At this point, fooEl is now instanceof FooElement due to the Custom
 		// Element upgrade process.
 		expect(fooEl).toBeInstanceOf(FooElement)
 
-		// The pre-upgrade values are not set until the next microtask, so at
-		// this point the values are the ones from the class definition.
-		expect(fooEl.foo).toBe(3)
-		expect(fooEl.bar).toBe(4)
+		// Pre-upgrade values are in place thanks to the @element class decorator.
+		// TODO make tests for pre-upgrade values without use of the @element class decorator.
+		expect(fooEl.foo).toBe(1)
+		expect(fooEl.bar).toBe(2)
+		expect(fooEl.baz).toBe('3')
+		expect(fooEl.lorem).toBe(4)
+		expect(fooEl.ipsum).toBe(5, 'non decorated properties should get pre-upgrade values too')
+		expect(fooEl.getAttribute('baz')).toBe('3')
+		expect(fooEl.ping).toBe('ping')
+		expect(fooEl.getAttribute('ping')).toBe('ping')
+		expect(fooEl.pong).toBe('pong')
+		expect(fooEl.getAttribute('pong')).toBe('pong')
+		expect(fooEl.beep).toBe('beep')
+		// We haven't explicitly set the attribute, and props don't map back to
+		// attributes (for performance). Use `setAttribute` if you intend to set
+		// an attribute.
+		expect(fooEl.getAttribute('beep')).toBe(null)
+		expect(fooEl.boop).toBe('boop')
+		expect(fooEl.getAttribute('boop')).toBe(null)
 
-		// We normally do not want to use any elements when they are in this
-		// state, but this autorun is for asserting that things are in the
-		// awkwards state that they currently are at this point.
+		expect(fooEl.root).toBe(fooEl)
+
 		let count = 0
 		autorun(() => {
 			fooEl.foo
 			fooEl.bar
+			fooEl.baz
+			fooEl.lorem
+			fooEl.ipsum // Not tracked.
+			fooEl.beep
+			fooEl.boop // Not tracked.
 			count++
 		})
 		expect(count).toBe(1)
+
 		fooEl.foo = 10
 		fooEl.bar = 20
-		expect(count).toBe(3)
+		fooEl.lorem = 30
+		fooEl.ipsum = 40 // Does not trigger autorun.
+		// Sets the prop via attributeChangedCallback, hence triggers an autorun.
+		fooEl.setAttribute('beep', 'bop')
+		expect(count).toBe(5)
+
 		expect(fooEl.foo).toBe(10)
 		expect(fooEl.bar).toBe(20)
+		expect(fooEl.lorem).toBe(30)
+		expect(fooEl.ipsum).toBe(40)
+		expect(fooEl.beep).toBe('bop')
+		expect(fooEl.getAttribute('beep')).toBe('bop')
+		expect(fooEl.bop).toBe('beep') // pre-upgrade value
 
 		// defer to the next microtask
 		await null
 
-		// After the end of the macrotask, the pre-upgrade values will have been
-		// set by code deferred in LumeElement's constructor.
-		expect(fooEl.foo).toBe(1)
-		expect(fooEl.bar).toBe(2)
+		// TODO: Test these without use of the @element decorator.
+		expect(fooEl.foo).toBe(10)
+		expect(fooEl.bar).toBe(20)
+		expect(fooEl.baz).toBe('3')
+		expect(fooEl.lorem).toBe(30)
+		expect(fooEl.ipsum).toBe(40)
+		expect(fooEl.ping).toBe('ping')
+		expect(fooEl.pong).toBe('pong')
+		expect(fooEl.beep).toBe('bop')
+		expect(fooEl.getAttribute('beep')).toBe('bop')
+		expect(fooEl.boop).toBe('boop')
+		expect(fooEl.getAttribute('boop')).toBe(null)
+		// TODO test reactive var that wasn't set before the await
+		expect(fooEl.bop).toBe(
+			'beep',
+			"reactive var that wasn't set before the await should have the pre-upgrade value",
+		)
+
+		// Regression fix: The initial prop handling process should not mess with the private
+		// variables defined in the LumeElement class, and thus this expectation
+		// should still hold after deferral.
+		expect(fooEl.root).toBe(fooEl)
+
+		// TODO also test that unshadowing of pre-upgrade properties works in
+		// subclasses of a direct subclass of LumeElement.
 	})
 })

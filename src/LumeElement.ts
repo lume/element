@@ -3,6 +3,9 @@ import {defer} from './_utils'
 
 import type {AttributeHandler} from './attribute'
 
+// TODO `templateMode: 'append' | 'replace'`, which allows a subclass to specify
+// if template content replaces the content of `root`, or is appended to `root`.
+
 let ctor: typeof LumeElement
 
 // Throw a helpful error if no Custom Elements v1 API exists.
@@ -19,11 +22,20 @@ class LumeElement extends HTMLElement {
 
 	// Note, this is used in the @attribute decorator, see attribute.ts.
 	// @ts-ignore, property is used
-	private __attributesToProps?: Record<string, {name: string; attributeHandler?: AttributeHandler}>
+	private declare __attributesToProps?: Record<string, {name: string; attributeHandler?: AttributeHandler}>
 
-	constructor() {
-		super()
+	protected declare _preUpgradeValues: Map<PropertyKey, unknown>
 
+	// __propsSetAtLeastOnce__ comes from @lume/variable's @reactive decorator.
+	// It is a Set<string> that tells us if a reactive property has been set at
+	// least once,
+	protected declare __propsSetAtLeastOnce__: Set<PropertyKey>
+
+	// This property MUST be defined before any other non-static non-declared
+	// class properties . Its initializer needs to run before any other
+	// properties are defined, in order to detect and handle only instance
+	// properties that already exist from custom element pre-upgrade time.
+	protected ___init___ = (() => {
 		// XXX We could remove this and instead use a class decorator (returns a
 		// new class), which would allow us to run this logic during
 		// construction without requiring the user to extend from a specific
@@ -31,7 +43,7 @@ class LumeElement extends HTMLElement {
 		this.__handleInitialPropertyValuesIfAny()
 
 		// XXX Should we handle initial attributes too?
-	}
+	})()
 
 	private __handleInitialPropertyValuesIfAny() {
 		// We need to delete initial value-descriptor properties (if they exist)
@@ -54,37 +66,55 @@ class LumeElement extends HTMLElement {
 		// Assumption: any enumerable own props must've been set on the
 		// element before it was upgraded. Builtin DOM properties are
 		// not enumerable.
-		for (const propName of Object.keys(this) as (keyof this)[]) {
+
+		const preUpgradeKeys = Object.keys(this) as (keyof this)[]
+		this._preUpgradeValues = new Map()
+
+		for (const propName of preUpgradeKeys) {
 			const descriptor = Object.getOwnPropertyDescriptor(this, propName)!
 
-			// override only value descriptors (we assume a
-			// getter/setter descriptor is intentional and meant to
-			// override or extend our getter/setter so we leave those
-			// alone)
+			// Handle only value descriptors.
 			if ('value' in descriptor) {
-				// delete the value descriptor...
+				// Delete the pre-upgrade value descriptor...
 				delete this[propName]
 
-				// ...and re-assign the value so that it goes through an inherited accessor
-				//
+				this._preUpgradeValues.set(propName, descriptor.value)
+
 				// NOTE, deferring allows preexisting preupgrade values
 				// to be handled *after* class fields have been set
 				// during Custom Element upgrade (because otherwise
 				// those would override the pre-existing values we're
 				// trying to assign here).
-				defer(() => (this[propName] = descriptor.value))
+				defer(() => {
+					// ...and re-assign the value so that it goes through an
+					// inherited accessor.
+					//
+					// If the property has been set between the time LumeElement
+					// constructor ran and the deferred microtask, then we don't
+					// overwrite the property's value with the pre-upgrade value
+					// because it has been intentionally set to a desired value
+					// already.
+					//
+					// AND we handle inherited props only. The @element decorator
+					// handles non-inherited props before construction finishes.
+					if (
+						!(this.__propsSetAtLeastOnce__ && this.__propsSetAtLeastOnce__.has(propName)) &&
+						propName in (this as any).__proto__
+					) {
+						this[propName] = descriptor.value
+					}
+				})
 			} else {
-				// XXX Handle the case of accessors being on the pre-upgrade
-				// instance? It is very unlikely, but possible someone might run
-				// Object.defineProperty on a pre-upgrade instance to create an
-				// accessor.
+				// We assume a getter/setter descriptor is intentional and meant
+				// to override or extend our getter/setter so we leave those
+				// alone. The user is responsible for ensuring they either
+				// override, or extend, our accessor with theirs.
 			}
 		}
 	}
 
-	protected template?: Template
-	protected elementStyle?(): string
-	protected css?: string | (() => string)
+	protected declare template?: Template
+	protected declare css?: string | (() => string)
 	protected static css?: string | (() => string)
 
 	private __root: Node | null = null
@@ -95,14 +125,22 @@ class LumeElement extends HTMLElement {
 	 */
 	protected get root(): Node {
 		if (this.__root) return this.__root
-		if (this.shadowRoot) return this.shadowRoot
-		return this.attachShadow({mode: 'open'})
+		if (this.shadowRoot) return (this.__root = this.shadowRoot)
+		return (this.__root = this.attachShadow({mode: 'open'}))
 	}
 	protected set root(v: Node) {
+		// @prod-prune
+		if (this.__root || this.shadowRoot)
+			throw new Error('Element root can only be set once if there is no ShadowRoot.')
 		this.__root = v
 	}
 
-	private __dispose?: () => void
+	attachShadow(options: ShadowRootInit) {
+		if (this.__root) console.warn('Element already has a root defined.')
+		return (this.__root = super.attachShadow(options))
+	}
+
+	private declare __dispose?: () => void
 	private __hasShadow = true
 
 	connectedCallback() {
@@ -123,6 +161,8 @@ class LumeElement extends HTMLElement {
 		this.__cleanupStyle()
 	}
 
+	attributeChangedCallback?(name: string, oldVal: string | null, newVal: string | null): void
+
 	private static __styleRootNodeRefCountPerTagName = new WeakMap<Node, Record<string, number>>()
 	private __styleRootNode: HTMLHeadElement | ShadowRoot | null = null
 
@@ -136,11 +176,7 @@ class LumeElement extends HTMLElement {
 			const staticStyle = document.createElement('style')
 
 			staticStyle.innerHTML = `
-				${hostSelector} {
-					display: block;
-					${this.elementStyle ? this.elementStyle() : ''}
-				}
-
+				${hostSelector} { display: block; }
 				${staticCSS}
 				${dynamicCSS}
 			`
@@ -155,11 +191,7 @@ class LumeElement extends HTMLElement {
 				const staticStyle = document.createElement('style')
 
 				staticStyle.innerHTML = `
-					${hostSelector} {
-						display: block;
-						${this.elementStyle ? this.elementStyle() : ''}
-					}
-
+					${hostSelector} { display: block; }
 					${staticCSS.replace(':host', hostSelector)}
 				`
 
@@ -204,7 +236,7 @@ class LumeElement extends HTMLElement {
 				// can use the CSS OM instead of innerHTML to make it faster
 				// (but innerHTML is nice for dev mode, so allow option for
 				// both).
-				const dynamicStyle = (this.__dynammicStyle = document.createElement('style'))
+				const dynamicStyle = (this.__dynamicStyle = document.createElement('style'))
 
 				dynamicStyle.id = id
 				dynamicStyle.innerHTML = dynamicCSS.replace(':host', `[${id}]`)
@@ -222,7 +254,7 @@ class LumeElement extends HTMLElement {
 
 	private static __elementId = 0
 	private __id = LumeElement.__elementId++
-	private __dynammicStyle: HTMLStyleElement | null = null
+	private __dynamicStyle: HTMLStyleElement | null = null
 
 	private __cleanupStyle() {
 		do {
@@ -244,11 +276,12 @@ class LumeElement extends HTMLElement {
 				// TODO PERF maybe we can improve performance by saving the style
 				// instance, instead of querying for it.
 				const style = this.__styleRootNode!.querySelector('#' + this.tagName)
-				style?.remove()
+				// style?.remove()
+				style && style.remove()
 			}
 		} while (false)
 
-		if (this.__dynammicStyle) this.__dynammicStyle.remove()
+		if (this.__dynamicStyle) this.__dynamicStyle.remove()
 	}
 
 	// not used currently, but we'll leave this here so that child classes can
