@@ -143,18 +143,51 @@ describe('LumeElement', () => {
 		document.body.append(el)
 
 		expect(el.root.children.length).toBe(2)
-		// The first element is the style element that LumeElement creates
 		expect(el.root.firstElementChild.tagName.toLowerCase()).toBe('style')
-		// The DOM element returned from template()
 		expect(el.root.lastElementChild.outerHTML).toBe('<div>hello</div>')
 
 		el.message = 'goodbye'
 		el.count++
 
 		expect(el.root.lastElementChild.outerHTML).toBe('<div>goodbye</div>')
-		// The html template sets a property, not an attribute (when an interpolation is used).
 		expect(el.root.lastElementChild.count).toBe(1)
 		expect(el.root.lastElementChild.getAttribute('count')).toBe(null)
+	})
+
+	it('forgetting to use the @reactive, @element, or reactify() class decorator causes a runtime error', () => {
+		// This error is caused due to an issue with Babel's legacy decorators
+		// making descriptors non-writable:
+		// https://github.com/babel/babel/issues/12419
+		//
+		// Without the class decorators (or reactify), then the descriptors on
+		// `this` will not be deleted (the reactive accessors will not be
+		// unshadowed) and the properties that Babel placed on `this` are
+		// non-writable.
+
+		// @reactive <---- user forgets to use the class decorator, or forgets to use `reactify()`
+		class MyEl extends Element {
+			@reactive message = 'hello'
+			@reactive count = 0
+			template = () => html`<div count=${() => this.count}>${() => this.message}</div>`
+		}
+
+		customElements.define('html-template3', MyEl)
+
+		const el = new MyEl() as any
+		document.body.append(el)
+
+		expect(el.root.children.length).toBe(2)
+		expect(el.root.firstElementChild.tagName.toLowerCase()).toBe('style')
+		expect(el.root.lastElementChild.outerHTML).toBe('<div>hello</div>')
+
+		const expectation = expect(() => {
+			// Error writing to these properties
+			el.message = 'goodbye'
+			el.count++
+		})
+
+		if (process.env.DECORATOR_CAUSES_NONWRITABLE_ERROR) expectation.toThrow()
+		else expectation.not.toThrow()
 	})
 
 	// TODO
