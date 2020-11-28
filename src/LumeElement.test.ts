@@ -86,10 +86,6 @@ describe('LumeElement', () => {
 
 	it('templates with reactivity (no JSX here, but we assume that that is tested in Solid.js)', () => {
 		@element('html-template')
-		// TODO remove this reactive class decorator, and see if we can throw a
-		// meaningful error instead of the error that happens due to not using
-		// the class decorator (i.e. forgeting to use it).
-		@reactive
 		class MyEl extends Element {
 			@reactive message = 'hello'
 			@reactive count = 0
@@ -133,6 +129,34 @@ describe('LumeElement', () => {
 		// };
 	})
 
+	it('same as previous test, but @reactive is required if @element is not used', () => {
+		@reactive
+		class MyEl extends Element {
+			@reactive message = 'hello'
+			@reactive count = 0
+			template = () => html`<div count=${() => this.count}>${() => this.message}</div>`
+		}
+
+		customElements.define('html-template2', MyEl)
+
+		const el = new MyEl() as any
+		document.body.append(el)
+
+		expect(el.root.children.length).toBe(2)
+		// The first element is the style element that LumeElement creates
+		expect(el.root.firstElementChild.tagName.toLowerCase()).toBe('style')
+		// The DOM element returned from template()
+		expect(el.root.lastElementChild.outerHTML).toBe('<div>hello</div>')
+
+		el.message = 'goodbye'
+		el.count++
+
+		expect(el.root.lastElementChild.outerHTML).toBe('<div>goodbye</div>')
+		// The html template sets a property, not an attribute (when an interpolation is used).
+		expect(el.root.lastElementChild.count).toBe(1)
+		expect(el.root.lastElementChild.getAttribute('count')).toBe(null)
+	})
+
 	// TODO
 	// test('attribute passing in templates')
 	// test('prop passing in templates')
@@ -171,11 +195,12 @@ describe('LumeElement', () => {
 
 		// This triggers the Custom Element upgrade process for fooEl.
 		@element('foo-element')
-		@reactive
 		// @ts-ignore, ignore type error for testing
 		class FooElement extends Element {
 			// @ts-ignore, in case TS complains about overiding an accessor (valid JS)
 			root = this
+
+			static readonly hasShadow = false
 
 			// Use both decorators so that we ensure both features surive the element upgrade.
 			@reactive @attribute foo = 3
