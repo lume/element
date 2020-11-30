@@ -30,7 +30,7 @@
 		"version": "lume versionHook",
 		"postversion": "lume postVersionHook",
 		"OTHER SCRIPTS XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX": "",
-		"prepack": "npm run build"
+		"prepare": "npm run build"
 	},
 	"dependencies": {
 		"@lume/variable": "^0.2.1",
