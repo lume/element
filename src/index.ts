@@ -5,4 +5,4 @@ export * from './element'
 export * from './css'
 export * from './dom'
 
-export const version = '0.2.5'
+export const version = '0.3.0'
