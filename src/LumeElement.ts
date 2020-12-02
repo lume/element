@@ -1,5 +1,7 @@
-import {render} from './dom'
+import {dom} from './dom'
 import {defer} from './_utils'
+
+const {render} = dom
 
 import type {AttributeHandler} from './attribute'
 

@@ -4,8 +4,7 @@ import {attribute} from './attribute'
 
 const html = _html as any
 
-// TODO test reactify just to double check (it is already tested in @lume/variable)
-// import {reactify} from './variable'
+// import {reactify} from './index'
 
 describe('LumeElement', () => {
 	it('can be extended by custom element classes', () => {
@@ -84,12 +83,14 @@ describe('LumeElement', () => {
 		expect(el.root.lastElementChild.outerHTML).toBe('<div>hello</div>')
 	})
 
-	it('templates with reactivity (no JSX here, but we assume that that is tested in Solid.js)', () => {
+	it('templates with reactivity (with the html template string tag)', () => {
 		@element('html-template')
 		class MyEl extends Element {
 			@reactive message = 'hello'
 			@reactive count = 0
 			template = () => html`<div count=${() => this.count}>${() => this.message}</div>`
+			// TODO test prop:theCount once `html` supports the prop: namespace prefix.
+			// html`<div count=${() => this.count} prop:theCount=${() => this.count}>${() => this.message}</div>`
 		}
 
 		const el = new MyEl() as any
@@ -99,18 +100,18 @@ describe('LumeElement', () => {
 		// The first element is the style element that LumeElement creates
 		expect(el.root.firstElementChild.tagName.toLowerCase()).toBe('style')
 		// The DOM element returned from template()
-		expect(el.root.lastElementChild.outerHTML).toBe('<div>hello</div>')
+		expect(el.root.lastElementChild.outerHTML).toBe('<div count="0">hello</div>')
 
 		el.message = 'goodbye'
 		el.count++
 
-		expect(el.root.lastElementChild.outerHTML).toBe('<div>goodbye</div>')
-		// The html template sets a property, not an attribute (when an interpolation is used).
-		expect(el.root.lastElementChild.count).toBe(1)
-		expect(el.root.lastElementChild.getAttribute('count')).toBe(null)
-
-		// TODO Test hyphenated attributes when upgraded to Solid 0.20+.
-		// expect(el.root.lastElementChild.getAttribute('the-count')).toBe('1')
+		expect(el.root.lastElementChild.outerHTML).toBe('<div count="1">goodbye</div>')
+		// By default the template sets attributes on builtin elements, so the same-name prop is undefined.
+		expect(el.root.lastElementChild.count).toBe(undefined)
+		// The attribute has the value.
+		expect(el.root.lastElementChild.getAttribute('count')).toBe('1')
+		// TODO If the prop: prefix was used, then the template sets the JS property on the element. `html` doesn't have namespace prefixes yet.
+		// expect(el.root.lastElementChild.theCount).toBe(1)
 
 		/**
 		 * Simulate a click event.
@@ -144,15 +145,18 @@ describe('LumeElement', () => {
 
 		expect(el.root.children.length).toBe(2)
 		expect(el.root.firstElementChild.tagName.toLowerCase()).toBe('style')
-		expect(el.root.lastElementChild.outerHTML).toBe('<div>hello</div>')
+		expect(el.root.lastElementChild.outerHTML).toBe('<div count="0">hello</div>')
 
 		el.message = 'goodbye'
 		el.count++
 
-		expect(el.root.lastElementChild.outerHTML).toBe('<div>goodbye</div>')
-		expect(el.root.lastElementChild.count).toBe(1)
-		expect(el.root.lastElementChild.getAttribute('count')).toBe(null)
+		expect(el.root.lastElementChild.outerHTML).toBe('<div count="1">goodbye</div>')
+		expect(el.root.lastElementChild.count).toBe(undefined)
+		expect(el.root.lastElementChild.getAttribute('count')).toBe('1')
 	})
+
+	// TODO
+	xit('TODO same as previous test, but using reactify() instead of @reactive')
 
 	it('forgetting to use the @reactive, @element, or reactify() class decorator causes a runtime error', () => {
 		// This error is caused due to an issue with Babel's legacy decorators
@@ -178,7 +182,7 @@ describe('LumeElement', () => {
 
 		expect(el.root.children.length).toBe(2)
 		expect(el.root.firstElementChild.tagName.toLowerCase()).toBe('style')
-		expect(el.root.lastElementChild.outerHTML).toBe('<div>hello</div>')
+		expect(el.root.lastElementChild.outerHTML).toBe('<div count="0">hello</div>')
 
 		const expectation = expect(() => {
 			// Error writing to these properties
@@ -191,10 +195,10 @@ describe('LumeElement', () => {
 	})
 
 	// TODO
-	// test('attribute passing in templates')
-	// test('prop passing in templates')
-	// test('css prop')
-	// test('static css prop')
+	xit('TODO attribute passing in templates')
+	xit('TODO prop passing in templates')
+	xit('TODO css prop')
+	xit('TODO static css prop')
 
 	// This sort of thing doesn't usually happen in end-user code, but moreso
 	// during custom element upgrade processes during HTML parsing. Generally
@@ -267,7 +271,6 @@ describe('LumeElement', () => {
 		expect(fooEl).toBeInstanceOf(FooElement)
 
 		// Pre-upgrade values are in place thanks to the @element class decorator.
-		// TODO make tests for pre-upgrade values without use of the @element class decorator.
 		expect(fooEl.foo).toBe(1)
 		expect(fooEl.bar).toBe(2)
 		expect(fooEl.baz).toBe('3')
@@ -346,4 +349,6 @@ describe('LumeElement', () => {
 		// TODO also test that unshadowing of pre-upgrade properties works in
 		// subclasses of a direct subclass of LumeElement.
 	})
+
+	xit('TODO similar to the previous test, but not using @reactive, reactify(), or nothing instead of @element')
 })
