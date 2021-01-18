@@ -1,3 +1,5 @@
+import type {JSX} from './jsx-runtime'
+
 /* eslint-disable typescript/explicit-function-return-type */
 
 // These are for use in TypeScript to cast JSX to certain DOM types. They are

@@ -309,11 +309,28 @@ class GreetingCard extends Element {
 
 ### TypeScript
 
-Load the required global JSX types by writing
+Load the required JSX types in one of two ways:
 
-```ts
-import type {} from '@lume/element/dist/jsx'
-```
+1.  Import the types locally within particular files where JSX is used (this is
+    useful for preventing type conflicts if you have other files that use React
+    JSX types or other JSX types):
+
+    ```ts
+    /* jsxImportSource @lume/element/dist */
+    ```
+
+2.  Place the `jsxImportSource` in your tsconfig.json to have it apply to all
+    files (this works great if you use only one form of JSX types in your
+    project, but if you have files with different types of JSX, you'll want to
+    use option 1 instead).
+
+    ```json
+    {
+    	"compilerOptions": {
+    		"jsxImportSource": "@lume/element/dist"
+    	}
+    }
+    ```
 
 at least once somewhere in your project. The entry point is a good place for
 it.
@@ -401,11 +418,11 @@ To give your Custom Elements type support for use with DOM APIs and in JSX,
 use the following template.
 
 ```tsx
-import /* ... */ '@lume/element'
-import type {} from '@lume/element/dist/jsx' // Only needed if you didn't import somewhere else already.
+// Importing JSX sets up types for JSX syntax within the file.
+import {Element, element, ..., JSX} from '@lume/element'
 
 // Define the attributes that your element accepts
-export interface LoginAttributes<T = CoolElement> extends JSX.HTMLAttributes<T> {
+export interface CoolElementAttributes<T = CoolElement> extends JSX.HTMLAttributes<T> {
 	prop1?: string
 	prop2?: boolean
 }
@@ -429,7 +446,7 @@ declare global {
 declare global {
 	namespace JSX {
 		interface IntrinsicElements {
-			'cool-element': LoginAttributes
+			'cool-element': CoolElementAttributes
 		}
 	}
 }

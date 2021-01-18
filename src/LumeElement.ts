@@ -1,7 +1,5 @@
-import {dom} from './dom'
+import {render} from './dom'
 import {defer} from './_utils'
-
-const {render} = dom
 
 import type {AttributeHandler} from './attribute'
 
@@ -296,7 +294,7 @@ export {LumeElement as Element}
 
 // This is TypeScript-specific. Eventually Hegel would like to have better
 // support for JSX. We'd need to figure how to supports types for both systems.
-import type {} from './jsx'
+import type {JSX} from './jsx-runtime'
 type JSXOrDOM = JSX.Element | globalThis.Element
 type TemplateContent = JSXOrDOM | JSXOrDOM[]
 type Template = TemplateContent | (() => TemplateContent)
