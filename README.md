@@ -316,7 +316,7 @@ Load the required JSX types in one of two ways:
     JSX types or other JSX types):
 
     ```ts
-    /* jsxImportSource @lume/element/dist */
+    /* jsxImportSource @lume/element */
     ```
 
 2.  Place the `jsxImportSource` in your tsconfig.json to have it apply to all
@@ -327,27 +327,29 @@ Load the required JSX types in one of two ways:
     ```json
     {
     	"compilerOptions": {
-    		"jsxImportSource": "@lume/element/dist"
+    		"jsxImportSource": "@lume/element"
     	}
     }
     ```
-
-at least once somewhere in your project. The entry point is a good place for
-it.
 
 In TypeScript, all JSX expressions return the type `JSX.Element`. But with
 `@lume/element`, JSX expressions return actual DOM nodes, and we want the JSX
 expression types to reflect that fact. For this we have a set of convenience
 helpers to cast JSX expressions to DOM element types in the
-`@lume/element/dist/type-helpers` module.
+`@lume/element/dist/type-helpers.js` module.
 
 Modifying the very first example from above for TypeScript, it would look
 like the following.
 
 ```tsx
+/* @jsxImportSource @lume/element */
+// ^ Alternatively, configure this in tsconfig.json instead of per-file.
+
 import {variable} from '@lume/element'
-import {div} from '@lume/element/dist/type-helpers'
-import type {} from '@lume/element/dist/jsx'
+
+// Remember to use .js extensions to be ES-Module-compliant in Node.js, systems
+// like Webpack 5+, and native ES Modules in browsers out of the box.
+import {div} from '@lume/element/dist/type-helpers.js'
 
 const count = variable(0)
 
@@ -364,20 +366,27 @@ el.setAttribute('foo', 'bar')
 document.body.appendChild(el)
 ```
 
-The main difference is that the `div()` helper function explicitly returns
-the type `HTMLDivElement` so that the `el` variable will be typed as
-`HTMLDivElement` instead of `JSX.Element`. Under the hood, the `div()`
-function doesn't do anything, it simply returns whatever you pass into it (an
-identity function at runtime), and serves only as a convenient type cast
-helper.
+The main differences from plain JS are
+
+-   Use of the `@jsxImportSource` comment to place JSX types into scope. This is
+    required, or TypeScript will not know what the types of elements in JSX
+    markup are. Alternative to comments, configure it in tsconfig.json's
+    `compilerOptions`.
+-   The `div()` helper function explicitly returns the type `HTMLDivElement` so
+    that the `el` variable will be typed as `HTMLDivElement` instead of
+    `JSX.Element`. Under the hood, the `div()` function is an identity function
+    at runtime, it simply returns whatever you pass into it, and serves only as a
+    convenient type cast helper.
 
 Caution! :warning: Keep in mind to use the correct type helper depending on what the root
 element of the JSX expression is. For for example, if the root of a JSX is a `<menu>`
 element then we need to use the `menu()` helper like follows.
 
 ```tsx
+/* @jsxImportSource @lume/element */
 import {variable} from '@lume/element'
-import {div} from '@lume/element/dist/type-helpers'
+import {div} from '@lume/element/dist/type-helpers.js'
+
 // ...
 
 // The type of `el` will be `HTMLMenuElement`.
@@ -391,25 +400,33 @@ const el = menu(
 If the wrong helper is used, then it will effectively cast the expression to
 the wrong type. For example, in the next snippet the `el` variable will be of
 type `HTMLDivElement` despite the fact that at runtime we will be have an
-`HTMLMenuElement`.
+`HTMLMenuElement` instance.
 
 ```tsx
-import {variable} from '@lume/element'
-import {div} from '@lume/element/dist/type-helpers'
-// ...
+/* @jsxImportSource @lume/element */
+import {div, button} from '@lume/element/dist/type-helpers.js'
 
-// OOPS! This is wrong, don't do this! Helpers are not type safe.
-const el = div(<menu>...</menu>)
+// GOOD.
+const el = button(<button>...</button>)
+
+// BAD! Don't do this! Remember to double check, because the helpers are not
+// type safe, you will not get an error here.
+const el2 = div(<menu>...</menu>)
 ```
 
 Without the type helpers, we would need to write more verbose code like the
-following to have the proper types, but note that it is still not type safe:
+following to have the proper types, but note that the following equivalent
+example is also not type safe:
 
 ```tsx
-import {variable} from '@lume/element'
-// ...
+/* @jsxImportSource @lume/element */
 
+// GOOD.
 const el = ((<menu>...</menu>) as any) as HTMLMenuElement
+
+// BAD! Don't do this! Remember to double check, because the helpers are not
+// type safe, you will not get an error here.
+const el2 = ((<menu>...</menu>) as any) as HTMLDivElement
 ```
 
 #### Type definitions for custom elements
@@ -418,32 +435,42 @@ To give your Custom Elements type support for use with DOM APIs and in JSX,
 use the following template.
 
 ```tsx
-// Importing JSX sets up types for JSX syntax within the file.
-import {Element, element, ..., JSX} from '@lume/element'
+/* @jsxImportSource @lume/element */
+
+// We already use @jsxImportSource above, but if you need to reference JSX
+// anywhere in non-JSX parts of the code, you also need to import it:
+import {Element, element, reactive, numberAttribute, ..., JSX} from '@lume/element'
+                                                       // ^ We imported JSX so that...
 
 // Define the attributes that your element accepts
-export interface CoolElementAttributes<T = CoolElement> extends JSX.HTMLAttributes<T> {
-	prop1?: string
-	prop2?: boolean
+export interface CoolElementAttributes extends JSX.HTMLAttributes<CoolElement> {
+                                            // ^ ...we can use it in this non-JSX code.
+	'cool-type'?: string
+	'cool-factor'?: boolean
+  // ^ NOTE: These should be dash-case versions of your class's attribute properties.
 }
 
 @element('cool-element')
 export class CoolElement extends Element {
-	// ... Define your class as described above ...
+  @reactive @attribute coolType: 'beans' | 'hair' = 'beans'
+  @reactive @numberAttribute(100) coolFactor = 100
+  // ^ NOTE: These are the camelCase equivalents of the attributes defined above.
+
+	// ... Define your class as described above. ...
 }
 
 // Add your element to the list of known HTML elements. This makes it possible
-// for APIs like document.createElement('cool-element') to return the expected
-// type.
+// for browser APIs to have the expected return type. For example, the return
+// type of `document.createElement('cool-element')` will be `CoolElement`.
 declare global {
 	interface HTMLElementTagNameMap {
 		'cool-element': CoolElement
 	}
 }
 
-// Also register the name for TypeScript recognize the element as a valid JSX
-// tag.
-declare global {
+// Also register the element name in the JSX types for TypeScript to recognize
+// the element as a valid JSX tag.
+declare module '@lume/element' {
 	namespace JSX {
 		interface IntrinsicElements {
 			'cool-element': CoolElementAttributes
