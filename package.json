@@ -7,12 +7,8 @@
 	"homepage": "http://github.com/lume/element#readme",
 	"type": "module",
 	"main": "dist/index.js",
+	"// main": "Main is fallback for legacy Node.js that has no type:module support, otherwise Node 13.2+ ignores it if type:module is set.",
 	"types": "dist/index.d.ts",
-	"exports COMMENT:": "This removes 'dist' from import statements, as well as replaces the 'main' field. See https://github.com/nodejs/node/issues/14970#issuecomment-571887546",
-	"exports": {
-		".": "./dist/index.js",
-		"./": "./dist/"
-	},
 	"scripts": {
 		"LUME SCRIPTS XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX": "",
 		"clean": "lume clean",
@@ -37,7 +33,7 @@
 		"prepare": "npm run build"
 	},
 	"dependencies": {
-		"@lume/variable": "^0.4.1",
+		"@lume/variable": "^0.4.2",
 		"babel-preset-solid": "0.23.0",
 		"lowclass": "^4.9.3",
 		"solid-js": "^0.23.0"
