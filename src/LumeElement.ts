@@ -1,5 +1,5 @@
-import {render} from './dom'
-import {defer} from './_utils'
+import {render} from './dom.js'
+import {defer} from './_utils.js'
 
 import type {AttributeHandler} from './attribute'
 

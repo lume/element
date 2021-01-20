@@ -1,7 +1,7 @@
-import {reactive} from './variable'
+import {reactive} from './variable.js'
 
 import type {Constructor} from 'lowclass'
-import type {Element} from './LumeElement'
+import type {Element} from './LumeElement.js'
 
 /**
  * A class decorator that defines the target class as a custom element with the

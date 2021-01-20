@@ -1,4 +1,4 @@
-import {element, attribute, numberAttribute, booleanAttribute, reactive, autorun} from './index'
+import {element, attribute, numberAttribute, booleanAttribute, reactive, autorun} from './index.js'
 
 describe('lume/variable reactive properties work with lume/element decorators', () => {
 	it('reacts to updates using autorun', () => {

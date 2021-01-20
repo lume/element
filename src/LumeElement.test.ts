@@ -1,6 +1,6 @@
-import {Element, element, reactive, autorun} from './index'
-import {html as _html} from './html'
-import {attribute} from './attribute'
+import {Element, element, reactive, autorun} from './index.js'
+import {html as _html} from './html.js'
+import {attribute} from './attribute.js'
 
 const html = _html as any
 

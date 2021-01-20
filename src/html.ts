@@ -1,1 +1,1 @@
-export * from '@lume/variable/dist/html'
+export * from '@lume/variable/dist/html.js'

@@ -1,6 +1,6 @@
-import type {Element as LumeElement} from './LumeElement'
+import type {Element as LumeElement} from './LumeElement.js'
 import type {Constructor} from 'lowclass'
-import {camelCaseToDash} from './_utils'
+import {camelCaseToDash} from './_utils.js'
 
 /**
  * A property or accessor decorator that maps an HTML attribute with the

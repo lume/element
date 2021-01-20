@@ -1,6 +1,6 @@
 // re-export all of solid-js/dom {{{
 
-import {dom} from '@lume/variable/dist/dom'
+import {dom} from '@lume/variable/dist/dom.js'
 
 // export * from "./runtime";
 export const Aliases = dom.Aliases

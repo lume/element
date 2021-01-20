@@ -1,4 +1,4 @@
-import {identityTemplateTag} from './_utils'
+import {identityTemplateTag} from './_utils.js'
 
 /**
  * A no-op (identity) template tag that does nothing, useful merely for marking CSS strings for syntax
