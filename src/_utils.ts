@@ -38,3 +38,12 @@ export function identityTemplateTag(stringsParts: TemplateStringsArray, ...value
 export function camelCaseToDash(str: string): string {
 	return str.replace(/([a-zA-Z])(?=[A-Z])/g, '$1-').toLowerCase()
 }
+
+export function defineProp(obj: any, prop: string, value: any) {
+	Object.defineProperty(obj, prop, {
+		value,
+		writable: true,
+		configurable: true,
+		enumerable: true,
+	})
+}

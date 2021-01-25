@@ -1,6 +1,6 @@
 import type {Element as LumeElement} from './LumeElement.js'
 import type {Constructor} from 'lowclass'
-import {camelCaseToDash} from './_utils.js'
+import {camelCaseToDash, defineProp} from './_utils.js'
 
 /**
  * A property or accessor decorator that maps an HTML attribute with the
@@ -73,14 +73,53 @@ export function attribute(handlerOrProto?: any, propName?: string, descriptor?: 
 // Extending from the LumeElement base class will be the method that non-decorator
 // users must use.
 
-function _attribute(
+export function _attribute(
 	prototype: any /*CustomElementPrototype*/,
 	propName: string,
 	descriptor?: PropertyDescriptor,
 	attributeHandler?: AttributeHandler,
 ): any {
-	const ctor = prototype.constructor as typeof LumeElement
+	const ctor = prototype.constructor as typeof LumeElement & {__proto__: any}
 
+	if (!ctor.observedAttributes || !ctor.hasOwnProperty('observedAttributes')) {
+		const inheritedAttrs = ctor.__proto__.observedAttributes
+
+		// @prod-prune
+		if (inheritedAttrs && !Array.isArray(inheritedAttrs)) {
+			throw new TypeError(
+				'observedAttributes is in the wrong format. Maybe you forgot to decorate your custom element class with the `element` decorator.',
+			)
+		}
+
+		defineProp(ctor, 'observedAttributes', [...(inheritedAttrs || [])])
+	}
+
+	// @prod-prune
+	if (!Array.isArray(ctor.observedAttributes)) {
+		throw new TypeError(
+			'observedAttributes is in the wrong format. Maybe you forgot to decorate your custom element class with the `element` decorator.',
+		)
+	}
+
+	const attrName = camelCaseToDash(propName)
+
+	if (!ctor.observedAttributes!.includes(attrName)) ctor.observedAttributes!.push(attrName)
+
+	if (!ctor.reactiveProperties || !ctor.hasOwnProperty('reactiveProperties'))
+		defineProp(ctor, 'reactiveProperties', [...(ctor.reactiveProperties || [])])
+
+	if (!ctor.reactiveProperties!.includes(propName)) ctor.reactiveProperties!.push(propName)
+
+	mapAttributeToProp(prototype, attrName, propName, attributeHandler)
+
+	if (descriptor) return descriptor
+}
+
+// TODO this stores attributes as an inheritance chain on the constructor. It'd
+// be more fool-proof (not publicly exposed) to store attribute-prop mappings in
+// WeakMaps, but then we'd need to implement our own inheritance
+// (prototype-like) lookup for the attributes.
+function mapAttributeToProp(prototype: any, attr: string, prop: string, handler?: AttributeHandler): void {
 	if (!prototype.__hasAttributeChangedCallback) {
 		prototype.__hasAttributeChangedCallback = true
 
@@ -96,10 +135,10 @@ function _attribute(
 			// we call the super method (if it exists).
 			else {
 				// This is equivalent to `super.attributeChangedCallback?()`
-				// prototype.__proto__?.attributeChangedCallback?.call(this, attr, oldVal, newVal)
-				prototype.__proto__ &&
-					prototype.__proto__.attributeChangedCallback &&
-					prototype.__proto__.attributeChangedCallback.call(this, attr, oldVal, newVal)
+				prototype.__proto__?.attributeChangedCallback?.call(this, attr, oldVal, newVal)
+				// prototype.__proto__ &&
+				// 	prototype.__proto__.attributeChangedCallback &&
+				// 	prototype.__proto__.attributeChangedCallback.call(this, attr, oldVal, newVal)
 			}
 
 			// map from attribute to property
@@ -111,54 +150,19 @@ function _attribute(
 			}
 		}
 	}
-
-	if (!ctor.hasOwnProperty('observedAttributes')) {
-		Object.defineProperty(ctor, 'observedAttributes', {
-			// read the super value just in case there is one.
-			value: [...(ctor.observedAttributes || [])],
-			writable: true,
-			configurable: true,
-			enumerable: true,
-		})
-	}
-
-	const attrName = camelCaseToDash(propName)
-
-	if (!ctor.observedAttributes!.includes(attrName)) ctor.observedAttributes!.push(attrName)
-
-	mapAttributeToProp(ctor, attrName, propName, attributeHandler)
-
-	if (descriptor) return descriptor
-}
-
-// TODO this stores attributes as an inheritance chain on the constructor. It'd
-// be more fool-proof (not publicly exposed) to store attribute-prop mappings in
-// WeakMaps, but then we'd need to implement our own inheritance
-// (prototype-like) lookup for the attributes.
-function mapAttributeToProp(ctor: typeof LumeElement, attr: string, prop: string, handler?: AttributeHandler): void {
 	// Extend the current prototype's __attributesToProps object from the super
 	// prototypes __attributesToProps object.
-	if (!ctor.prototype.hasOwnProperty('__attributesToProps')) {
+	if (!prototype.hasOwnProperty('__attributesToProps')) {
 		// using defineProperty so that it is non-writable, non-enumerable, non-configurable
-		Object.defineProperty(ctor.prototype, '__attributesToProps', {
+		Object.defineProperty(prototype, '__attributesToProps', {
 			value: {
-				// prettier-ignore
-				__proto__: ctor.prototype.
-					// @ts-ignore, private access
-					__attributesToProps
-						|| Object.prototype,
+				__proto__: prototype.__attributesToProps || Object.prototype,
 			},
 		})
 	}
 
 	// TODO throw helpful warning if overriding an already-existing attribute-prop mapping
-	if (
-		// prettier-ignore
-		ctor.prototype.
-			// @ts-ignore, private access
-			__attributesToProps!
-				[attr]
-	) {
+	if (prototype.__attributesToProps![attr]) {
 		console.warn(
 			'The `@attribute` decorator is overriding an already-existing attribute-to-property mapping for the "' +
 				attr +
@@ -166,19 +170,7 @@ function mapAttributeToProp(ctor: typeof LumeElement, attr: string, prop: string
 		)
 	}
 
-	// prettier-ignore
-	ctor.prototype.
-		// @ts-ignore, private access
-		__attributesToProps!
-			[attr] = {name: prop, attributeHandler: handler}
-}
-
-export function numberAttribute(defaultValue: number) {
-	return attribute({from: str => (str == null ? defaultValue : +str)})
-}
-
-export function booleanAttribute(defaultValue: boolean) {
-	return attribute({from: str => (str == null ? defaultValue : str !== 'false')})
+	prototype.__attributesToProps![attr] = {name: prop, attributeHandler: handler}
 }
 
 // type CustomElementPrototype = {
@@ -192,3 +184,23 @@ export type AttributeHandler = {
 	to?: (prop: unknown) => string | null
 	from?: (v: string | null) => unknown
 }
+
+type AttributeType<T> = (defaultValue?: T) => AttributeHandler
+
+export function stringAttribute(defaultValue = '') {
+	return attribute(attribute.string(defaultValue))
+}
+
+attribute.string = (def => ({from: str => (str == null ? def : str)})) as AttributeType<string>
+
+export function numberAttribute(defaultValue = 0) {
+	return attribute(attribute.number(defaultValue))
+}
+
+attribute.number = (def => ({from: str => (str == null ? def : +str)})) as AttributeType<number>
+
+export function booleanAttribute(defaultValue = false) {
+	return attribute(attribute.boolean(defaultValue))
+}
+
+attribute.boolean = (def => ({from: str => (str == null ? def : str !== 'false')})) as AttributeType<boolean>
