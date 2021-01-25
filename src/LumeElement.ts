@@ -17,8 +17,21 @@ if (!('customElements' in window)) {
 	`)
 }
 
+// TODO Make LumeElement `abstract`, which requires updating Mixin too (See
+// TypeScript 4.2 release notes on declaring abstract constructor types).
+
 class LumeElement extends HTMLElement {
-	static observedAttributes?: string[]
+	static elementName: string = ''
+
+	static defineElement(name?: string) {
+		customElements.define(name || this.elementName, this)
+	}
+
+	/** Non-decorator users can use this to specify which props are reactive. */
+	static reactiveProperties?: string[]
+
+	/** Non-decorator users can use this to specify attributes, which automatically map to reactive properties. */
+	static observedAttributes?: string[] | Record<string, AttributeHandler>
 
 	// Note, this is used in the @attribute decorator, see attribute.ts.
 	// @ts-ignore, property is used
@@ -29,7 +42,9 @@ class LumeElement extends HTMLElement {
 	// __propsSetAtLeastOnce__ comes from @lume/variable's @reactive decorator.
 	// It is a Set<string> that tells us if a reactive property has been set at
 	// least once,
-	protected declare __propsSetAtLeastOnce__: Set<PropertyKey>
+	protected declare __propsSetAtLeastOnce__?: Set<PropertyKey>
+
+	protected declare __reactifiedProps__?: Set<PropertyKey>
 
 	// This property MUST be defined before any other non-static non-declared
 	// class properties . Its initializer needs to run before any other
@@ -75,7 +90,7 @@ class LumeElement extends HTMLElement {
 
 			// Handle only value descriptors.
 			if ('value' in descriptor) {
-				// Delete the pre-upgrade value descriptor...
+				// Delete the pre-upgrade value descriptor (1/2)...
 				delete this[propName]
 
 				this._preUpgradeValues.set(propName, descriptor.value)
@@ -86,7 +101,9 @@ class LumeElement extends HTMLElement {
 				// those would override the pre-existing values we're
 				// trying to assign here).
 				defer(() => {
-					// ...and re-assign the value so that it goes through an
+					const propSetAtLeastOnce = this.__propsSetAtLeastOnce__?.has(propName)
+
+					// ... (2/2) and re-assign the value so that it goes through an
 					// inherited accessor.
 					//
 					// If the property has been set between the time LumeElement
@@ -95,14 +112,23 @@ class LumeElement extends HTMLElement {
 					// because it has been intentionally set to a desired value
 					// already.
 					//
-					// AND we handle inherited props only. The @element decorator
-					// handles non-inherited props before construction finishes.
-					if (
-						!(this.__propsSetAtLeastOnce__ && this.__propsSetAtLeastOnce__.has(propName)) &&
-						propName in (this as any).__proto__
-					) {
-						this[propName] = descriptor.value
-					}
+					// AND we handle inherited props or reactified props only
+					// (because that means there may be an accessor that needs
+					// the value to be passed in). The @element decorator otherwise
+					// handles non-inherited props before construction
+					// finishes. {{
+					if (propSetAtLeastOnce) return
+
+					const inheritsProperty = propName in (this as any).__proto__
+					const hasReactifiedProp = this.__reactifiedProps__?.has(propName)
+
+					// TODO: Should we detect if `this[propName]` is a
+					// non-inherited accessor (instead of hasReactifiedProp).
+					// Maybe a base class author extending from LumeElement
+					// needs defines a new type of accessor that needs
+					// pre-upgrade value. Perhaps we can provide an opt-in.
+					if (inheritsProperty || hasReactifiedProp) this[propName] = descriptor.value
+					// }}
 				})
 			} else {
 				// We assume a getter/setter descriptor is intentional and meant

@@ -3,7 +3,6 @@ import {element, attribute, numberAttribute, booleanAttribute, reactive, autorun
 describe('lume/variable reactive properties work with lume/element decorators', () => {
 	it('reacts to updates using autorun', () => {
 		@element('foo-el')
-		@reactive
 		class FooEl extends HTMLElement {
 			@reactive foo = 123
 		}
@@ -26,9 +25,8 @@ describe('lume/variable reactive properties work with lume/element decorators', 
 
 	it('attributes can be mapped to properties with @attribute', () => {
 		@element('foo-bar')
-		@reactive
 		class FooBar extends HTMLElement {
-			@reactive @attribute foo: string | null = '0'
+			@attribute foo: string | null = '0'
 		}
 
 		const f = new FooBar()
@@ -103,11 +101,10 @@ describe('lume/variable reactive properties work with lume/element decorators', 
 describe('various types of attributes', () => {
 	it('@numberAttribute decorator for working with number values', () => {
 		@element('x-person')
-		@reactive
 		class Person extends HTMLElement {
 			// Currently the typed attributes need an arg for the default value.
-			@reactive @numberAttribute(0) age = 0
-			@numberAttribute(0) @reactive weight = 0
+			@numberAttribute(0) age = 0
+			@numberAttribute(0) weight = 0
 			@numberAttribute(0) height = 0
 		}
 
@@ -179,7 +176,6 @@ describe('various types of attributes', () => {
 
 	it('@booleanAttribute decorator for working with boolean values', () => {
 		@element('pet-lover')
-		@reactive
 		class PetLover extends HTMLElement {
 			// Boolean attributes are
 			// - true when they exist and have any value other than "false". f.e. foo="" and foo="null" result in a value of `true`.
@@ -193,8 +189,8 @@ describe('various types of attributes', () => {
 			// value to `false` to have the result be `false` when the
 			// attribute is not present or when it is explicitly set to
 			// "false".
-			@reactive @booleanAttribute(false) hasCat = false
-			@booleanAttribute(true) @reactive hasDog = true
+			@booleanAttribute(false) hasCat = false
+			@booleanAttribute(true) hasDog = true
 		}
 
 		const p = new PetLover()
