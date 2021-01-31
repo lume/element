@@ -124,31 +124,24 @@ export function element(tagNameOrClass: string | ElementCtor, autoDefine = true)
 			for (const prop in attrs) _attribute(Class.prototype, prop, undefined, attrs[prop])
 		}
 
-		// Check if the flag was already set by use of an @reactive decorator,
-		// in that case we don't need to apply it.
-		// XXX Maybe we can move this flag into decorator metadata once decorators spec stabilizes.
-		// Class = (Class as any).hasOwnProperty('__isReactive__') ? Class : reactive(Class)
+		const ReactiveClass = reactive(Class) as typeof Class
 
-		// if ((Class as any).hasOwnProperty('__isReactive__'))
-		// 	throw new Error("Don't use @element and @reactive class decorators on the same class.")
-
-		Class = reactive(Class)
-
-		Class = class ElementDecoratorFinisher extends Class {
+		class ElementDecoratorFinisher extends ReactiveClass {
 			constructor(...args: any[]) {
 				super(...args)
 
 				if (this instanceof Element) {
 					// @ts-ignore, protected access is ok
 					for (const [key, value] of this._preUpgradeValues) {
-						// if (key in Class.prototype) {
-						if (key in this) {
-							// Untrack the pre-upgrade value so that a subclass
-							// of this class won't re-run this same logic again.
-							// TODO needs testing.
-							// @ts-ignore, protected access is ok
-							this._preUpgradeValues.delete(key)
+						if (!(key in this)) {
+							continue
 						}
+
+						// Untrack the pre-upgrade value so that a subclass
+						// of this class won't re-run this same logic again.
+						// TODO needs testing.
+						// @ts-ignore, protected access is ok
+						this._preUpgradeValues.delete(key)
 
 						// Unshadow any possible inherited accessor only if
 						// there is not an accessor. If there is an accessor it
@@ -166,8 +159,8 @@ export function element(tagNameOrClass: string | ElementCtor, autoDefine = true)
 			}
 		}
 
-		if (tagName && autoDefine) customElements.define(tagName, Class)
+		if (tagName && autoDefine) customElements.define(tagName, ElementDecoratorFinisher)
 
-		return Class
+		return ElementDecoratorFinisher
 	}
 }

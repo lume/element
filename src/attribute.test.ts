@@ -1,6 +1,6 @@
-import {element, attribute, numberAttribute, booleanAttribute, reactive, autorun} from './index.js'
+import {Element, element, attribute, numberAttribute, booleanAttribute, reactive, autorun} from './index.js'
 
-describe('lume/variable reactive properties work with lume/element decorators', () => {
+describe('lume/variable @reactive properties works with lume/element decorators on plain HTMLElements', () => {
 	it('reacts to updates using autorun', () => {
 		@element('foo-el')
 		class FooEl extends HTMLElement {
@@ -22,7 +22,9 @@ describe('lume/variable reactive properties work with lume/element decorators', 
 		f.foo = 123
 		expect(count).toBe(2)
 	})
+})
 
+describe('@attribute tests', () => {
 	it('attributes can be mapped to properties with @attribute', () => {
 		@element('foo-bar')
 		class FooBar extends HTMLElement {
@@ -64,14 +66,15 @@ describe('lume/variable reactive properties work with lume/element decorators', 
 
 		ff.foo = 'good night!'
 		expect(count).toBe(5)
+
 		// Remember, properties do not reflect to attributes (no option for that yet).
 		expect(ff.getAttribute('foo')).toBe('good day!')
 		expect(ff.foo).toBe('good night!')
 	})
 
-	it('using @attribute without @reactive simply sets the property without reactivity', () => {
+	it("@reactive doesn't need to be used if using @attribute, as those are @reactive too", () => {
 		@element('pur-pose')
-		class Purpose extends HTMLElement {
+		class Purpose extends Element {
 			@attribute purpose: string | null = '0'
 		}
 
@@ -80,20 +83,64 @@ describe('lume/variable reactive properties work with lume/element decorators', 
 		let count = 0
 
 		autorun(() => {
-			f.purpose = 'Alive to discover.'
+			f.purpose
 			count++
 		})
 
-		expect(count).toBe(1)
+		f.purpose = 'Alive to discover.'
+
+		expect(count).toBe(2)
 
 		f.setAttribute('purpose', 'Born to create!')
-		expect(count).toBe(1)
+		expect(count).toBe(3)
 		expect(f.purpose).toBe('Born to create!')
 
 		f.purpose = 'To inspire.'
-		expect(count).toBe(1)
+		expect(count).toBe(4)
 		expect(f.purpose).toBe('To inspire.')
-		// No option to reflect props to attributes yet.
+
+		// There is no option to reflect props to attributes yet. Do we want that?
+		expect(f.getAttribute('purpose')).toBe('Born to create!')
+	})
+
+	it('@attribute works with accessors', () => {
+		@element('pur-pose-2')
+		class Purpose extends Element {
+			__purpose: string | null = null
+
+			@attribute
+			get purpose() {
+				return this.__purpose
+			}
+			set purpose(v) {
+				this.__purpose = v
+			}
+		}
+
+		const f = new Purpose()
+
+		let count = 0
+
+		autorun(() => {
+			f.purpose
+			count++
+		})
+
+		f.purpose = 'Alive to discover.'
+
+		expect(count).toBe(2)
+
+		f.setAttribute('purpose', 'Born to create!')
+		expect(count).toBe(3)
+		expect(f.purpose).toBe('Born to create!')
+		expect(f.__purpose).toBe('Born to create!')
+
+		f.purpose = 'To inspire.'
+		expect(count).toBe(4)
+		expect(f.purpose).toBe('To inspire.')
+		expect(f.__purpose).toBe('To inspire.')
+
+		// There is no option to reflect props to attributes yet. Do we want that?
 		expect(f.getAttribute('purpose')).toBe('Born to create!')
 	})
 })
