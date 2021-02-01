@@ -2,6 +2,8 @@ import {render} from './dom.js'
 import {defer} from './_utils.js'
 
 import type {AttributeHandler} from './attribute'
+import type {DashCasedProps} from './_utils'
+import type {HTMLAttributes as ReactHTMLAttributes, DetailedHTMLProps as ReactDetailedHTMLProps} from 'react'
 
 // TODO `templateMode: 'append' | 'replace'`, which allows a subclass to specify
 // if template content replaces the content of `root`, or is appended to `root`.
@@ -324,3 +326,55 @@ import type {JSX} from './jsx-runtime'
 type JSXOrDOM = JSX.Element | globalThis.Element
 type TemplateContent = JSXOrDOM | JSXOrDOM[]
 type Template = TemplateContent | (() => TemplateContent)
+
+/**
+ * A helper for defining the JSX types of an element's attributes.
+ *
+ * You give it your element class and a list of properties (a string
+ * union type), and it outputs a type with those properties being
+ * optional and dash-cased. The output object also contains all the
+ * built-in HTML attributes. You can then augment the
+ * JSX.IntrinsicElements definition with the attributes for your element.
+ *
+ * For example, you would do the following so that your element's attribute
+ * are available and type checked in the JSX of any consumers:
+ *
+ * ```js
+ * import {Element, attribute, numberAttribute, element, ElementAttributes} from '@lume/element'
+ *
+ * \@element('cool-element')
+ * class CoolElement extends Element {
+ *   \@attribute foo: string | null = null
+ *   \@attribute bar: string | null = 'bar'
+ *   \@numberAttribute(123) loremIpsum = 123
+ * }
+ *
+ * declare module '@lume/element' {
+ *   namespace JSX {
+ *     interface IntrinsicElements {
+ *       'cool-element': ElementAttributes<CoolElement, 'foo' | 'bar'>
+ *     }
+ *   }
+ * }
+ * ```
+ *
+ * The result is that TypeScript will properly type-check the following
+ * JSX expression (notice lorem-ipsum is dash-case):
+ *
+ * ```jsx
+ * let coolEl = <cool-element foo={'foo'} bar={null} lorem-ipsum={456}></cool-element>
+ * ```
+ */
+export type ElementAttributes<ElementType, SelectedProperties extends keyof ElementType> = DashCasedProps<
+	Partial<Pick<ElementType, SelectedProperties>>
+> &
+	JSX.HTMLAttributes<ElementType>
+
+/**
+ *  Similar to the previous ElementAttributes, this is for defining element
+ *  attributes for elements React's JSX.IntrinsicElements map.
+ */
+export type ReactElementAttributes<ElementType, SelectedProperties extends keyof ElementType> = ReactDetailedHTMLProps<
+	DashCasedProps<Partial<Pick<ElementType, SelectedProperties>>> & ReactHTMLAttributes<ElementType>,
+	ElementType
+>

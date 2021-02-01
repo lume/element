@@ -10,11 +10,7 @@ import {camelCaseToDash, defineProp} from './_utils.js'
  * attribute value changes (f.e. with setAttribute), then the property will
  * have this value set onto it.
  */
-export function attribute(
-	prototype: any /*CustomElementPrototype*/,
-	propName: string,
-	descriptor?: PropertyDescriptor,
-): any
+export function attribute(prototype: any, propName: string, descriptor?: PropertyDescriptor): any
 export function attribute(handler?: AttributeHandler): (proto: any, propName: string) => any
 export function attribute(handlerOrProto?: any, propName?: string, descriptor?: PropertyDescriptor): any {
 	// This is true only if we're using the decorator in a Babel-compiled app
@@ -74,7 +70,7 @@ export function attribute(handlerOrProto?: any, propName?: string, descriptor?: 
 // users must use.
 
 export function _attribute(
-	prototype: any /*CustomElementPrototype*/,
+	prototype: any,
 	propName: string,
 	descriptor?: PropertyDescriptor,
 	attributeHandler?: AttributeHandler,
@@ -173,34 +169,56 @@ function mapAttributeToProp(prototype: any, attr: string, prop: string, handler?
 	prototype.__attributesToProps![attr] = {name: prop, attributeHandler: handler}
 }
 
-// type CustomElementPrototype = {
-//   constructor: CustomElementCtor
-// }
+// TODO We need a way for the default value to be set from class
+// fields/properties initial values, instead of having to have them supplied to the
+// decorator. But at the moment, these attribute decorators do not create
+// accessors, so in a legacy decorator environment they have no way of seeing
+// the initial values (new decorators can supply initializers). So for legacy
+// decorators we need either a way to hook onto initial sets of @reactive
+// accessors during construction, or to define @attribute's own accessors. New
+// decorators can easily use initializers. Our test setup will ensure that the
+// decorators work in all decorator environments.
 
-export type AttributeHandler = {
+export type AttributeHandler<T = any> = {
 	// TODO `to` handler currently does nothing. If it is present, then prop
 	// changes should reflect back to the attribute. In most cases, this is
 	// undesirable (for performance).
-	to?: (prop: unknown) => string | null
-	from?: (v: string | null) => unknown
+	to?: (propValue: T) => string | null
+	from?: (AttributeValue: string | null) => T
+	default: T
 }
 
-type AttributeType<T> = (defaultValue?: T) => AttributeHandler
+type AttributeType<T> = (defaultValue?: T) => AttributeHandler<T>
+
+attribute.string = (def => ({
+	default: def,
+	from(str) {
+		return str == null ? this.default : str
+	},
+})) as AttributeType<string>
 
 export function stringAttribute(defaultValue = '') {
 	return attribute(attribute.string(defaultValue))
 }
 
-attribute.string = (def => ({from: str => (str == null ? def : str)})) as AttributeType<string>
+attribute.number = (def => ({
+	default: def,
+	from(str) {
+		return str == null ? this.default : +str
+	},
+})) as AttributeType<number>
 
 export function numberAttribute(defaultValue = 0) {
 	return attribute(attribute.number(defaultValue))
 }
 
-attribute.number = (def => ({from: str => (str == null ? def : +str)})) as AttributeType<number>
+attribute.boolean = (def => ({
+	default: def,
+	from(str) {
+		return str == null ? this.default : str !== 'false'
+	},
+})) as AttributeType<boolean>
 
 export function booleanAttribute(defaultValue = false) {
 	return attribute(attribute.boolean(defaultValue))
 }
-
-attribute.boolean = (def => ({from: str => (str == null ? def : str !== 'false')})) as AttributeType<boolean>

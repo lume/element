@@ -111,13 +111,19 @@ export function element(tagNameOrClass: string | ElementCtor, autoDefine = true)
 		const attrs = Class.observedAttributes
 
 		if (Array.isArray(attrs)) {
-			// Nothing to do if we're using decorators, as those set up the
-			// observedAttributes array.
+			// Nothing to do here: either the user provided a regular
+			// observedAttributes array like with plain Custom Elements, or
+			// they used our decorators which happen to create the array for
+			// them. Either way, the take it from here with the array.
 		} else if (attrs && typeof attrs === 'object') {
-			// When we're not using decorators, we can provide an
-			// observedAttributes object to specify attribute types.
+			// When we're not using decorators, our users have the option to
+			// provide an observedAttributes object (insetad of the usual
+			// array) to specify attribute types. In this case, we need to
+			// track the types, and convert observedAttributes to an array so
+			// the browser will understand it like usual.
 
-			// Delete it, so that it will be re-created as an array by the following _attribute calls.
+			// Delete it, so that it will be re-created as an array by the
+			// following _attribute calls.
 			Class.observedAttributes = undefined
 
 			// This also adds the props to Class.reactiveProperties.

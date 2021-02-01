@@ -6,6 +6,20 @@
 		// it? See also https://github.com/microsoft/TypeScript/issues/35822
 		"declaration": true,
 
-		"useDefineForClassFields": false
-	}
+		"useDefineForClassFields": false,
+
+		// We disabled this so that we can import React types (for the
+		// ReactElementAttributes type helper), but it causes unit test types
+		// not to be detected, so we had to exclude test files from type
+		// checking. That's fine for now, it is just test code.
+		"typeRoots": [],
+		"types": []
+	},
+
+	// TODO Unit test APIs are normally type checked within test code, but we
+	// disabled types and typeRoots, so the types aren't picked up for unit tests.
+	// We should either improve lume/cli so that it has two configurations: one for
+	// source code, one for test code.
+	// We can also add a local override just for test files.
+	"exclude": ["./src/**.test.ts"]
 }
