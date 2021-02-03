@@ -33,7 +33,7 @@
 		"prepare": "npm run build"
 	},
 	"dependencies": {
-		"@lume/variable": "^0.5.6",
+		"@lume/variable": "^0.5.7",
 		"babel-preset-solid": "0.23.0",
 		"lowclass": "^4.9.3",
 		"solid-js": "^0.23.0"
