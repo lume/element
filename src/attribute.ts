@@ -185,7 +185,7 @@ export type AttributeHandler<T = any> = {
 	// undesirable (for performance).
 	to?: (propValue: T) => string | null
 	from?: (AttributeValue: string | null) => T
-	default: T
+	default?: T
 }
 
 type AttributeType<T> = (defaultValue?: T) => AttributeHandler<T>
