@@ -1,0 +1,24 @@
+# Specificty of the following rules matters.
+
+# Ignore everything,
+/**/*
+
+# but include these folders
+!/dist/**/*
+!/src/**/*
+
+# except for these files in the above folders.
+/dist/**/*.test.*
+/dist/tests/**/*
+/src/**/*.test.*
+/src/tests/**/*
+
+# The following won't work as you think it would.
+# /**/*
+# !/dist/**/*
+# !/src/**/*
+# /**/*.test.*
+
+# Include these project-specific files.
+!jsx-runtime.*
+!babel-preset.cjs
