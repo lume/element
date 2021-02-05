@@ -9,6 +9,12 @@
 	"main": "dist/index.js",
 	"// main": "The 'main' field is fallback for legacy Node.js that has no type:module support, otherwise Node 13.2+ ignores it if type:module is set.",
 	"types": "dist/index.d.ts",
+	"files": [
+		"dist/",
+		"src/",
+		"jsx-runtime.*",
+		"babel-preset.cjs"
+	],
 	"scripts": {
 		"LUME SCRIPTS XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX": "",
 		"clean": "lume clean",
