@@ -1,12 +1,12 @@
-// re-export all of solid-js/dom {{{
+// re-export solid-js/dom from lume/variable {{{
 
 import {dom} from '@lume/variable/dist/dom.js'
 
-// export * from "./runtime";
+// export * from "./client";
 export const Aliases = dom.Aliases
 export const Properties = dom.Properties
 export const ChildProperties = dom.ChildProperties
-export const NonComposedEvents = dom.NonComposedEvents
+export const DelegatedEvents = dom.DelegatedEvents
 export const SVGElements = dom.SVGElements
 export const SVGNamespace = dom.SVGNamespace
 export const render: typeof dom.render = dom.render
@@ -21,12 +21,14 @@ export const spread: typeof dom.spread = dom.spread
 export const assign: typeof dom.assign = dom.assign
 export const setAttribute: typeof dom.setAttribute = dom.setAttribute
 export const setAttributeNS: typeof dom.setAttributeNS = dom.setAttributeNS
+export const addEventListener: typeof dom.addEventListener = dom.addEventListener
 export const classList: typeof dom.classList = dom.classList
 export const style: typeof dom.style = dom.style
-export const currentContext: typeof dom.currentContext = dom.currentContext
+export const getOwner: typeof dom.getOwner = dom.getOwner
+// export const mergeProps: typeof dom.mergeProps = dom.mergeProps // Overriden by the mergeProps down below.
 export const dynamicProperty: typeof dom.dynamicProperty = dom.dynamicProperty
-// export const assignProps: typeof dom.assignProps = dom.assignProps // This export from solid-js/dom is overriden by the next assignProps below.
 export const hydrate: typeof dom.hydrate = dom.hydrate
+export const gatherHydratable: typeof dom.gatherHydratable = dom.gatherHydratable
 export const getHydrationKey: typeof dom.getHydrationKey = dom.getHydrationKey
 export const getNextElement: typeof dom.getNextElement = dom.getNextElement
 export const getNextMarker: typeof dom.getNextMarker = dom.getNextMarker
@@ -40,10 +42,9 @@ export const Switch: typeof dom.Switch = dom.Switch
 export const Match: typeof dom.Match = dom.Match
 export const Index: typeof dom.Index = dom.Index
 export const ErrorBoundary: typeof dom.ErrorBoundary = dom.ErrorBoundary
-export const assignProps: typeof dom.assignProps = dom.assignProps
+export const mergeProps: typeof dom.mergeProps = dom.mergeProps
 
-// export * from "./server-mock";
-// skipped
+// export * from "./server-mock"; // skipped
 
 // verbatim
 export const isServer = dom.isServer

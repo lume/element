@@ -48,6 +48,13 @@ export function defineProp(obj: any, prop: string, value: any) {
 	})
 }
 
+export function getGlobal(): Window {
+	if (typeof globalThis !== 'undefined') return globalThis as any
+	else if (typeof window !== 'undefined') return window
+	else if (typeof global !== 'undefined') return global as any
+	else return Function('return this')()
+}
+
 // TYPES
 
 type SplitIncludingDelimitor<S extends string, D extends string> = string extends S
