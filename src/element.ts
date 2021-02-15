@@ -8,6 +8,7 @@ import type {AttributeHandler} from './attribute.js'
 type PossibleStatics = {
 	observedAttributes?: string[] | Record<string, AttributeHandler>
 	reactiveProperties?: string[]
+	elementName?: string
 }
 type ElementCtor = Constructor<HTMLElement>
 
@@ -109,6 +110,9 @@ export function element(tagNameOrClass: string | ElementCtor, autoDefine = true)
 
 	function elementFinisher<C extends ElementCtor>(Class: C & PossibleStatics): C {
 		const attrs = Class.observedAttributes
+
+		if (Class.hasOwnProperty('elementName')) tagName = Class.elementName || tagName
+		else Class.elementName = tagName
 
 		if (Array.isArray(attrs)) {
 			// Nothing to do here: either the user provided a regular
