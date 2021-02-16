@@ -365,10 +365,14 @@ type Template = TemplateContent | (() => TemplateContent)
  * let coolEl = <cool-element foo={'foo'} bar={null} lorem-ipsum={456}></cool-element>
  * ```
  */
-export type ElementAttributes<ElementType, SelectedProperties extends keyof ElementType> = DashCasedProps<
-	Partial<Pick<ElementType, SelectedProperties>>
+export type ElementAttributes<ElementType, SelectedProperties extends keyof ElementType> = WithStringValues<
+	DashCasedProps<Partial<Pick<ElementType, SelectedProperties>>>
 > &
-	JSX.HTMLAttributes<ElementType>
+	Omit<JSX.HTMLAttributes<ElementType>, SelectedProperties>
+
+type WithStringValues<Type extends object> = {
+	[Property in keyof Type]: Type[Property] extends string ? Type[Property] : Type[Property] | string
+}
 
 /**
  *  Similar to the previous ElementAttributes, this is for defining element
