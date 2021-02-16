@@ -56,6 +56,7 @@ export function getGlobal(): Window {
 }
 
 // TYPES
+// DashCase/CamelCase based on https://github.com/microsoft/TypeScript/issues/40710
 
 type SplitIncludingDelimitor<S extends string, D extends string> = string extends S
 	? string[]
