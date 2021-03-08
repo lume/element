@@ -190,7 +190,7 @@ export type AttributeHandler<T = any> = {
 
 type AttributeType<T> = (defaultValue?: T) => AttributeHandler<T>
 
-attribute.string = (def => ({
+attribute.string = ((def = '') => ({
 	default: def,
 	from(str) {
 		return str == null ? this.default : str
@@ -201,7 +201,7 @@ export function stringAttribute(defaultValue = '') {
 	return attribute(attribute.string(defaultValue))
 }
 
-attribute.number = (def => ({
+attribute.number = ((def = 0) => ({
 	default: def,
 	from(str) {
 		return str == null ? this.default : +str
@@ -212,7 +212,7 @@ export function numberAttribute(defaultValue = 0) {
 	return attribute(attribute.number(defaultValue))
 }
 
-attribute.boolean = (def => ({
+attribute.boolean = ((def = false) => ({
 	default: def,
 	from(str) {
 		return str == null ? this.default : str !== 'false'
