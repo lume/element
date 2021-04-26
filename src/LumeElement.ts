@@ -197,7 +197,7 @@ class LumeElement extends HTMLElement {
 	private __setStyle() {
 		ctor = this.constructor as typeof LumeElement
 		const staticCSS = typeof ctor.css === 'function' ? (ctor.css = ctor.css()) : ctor.css || ''
-		const dynamicCSS = typeof this.css === 'function' ? this.css() : this.css || ''
+		const instanceCSS = typeof this.css === 'function' ? this.css() : this.css || ''
 
 		if (this.__hasShadow) {
 			const hostSelector = ':host'
@@ -206,7 +206,7 @@ class LumeElement extends HTMLElement {
 			staticStyle.innerHTML = `
 				${hostSelector} { display: block; }
 				${staticCSS}
-				${dynamicCSS}
+				${instanceCSS}
 			`
 
 			// If this element has a shadow root, put the style there. This is the
@@ -214,43 +214,39 @@ class LumeElement extends HTMLElement {
 
 			this.root.appendChild(staticStyle)
 		} else {
-			if (staticCSS) {
+			// When this element doesn't have a shadow root, then we want to append the
+			// style only once to the rootNode where it lives (a ShadoowRoot or
+			// Document). If there are multiple of this same element in the rootNode,
+			// then the style will be added only once and will style all the elements
+			// in the same rootNode.
+
+			// Because we're connected, getRootNode will return either the
+			// Document, or a ShadowRoot.
+			const rootNode = this.getRootNode()
+
+			this.__styleRootNode = rootNode === document ? document.head : (rootNode as ShadowRoot)
+
+			let refCountPerTagName = LumeElement.__styleRootNodeRefCountPerTagName.get(this.__styleRootNode)
+			if (!refCountPerTagName)
+				LumeElement.__styleRootNodeRefCountPerTagName.set(this.__styleRootNode, (refCountPerTagName = {}))
+			const refCount = refCountPerTagName[this.tagName] || 0
+			refCountPerTagName[this.tagName] = refCount + 1
+
+			if (refCount === 0) {
 				const hostSelector = this.tagName.toLowerCase()
 				const staticStyle = document.createElement('style')
 
 				staticStyle.innerHTML = `
 					${hostSelector} { display: block; }
-					${staticCSS.replace(':host', hostSelector)}
+					${staticCSS ? staticCSS.replace(':host', hostSelector) : staticCSS}
 				`
 
-				// If this element doesn't have a shadow root, then we want to append the
-				// style only once to the rootNode where it lives (a ShadoowRoot or
-				// Document). If there are multiple of this same element in the rootNode,
-				// then the style will be added only once and will style all the elements
-				// in the same rootNode.
+				staticStyle.id = this.tagName.toLowerCase()
 
-				// Because we're connected, getRootNode will return either the
-				// Document, or a ShadowRoot.
-				const rootNode = this.getRootNode()
-
-				this.__styleRootNode = ((rootNode === document ? document.head : rootNode) as unknown) as
-					| HTMLHeadElement
-					| ShadowRoot
-
-				let refCountPerTagName = LumeElement.__styleRootNodeRefCountPerTagName.get(this.__styleRootNode)
-				if (!refCountPerTagName)
-					LumeElement.__styleRootNodeRefCountPerTagName.set(this.__styleRootNode, (refCountPerTagName = {}))
-				const refCount = refCountPerTagName[this.tagName] || 0
-				refCountPerTagName[this.tagName] = refCount + 1
-
-				if (refCount === 0) {
-					staticStyle.id = this.tagName.toLowerCase()
-
-					this.__styleRootNode.appendChild(staticStyle)
-				}
+				this.__styleRootNode.appendChild(staticStyle)
 			}
 
-			if (dynamicCSS) {
+			if (instanceCSS) {
 				// For dynamic per-instance styles, make one style element per
 				// element instance so it contains that element's unique styles,
 				// associated to a unique attribute selector.
@@ -262,20 +258,19 @@ class LumeElement extends HTMLElement {
 				// TODO Instead of creating one style element per custom
 				// element, we can add the styles to a single style element. We
 				// can use the CSS OM instead of innerHTML to make it faster
-				// (but innerHTML is nice for dev mode, so allow option for
-				// both).
-				const dynamicStyle = (this.__dynamicStyle = document.createElement('style'))
+				// (but innerHTML is nice for dev mode because it shows the
+				// content in the DOM when looking in element inspector, so
+				// allow option for both).
+				const instanceStyle = (this.__dynamicStyle = document.createElement('style'))
 
-				dynamicStyle.id = id
-				dynamicStyle.innerHTML = dynamicCSS.replace(':host', `[${id}]`)
+				instanceStyle.id = id
+				instanceStyle.innerHTML = instanceCSS.replace(':host', `[${id}]`)
 
 				const rootNode = this.getRootNode()
 
-				this.__styleRootNode = ((rootNode === document ? document.head : rootNode) as unknown) as
-					| HTMLHeadElement
-					| ShadowRoot
+				this.__styleRootNode = rootNode === document ? document.head : (rootNode as ShadowRoot)
 
-				this.__styleRootNode.appendChild(dynamicStyle)
+				this.__styleRootNode.appendChild(instanceStyle)
 			}
 		}
 	}
@@ -301,11 +296,10 @@ class LumeElement extends HTMLElement {
 			if (refCount === 0) {
 				delete refCountPerTagName[this.tagName]
 
-				// TODO PERF maybe we can improve performance by saving the style
-				// instance, instead of querying for it.
+				// TODO PERF Improve performance by saving the style
+				// instance on a static var, instead of querying for it.
 				const style = this.__styleRootNode!.querySelector('#' + this.tagName)
-				// style?.remove()
-				style && style.remove()
+				style?.remove()
 			}
 		} while (false)
 
@@ -377,11 +371,19 @@ type WithStringValues<Type extends object> = {
 	[Property in keyof Type]: Type[Property] extends string ? Type[Property] : Type[Property] | string
 }
 
+type ToStringValues<Type extends object> = {
+	[Property in keyof Type]: Type[Property] extends string
+		? Type[Property]
+		: Type[Property] extends boolean
+		? boolean | string
+		: string
+}
+
 /**
  *  Similar to the previous ElementAttributes, this is for defining element
- *  attributes for elements React's JSX.IntrinsicElements map.
+ *  attributes for React's JSX.IntrinsicElements map.
  */
 export type ReactElementAttributes<ElementType, SelectedProperties extends keyof ElementType> = ReactDetailedHTMLProps<
-	DashCasedProps<Partial<Pick<ElementType, SelectedProperties>>> & ReactHTMLAttributes<ElementType>,
+	DashCasedProps<Partial<ToStringValues<Pick<ElementType, SelectedProperties>>>> & ReactHTMLAttributes<ElementType>,
 	ElementType
 >

@@ -143,6 +143,7 @@ export function element(tagNameOrClass: string | ElementCtor, autoDefine = true)
 				if (this instanceof Element) {
 					// @ts-ignore, protected access is ok
 					for (const [key, value] of this._preUpgradeValues) {
+						// If the key is missing, it has already been handled, continue.
 						if (!(key in this)) {
 							continue
 						}
