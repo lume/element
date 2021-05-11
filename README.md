@@ -8,8 +8,8 @@ Easily create Custom Elements with simple templates and reactivity.
 
 ## Live demos
 
--   [Using JSX and decorator syntax.](https://webcomponents.dev/edit/EJ5VTuaaO0Iwq3APUFMe)
--   [Plain JS, template strings instead of JSX, no decorators.](https://webcomponents.dev/edit/yObgikY1CK2Ef2VUPYBA)
+- [Using JSX and decorator syntax.](https://webcomponents.dev/edit/EJ5VTuaaO0Iwq3APUFMe)
+- [Plain JS, template strings instead of JSX, no decorators.](https://webcomponents.dev/edit/yObgikY1CK2Ef2VUPYBA)
 
 ## Intro
 
@@ -33,19 +33,19 @@ into an application.
 With `@lume/element` we can create custom elements that have the following
 features:
 
--   Properties are reactive variables that make it easy to react to changes in these properties.
--   Each custom element has an HTML template (in the form of [HTML markup inside JavaScript, or
-    JSX](https://facebook.github.io/jsx)) that automatically "re-renders" when any
-    reactive variable used in the template changes.
--   When a template "re-renders", the whole template doesn't render, only the
-    part of the template where a variable changed is re-rendered. The term
-    "re-render" is quoted because tempate don't really re-render, but instead
-    reactive variables are mapped to discrete parts of the live
-    [DOM](https://developer.mozilla.org/en-US/docs/Web/API/Document_Object_Model)
-    generated from a template.
--   Changes to HTML attributes on a custom element can be easily mapped to the
-    custom element's properties. Because properties are reactive, this will cause
-    the custom element's template to update.
+- Properties are reactive variables that make it easy to react to changes in these properties.
+- Each custom element has an HTML template (in the form of [HTML markup inside JavaScript, or
+  JSX](https://facebook.github.io/jsx)) that automatically "re-renders" when any
+  reactive variable used in the template changes.
+- When a template "re-renders", the whole template doesn't render, only the
+  part of the template where a variable changed is re-rendered. The term
+  "re-render" is quoted because tempate don't really re-render, but instead
+  reactive variables are mapped to discrete parts of the live
+  [DOM](https://developer.mozilla.org/en-US/docs/Web/API/Document_Object_Model)
+  generated from a template.
+- Changes to HTML attributes on a custom element can be easily mapped to the
+  custom element's properties. Because properties are reactive, this will cause
+  the custom element's template to update.
 
 Additionally `@lume/element` can be used to create and manipulate trees of
 DOM elements without necessarily creating new custom elements.
@@ -368,15 +368,15 @@ document.body.appendChild(el)
 
 The main differences from plain JS are
 
--   Use of the `@jsxImportSource` comment to place JSX types into scope. This is
-    required, or TypeScript will not know what the types of elements in JSX
-    markup are. Alternative to comments, configure it in tsconfig.json's
-    `compilerOptions`.
--   The `div()` helper function explicitly returns the type `HTMLDivElement` so
-    that the `el` variable will be typed as `HTMLDivElement` instead of
-    `JSX.Element`. Under the hood, the `div()` function is an identity function
-    at runtime, it simply returns whatever you pass into it, and serves only as a
-    convenient type cast helper.
+- Use of the `@jsxImportSource` comment to place JSX types into scope. This is
+  required, or TypeScript will not know what the types of elements in JSX
+  markup are. Alternative to comments, configure it in tsconfig.json's
+  `compilerOptions`.
+- The `div()` helper function explicitly returns the type `HTMLDivElement` so
+  that the `el` variable will be typed as `HTMLDivElement` instead of
+  `JSX.Element`. Under the hood, the `div()` function is an identity function
+  at runtime, it simply returns whatever you pass into it, and serves only as a
+  convenient type cast helper.
 
 Caution! :warning: Keep in mind to use the correct type helper depending on what the root
 element of the JSX expression is. For for example, if the root of a JSX is a `<menu>`
@@ -422,11 +422,11 @@ example is also not type safe:
 /* @jsxImportSource @lume/element */
 
 // GOOD.
-const el = ((<menu>...</menu>) as any) as HTMLMenuElement
+const el = (<menu>...</menu>) as any as HTMLMenuElement
 
 // BAD! Don't do this! Remember to double check, because the helpers are not
 // type safe, you will not get an error here.
-const el2 = ((<menu>...</menu>) as any) as HTMLDivElement
+const el2 = (<menu>...</menu>) as any as HTMLDivElement
 ```
 
 #### Type definitions for custom elements

@@ -362,7 +362,7 @@ type Template = TemplateContent | (() => TemplateContent)
 export type ElementAttributes<
 	ElementType,
 	SelectedProperties extends keyof ElementType,
-	AdditionalProperties extends object = {}
+	AdditionalProperties extends object = {},
 > = WithStringValues<DashCasedProps<Partial<Pick<ElementType, SelectedProperties>>>> &
 	AdditionalProperties &
 	Omit<JSX.HTMLAttributes<ElementType>, SelectedProperties | keyof AdditionalProperties>
