@@ -2,9 +2,7 @@
 
 Easily create Custom Elements with simple templates and reactivity.
 
-#### `npm install @lume/element --save`
-
-![](https://github.com/lume/element/workflows/Build%20and%20Test/badge.svg)
+<h4><code><strong>npm install @lume/element</strong></code></h4>
 
 ## Live demos
 
@@ -478,3 +476,7 @@ declare module '@lume/element' {
 	}
 }
 ```
+
+## Status
+
+![](https://github.com/lume/element/workflows/Build%20and%20Test/badge.svg)
