@@ -36,7 +36,7 @@
 		"@lume/variable": "^0.6.0",
 		"babel-preset-solid": "^0.24.0",
 		"lowclass": "^4.9.3",
-		"solid-js": "^0.24.4"
+		"solid-js": "^1.0.0"
 	},
 	"devDependencies": {
 		"@lume/cli": "^0.6.0",

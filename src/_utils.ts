@@ -48,6 +48,8 @@ export function defineProp(obj: any, prop: string, value: any) {
 	})
 }
 
+declare const global: any
+
 export function getGlobal(): Window {
 	if (typeof globalThis !== 'undefined') return globalThis as any
 	else if (typeof window !== 'undefined') return window
