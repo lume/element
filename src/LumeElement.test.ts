@@ -1,5 +1,5 @@
 import {Element, element, reactive, autorun} from './index.js'
-import html from './html.js'
+import {html} from './html.js'
 import {attribute, AttributeHandler} from './attribute.js'
 
 describe('LumeElement', () => {
