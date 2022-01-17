@@ -1,4 +1,4 @@
-import {render} from './dom.js'
+import {render} from './web.js'
 import {defer} from './_utils.js'
 
 import type {AttributeHandler} from './attribute'

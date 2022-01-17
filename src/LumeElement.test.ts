@@ -1,8 +1,6 @@
 import {Element, element, reactive, autorun} from './index.js'
-import {html as _html} from './html.js'
+import html from './html.js'
 import {attribute, AttributeHandler} from './attribute.js'
-
-const html = _html as any
 
 describe('LumeElement', () => {
 	it('can be extended by custom element classes', () => {
