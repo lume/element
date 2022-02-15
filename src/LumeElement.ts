@@ -145,6 +145,8 @@ class LumeElement extends HTMLElement {
 	protected declare css?: string | (() => string)
 	protected static css?: string | (() => string)
 
+	readonly hasShadow: boolean = true
+
 	private __root: Node | null = null
 
 	/**
@@ -152,11 +154,13 @@ class LumeElement extends HTMLElement {
 	 * (f.e. a subclass can `return this` to render into itself instead of making a root)
 	 */
 	protected get root(): Node {
+		if (!this.hasShadow) return this
 		if (this.__root) return this.__root
 		if (this.shadowRoot) return (this.__root = this.shadowRoot)
 		return (this.__root = this.attachShadow({mode: 'open'}))
 	}
 	protected set root(v: Node) {
+		if (!this.hasShadow) throw new Error('Can not set root, element.hasShadow is false.')
 		// @prod-prune
 		if (this.__root || this.shadowRoot)
 			throw new Error('Element root can only be set once if there is no ShadowRoot.')
