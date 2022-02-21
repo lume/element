@@ -305,7 +305,9 @@ class GreetingCard extends Element {
 }
 ```
 
-### TypeScript
+## TypeScript
+
+### With LUME Element JSX (Solid.js JSX)
 
 Load the required JSX types in one of two ways:
 
@@ -443,8 +445,8 @@ import {Element, element, reactive, numberAttribute, ..., JSX} from '@lume/eleme
 // Define the attributes that your element accepts
 export interface CoolElementAttributes extends JSX.HTMLAttributes<CoolElement> {
                                             // ^ ...we can use it in this non-JSX code.
-	'cool-type'?: string
-	'cool-factor'?: boolean
+	'cool-type'?: 'beans' | 'hair'
+	'cool-factor'?: number
   // ^ NOTE: These should be dash-case versions of your class's attribute properties.
 }
 
@@ -475,6 +477,60 @@ declare module '@lume/element' {
 		}
 	}
 }
+```
+
+**TIP:** To make code less redundant, use the `ElementAttributes` helper to
+pluck the types of properties directly from your custom element class for the
+attribute types:
+
+```ts
+import type {ElementAttributes} from '@lume/element'
+
+// This definition is now shorter than before, and automatically maps the property names to dash-case.
+export type CoolElementAttributes = ElementAttributes<CoolElement, 'coolType' | 'coolFactor'>
+```
+
+#### With React JSX
+
+Define the types of custom elements similarly to above, but with some small differences for React JSX:
+
+```ts
+import type {HTMLAttributes} from 'react'
+
+// Define the attributes that your element accepts, almost the same as before:
+export interface CoolElementAttributes extends HTMLAttributes<CoolElement> {
+	'cool-type'?: 'beans' | 'hair'
+	'cool-factor'?: number
+	// ^ NOTE: These should be dash-case versions of your class's attribute properties.
+}
+
+// Add your element to the list of known HTML elements, like before.
+declare global {
+	interface HTMLElementTagNameMap {
+		'cool-element': CoolElement
+	}
+}
+
+// Also register the element name in the React JSX types, which are global in
+// the case of React.
+declare global {
+	namespace JSX {
+		interface IntrinsicElements {
+			'cool-element': CoolElementAttributes
+		}
+	}
+}
+```
+
+**TIP:** To make code less redundant, use the `ReactElementAttributes` helper to
+pluck the types of properties directly from your custom element class for the
+attribute types:
+
+```ts
+import type {ReactElementAttributes} from '@lume/element/react'
+
+// This definition is now shorter than before, and automatically maps the property names to dash-case.
+export type CoolElementAttributes = ReactElementAttributes<CoolElement, 'coolType' | 'coolFactor'>
 ```
 
 ## Status

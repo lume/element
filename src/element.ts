@@ -170,7 +170,10 @@ export function element(tagNameOrClass: string | ElementCtor, autoDefine = true)
 			}
 		}
 
+		// FIXME With autoDefineElements true, this won't work,
 		if (tagName && autoDefine) customElements.define(tagName, ElementDecoratorFinisher)
+		// but this will. Presumably because then all elements are defined after all behaviors.
+		// if (tagName && autoDefine) Promise.resolve().then(() => customElements.define(tagName, ElementDecoratorFinisher))
 
 		return ElementDecoratorFinisher
 	}

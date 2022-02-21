@@ -3,7 +3,6 @@ import {defer} from './_utils.js'
 
 import type {AttributeHandler} from './attribute'
 import type {DashCasedProps} from './_utils'
-import type {HTMLAttributes as ReactHTMLAttributes, DetailedHTMLProps as ReactDetailedHTMLProps} from 'react'
 
 // TODO `templateMode: 'append' | 'replace'`, which allows a subclass to specify
 // if template content replaces the content of `root`, or is appended to `root`.
@@ -374,20 +373,3 @@ export type ElementAttributes<
 type WithStringValues<Type extends object> = {
 	[Property in keyof Type]: Type[Property] extends string ? Type[Property] : Type[Property] | string
 }
-
-type ToStringValues<Type extends object> = {
-	[Property in keyof Type]: Type[Property] extends string
-		? Type[Property]
-		: Type[Property] extends boolean
-		? boolean | string
-		: string
-}
-
-/**
- *  Similar to the previous ElementAttributes, this is for defining element
- *  attributes for React's JSX.IntrinsicElements map.
- */
-export type ReactElementAttributes<ElementType, SelectedProperties extends keyof ElementType> = ReactDetailedHTMLProps<
-	DashCasedProps<Partial<ToStringValues<Pick<ElementType, SelectedProperties>>>> & ReactHTMLAttributes<ElementType>,
-	ElementType
->
