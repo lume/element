@@ -527,7 +527,7 @@ pluck the types of properties directly from your custom element class for the
 attribute types:
 
 ```ts
-import type {ReactElementAttributes} from '@lume/element/react'
+import type {ReactElementAttributes} from '@lume/element/src/react'
 
 // This definition is now shorter than before, and automatically maps the property names to dash-case.
 export type CoolElementAttributes = ReactElementAttributes<CoolElement, 'coolType' | 'coolFactor'>
