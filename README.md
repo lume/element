@@ -490,7 +490,7 @@ import type {ElementAttributes} from '@lume/element'
 export type CoolElementAttributes = ElementAttributes<CoolElement, 'coolType' | 'coolFactor'>
 ```
 
-#### With React JSX
+### With React JSX
 
 Define the types of custom elements similarly to above, but with some small differences for React JSX:
 
