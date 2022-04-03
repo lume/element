@@ -35,7 +35,7 @@
 	"dependencies": {
 		"@lume/variable": "^0.7.1",
 		"babel-preset-solid": "^1.0.0",
-		"lowclass": "^4.9.3",
+		"lowclass": "^5.0.0",
 		"solid-js": "^1.0.0"
 	},
 	"devDependencies": {
