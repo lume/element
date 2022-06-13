@@ -58,80 +58,110 @@ export function getGlobal(): Window {
 }
 
 // TYPES
-// DashCase/CamelCase based on https://github.com/microsoft/TypeScript/issues/40710
 
-type SplitIncludingDelimitor<S extends string, D extends string> = string extends S
-	? string[]
-	: S extends ''
-	? []
-	: S extends `${infer T}${D}${infer U}`
-	? S extends `${T}${infer Z}${U}`
-		? [T, Z, ...Split<U, D>]
-		: never
-	: [S]
+// https://github.com/type-challenges/type-challenges/issues/9116
+// More solutions at https://github.com/type-challenges/type-challenges/tree/main/questions/00114-hard-camelcase
+//
+// bug, fooBar becomes foobar, https://github.com/type-challenges/type-challenges/issues/9116#issuecomment-1107928665
+// export type JoinToCamelCase<
+// 	S extends string,
+// 	Sep extends string = '-',
+// 	R extends string = '',
+// > = S extends `${infer First}${Sep}${infer Rest}`
+// 	? R extends ''
+// 		? JoinToCamelCase<Lowercase<Rest>, Sep, `${R}${Lowercase<First>}`>
+// 		: JoinToCamelCase<Lowercase<Rest>, Sep, `${R}${Capitalize<First>}`>
+// 	: R extends ''
+// 	? Lowercase<S>
+// 	: `${R}${Capitalize<S>}`
+//
+export type JoinToCamelCase<
+	S extends string,
+	Sep extends string = '-',
+	UPPER extends boolean = false,
+	Res extends string = '',
+> = S extends `${infer L}${infer R}`
+	? L extends Sep
+		? JoinToCamelCase<R, Sep, true, Res>
+		: UPPER extends true
+		? JoinToCamelCase<R, Sep, false, `${Res}${Uppercase<L>}`>
+		: JoinToCamelCase<R, Sep, false, `${Res}${Lowercase<L>}`>
+	: Res
 
-export type Split<S extends string, D extends string> = string extends S
-	? string[]
-	: S extends ''
-	? []
-	: S extends `${infer T}${D}${infer U}`
-	? [T, ...Split<U, D>]
-	: [S]
-
-export type Join<S extends any[], D extends string> = string[] extends S
-	? string
-	: S extends [`${infer T}`, ...infer U]
-	? U[0] extends undefined
-		? T
-		: `${T}${D}${Join<U, D>}`
-	: ''
-
-type UndefinedToEmptyString<T extends string> = T extends undefined ? '' : T
-
+// https://github.com/type-challenges/type-challenges/issues/9098
+// More solutions at https://github.com/type-challenges/type-challenges/blob/main/questions/00612-medium-kebabcase/README.md
+//
+// export type SplitCamelCase<
+// 	S extends string,
+// 	Sep extends string = '-',
+// 	isFirstChar = true,
+// > = S extends `${infer s}${infer right}`
+// 	? s extends Lowercase<s>
+// 		? `${s}${SplitCamelCase<right, Sep, false>}`
+// 		: isFirstChar extends true
+// 		? `${Lowercase<s>}${SplitCamelCase<right, Sep, false>}`
+// 		: `${Sep}${Lowercase<s>}${SplitCamelCase<right, Sep, false>}`
+// 	: S
+//
+//
+//
+// type FirstLowcase<T extends string> = T extends `${infer F}${infer R}`
+// 	? F extends Lowercase<F>
+// 		? T
+// 		: `${Lowercase<F>}${R}`
+// 	: T
+// type SplitCamelCase<S extends string, Sep extends string = '-'> = S extends `${infer F}${infer R}`
+// 	? R extends FirstLowcase<R>
+// 		? `${FirstLowcase<F>}${SplitCamelCase<R, Sep>}`
+// 		: `${FirstLowcase<F>}${Sep}${SplitCamelCase<FirstLowcase<R>, Sep>}`
+// 	: S
+//
+//
+//
+// type SplitCamelCase<S, Sep extends string = '-'> = S extends `${infer First}${infer Rest}`
+// 	? Rest extends Uncapitalize<Rest>
+// 		? `${Uncapitalize<First>}${SplitCamelCase<Rest, Sep>}`
+// 		: `${Uncapitalize<First>}${Sep}${SplitCamelCase<Rest, Sep>}`
+// 	: S
+//
+//
+//
 // prettier-ignore
-type UpperCaseChars = 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G' | 'H' | 'I' | 'J' | 'K' | 'L' | 'M' | 'N' | 'O' | 'P' | 'Q' | 'R' | 'S' | 'T' | 'U' | 'V' | 'X' | 'Y' | 'Z';
-type WordSeparators = '-' | '_' | ' '
-
-type StringArrayToCamelCase<K extends string[]> = `${K[0]}${Capitalize<UndefinedToEmptyString<K[1]>>}`
-
-export type CamelCase<K> = K extends string ? StringArrayToCamelCase<Split<K, WordSeparators>> : K
-
-type StringPartToKebabCase<K extends string, S extends string, L extends string> = K extends S
-	? '-'
-	: K extends L
-	? `-${Lowercase<K>}`
-	: K
-type StringArrayToKebabCase<K extends any[], S extends string, L extends string> = K extends [`${infer T}`, ...infer U]
-	? `${StringPartToKebabCase<T, S, L>}${StringArrayToKebabCase<U, S, L>}`
-	: ''
-
-export type DashCase<K> = K extends string
-	? StringArrayToKebabCase<
-			SplitIncludingDelimitor<K, WordSeparators | UpperCaseChars>,
-			WordSeparators,
-			UpperCaseChars
-	  >
-	: K
+type KebabMap = { A: "a", B: "b", C: "c", D: "d", E: "e", F: "f", G: "g", H: "h", I: "i", J: "j", K: "k", L: "l", M: "m", N: "n", O: "o", P: "p", Q: "q", R: "r", S: "s", T: "t", U: "u", V: "v", W: "w", X: "x", Y: "y", Z: "z", }
+type SplitCamelCase<
+	S extends string,
+	Sep extends string = '-',
+	U extends string = '',
+> = S extends `${infer Target}${infer R}`
+	? Target extends keyof KebabMap
+		? U extends ''
+			? SplitCamelCase<R, Sep, `${U}${KebabMap[Target]}`>
+			: SplitCamelCase<R, Sep, `${U}${Sep}${KebabMap[Target]}`>
+		: SplitCamelCase<R, Sep, `${U}${Target}`>
+	: U
 
 export type CamelCasedProps<T> = {
-	[K in keyof T as CamelCase<K>]: T[K]
+	[K in keyof T as JoinToCamelCase<Extract<K, string>, '-'>]: T[K]
 }
 
 export type DashCasedProps<T> = {
-	[K in keyof T as DashCase<K>]: T[K]
+	[K in keyof T as SplitCamelCase<Extract<K, string>, '-'>]: T[K]
 }
 
 // EXAMPLES
-// type foo0 = CamelCase<"fooBar">;  // Becomes "fooBar"
-// type foo3 = CamelCase<"foo-bar">; // Becomes "fooBar"
-// type foo5 = CamelCase<"foo bar">; // Becomes "fooBar"
-// type foo6 = CamelCase<"foo_bar">; // Becomes "fooBar"
-// type foo4 = CamelCase<"foobar">;  // Becomes "foobar"
-// type foo7 = DashCase<"fooBar">;   // Becomes "foo-bar"
-// type foo11 = DashCase<"foo-bar">; // Becomes "foo-bar"
-// type foo8 = DashCase<"foo bar">;  // Becomes "foo-bar"
-// type foo9 = DashCase<"foo_bar">;  // Becomes "foo-bar"
-// type foo10 = DashCase<"foobar">;  // Becomes "foobar"
+// type foo0 = JoinToCamelCase<'fooBarBaz'> // Becomes "foobabaz"
+// type foo3 = JoinToCamelCase<'foo-bar-baz'> // Becomes "fooBarBaz"
+// type foo5 = JoinToCamelCase<'foo bar baz', ' '> // Becomes "fooBarBaz"
+// type foo6 = JoinToCamelCase<'foo_bar_baz', '_'> // Becomes "fooBarBaz"
+// type foo14 = JoinToCamelCase<'foo:bar:baz', ':'> // Becomes "fooBarBaz"
+// type foo4 = JoinToCamelCase<'foobarbaz'> // the same
+// type foo7 = SplitCamelCase<'fooBar'> // Becomes "foo-bar"
+// type foo12 = SplitCamelCase<'fooBar', '_'> // Becomes "foo_bar"
+// type foo13 = SplitCamelCase<'fooBar', ' '> // Becomes "foo bar"
+// type foo11 = SplitCamelCase<'foo-bar'> // the same
+// type foo8 = SplitCamelCase<'foo bar'> // the same
+// type foo9 = SplitCamelCase<'foo_bar'> // the same
+// type foo10 = SplitCamelCase<'foobar'> // the same
 // type t = Join<['foo', 'bar'], ':'> // Becomes "foo:bar"
 //
 // interface KebabCased {
