@@ -8,17 +8,16 @@ jobs:
 
         strategy:
             matrix:
-                node-version: [16.x, 17.x]
                 # TODO testing in Windows (help wanted!)
                 # windows-latest
                 operating-system: [ubuntu-latest, macos-latest]
 
         steps:
             - uses: actions/checkout@v1
-            - name: Use Node.js ${{ matrix.node-version }}
-              uses: actions/setup-node@v1
+            - name: Use Node.js latest
+              uses: actions/setup-node@v3
               with:
-                  node-version: ${{ matrix.node-version }}
+                  node-version: latest
             - name: npm install, build, and test
               run: |
                   npm i
