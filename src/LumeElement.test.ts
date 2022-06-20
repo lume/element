@@ -511,4 +511,90 @@ describe('LumeElement', () => {
 	xit(
 		'TODO similar to the previous test, but instead of using @reactive + @element, using reactify() with customElements.define() for plain JS environments.',
 	)
+
+	it('ensure wrapped @reactive decorator still automatically does not track reactivity in constructors', () => {
+		@element
+		class Foo extends Element {
+			@attribute amount = 3
+		}
+
+		@element('no-loop')
+		class Bar extends Foo {
+			@attribute double = 0
+
+			constructor() {
+				super()
+				this.double = this.amount * 2 // this read of .amount should not be tracked
+			}
+		}
+
+		let b: Bar
+		let count = 0
+
+		function noLoop() {
+			autorun(() => {
+				b = new Bar() // this should not track
+				count++
+			})
+		}
+
+		expect(noLoop).not.toThrow()
+
+		const b2 = b!
+
+		b!.amount = 4 // hence this should not trigger
+
+		// If the effect ran only once initially, not when setting b.colors,
+		// then both variables should reference the same instance
+		expect(b!).toBe(b2)
+		expect(count).toBe(1)
+	})
+
+	it('ensure wrapped @reactive decorator still automatically does not track reactivity in constructors even when not the root most decorator', () => {
+		@element
+		class Foo extends Element {
+			@attribute amount = 3
+		}
+
+		function someOtherDecorator(Class: any) {
+			console.log('class:', Class)
+			if (arguments.length === 1 && 'kind' in Class && Class.kind === 'class')
+				return {...Class, finisher: (Klass: any) => class Foo extends Klass {}}
+			return class Foo extends Class {}
+		}
+
+		@someOtherDecorator
+		@element
+		class Bar extends Foo {
+			@attribute double = 0
+
+			constructor() {
+				super()
+				this.double = this.amount * 2 // this read of .amount should not be tracked
+			}
+		}
+
+		customElements.define('no-loop2', Bar)
+
+		let b: Bar
+		let count = 0
+
+		function noLoop() {
+			autorun(() => {
+				b = new Bar() // this should not track
+				count++
+			})
+		}
+
+		expect(noLoop).not.toThrow()
+
+		const b2 = b!
+
+		b!.amount = 4 // hence this should not trigger
+
+		// If the effect ran only once initially, not when setting b.colors,
+		// then both variables should reference the same instance
+		expect(b!).toBe(b2)
+		expect(count).toBe(1)
+	})
 })
