@@ -13,7 +13,10 @@
 		// not to be detected, so we had to exclude test files from type
 		// checking. That's fine for now, it is just test code.
 		"typeRoots": [],
-		"types": []
+		"types": [],
+
+		// override (TODO update lume/cli)
+		"lib": ["es2021", "dom"]
 	},
 
 	// TODO Unit test APIs are normally type checked within test code, but we

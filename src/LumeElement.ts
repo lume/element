@@ -161,8 +161,7 @@ class LumeElement extends HTMLElement {
 	protected set root(v: Node) {
 		if (!this.hasShadow) throw new Error('Can not set root, element.hasShadow is false.')
 		// @prod-prune
-		if (this.__root || this.shadowRoot)
-			throw new Error('Element root can only be set once if there is no ShadowRoot.')
+		if (this.__root || this.shadowRoot) throw new Error('Element root can only be set once if there is no ShadowRoot.')
 		this.__root = v
 	}
 
@@ -241,7 +240,7 @@ class LumeElement extends HTMLElement {
 
 				staticStyle.innerHTML = `
 					${hostSelector} { display: block; }
-					${staticCSS ? staticCSS.replace(':host', hostSelector) : staticCSS}
+					${staticCSS ? staticCSS.replaceAll(':host', hostSelector) : staticCSS}
 				`
 
 				staticStyle.id = this.tagName.toLowerCase()
