@@ -215,6 +215,8 @@ class LumeElement extends HTMLElement {
 			// standard way to scope styles to a component.
 
 			this.root.appendChild(staticStyle)
+
+			// TODO use adoptedStyleSheets when that is supported by FF and Safari
 		} else {
 			// When this element doesn't have a shadow root, then we want to append the
 			// style only once to the rootNode where it lives (a ShadoowRoot or
