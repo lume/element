@@ -266,7 +266,7 @@ class LumeElement extends HTMLElement {
 				const instanceStyle = (this.__dynamicStyle = document.createElement('style'))
 
 				instanceStyle.id = id
-				instanceStyle.innerHTML = instanceCSS.replace(':host', `[${id}]`)
+				instanceStyle.innerHTML = instanceCSS.replaceAll(':host', `[${id}]`)
 
 				const rootNode = this.getRootNode()
 
