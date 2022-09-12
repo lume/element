@@ -144,6 +144,13 @@ class LumeElement extends HTMLElement {
 	protected declare css?: string | (() => string)
 	protected static css?: string | (() => string)
 
+	/**
+	 * When `true`, the custom element will have a `ShadowRoot`. Set to `false`
+	 * to not use a `ShadowRoot`. When `false`, styles will not be scoped via
+	 * the built-in `ShadowRoot` scoping mechanism, but by a much more simple
+	 * shared style sheet placed at the nearest root node, with `:host`
+	 * selectors converted to tag names.
+	 */
 	readonly hasShadow: boolean = true
 
 	private __root: Node | null = null
@@ -165,17 +172,26 @@ class LumeElement extends HTMLElement {
 		this.__root = v
 	}
 
+	/**
+	 * Define which `Node` to append style sheets to when `hasShadow` is `true`.
+	 * Defaults to the `this.root`, which in turn defaults to the element's
+	 * `ShadowRoot`.  When `hasShadow` is `true`, an alternate `styleRoot` is
+	 * sometimes needed for styles to be appended elsewhere than the root. For
+	 * example, return some other `Node` within the root to append styles to.
+	 * This is ignored if `hasShadow` is `false`.
+	 */
+	protected get styleRoot(): Node {
+		return this.root
+	}
+
 	attachShadow(options: ShadowRootInit) {
 		if (this.__root) console.warn('Element already has a root defined.')
 		return (this.__root = super.attachShadow(options))
 	}
 
 	private declare __dispose?: () => void
-	private __hasShadow = true
 
 	connectedCallback() {
-		this.__hasShadow = this.root instanceof ShadowRoot
-
 		this.__setStyle()
 
 		const template = this.template
@@ -196,17 +212,21 @@ class LumeElement extends HTMLElement {
 	private static __styleRootNodeRefCountPerTagName = new WeakMap<Node, Record<string, number>>()
 	private __styleRootNode: HTMLHeadElement | ShadowRoot | null = null
 
+	#defaultHostStyle = (hostSelector: string) => /*css*/ `${hostSelector} {
+		display: block;
+	}`
+
 	private __setStyle() {
 		ctor = this.constructor as typeof LumeElement
 		const staticCSS = typeof ctor.css === 'function' ? (ctor.css = ctor.css()) : ctor.css || ''
 		const instanceCSS = typeof this.css === 'function' ? this.css() : this.css || ''
 
-		if (this.__hasShadow) {
+		if (this.hasShadow) {
 			const hostSelector = ':host'
 			const staticStyle = document.createElement('style')
 
 			staticStyle.innerHTML = `
-				${hostSelector} { display: block; }
+				${this.#defaultHostStyle(hostSelector)}
 				${staticCSS}
 				${instanceCSS}
 			`
@@ -214,7 +234,7 @@ class LumeElement extends HTMLElement {
 			// If this element has a shadow root, put the style there. This is the
 			// standard way to scope styles to a component.
 
-			this.root.appendChild(staticStyle)
+			this.styleRoot.appendChild(staticStyle)
 		} else {
 			// When this element doesn't have a shadow root, then we want to append the
 			// style only once to the rootNode where it lives (a ShadoowRoot or
@@ -239,7 +259,7 @@ class LumeElement extends HTMLElement {
 				const staticStyle = document.createElement('style')
 
 				staticStyle.innerHTML = `
-					${hostSelector} { display: block; }
+					${this.#defaultHostStyle(hostSelector)}
 					${staticCSS ? staticCSS.replaceAll(':host', hostSelector) : staticCSS}
 				`
 
@@ -283,7 +303,7 @@ class LumeElement extends HTMLElement {
 
 	private __cleanupStyle() {
 		do {
-			if (this.__hasShadow) break
+			if (this.hasShadow) break
 
 			const refCountPerTagName = LumeElement.__styleRootNodeRefCountPerTagName.get(this.__styleRootNode!)
 
