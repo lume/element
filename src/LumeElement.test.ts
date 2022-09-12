@@ -337,10 +337,7 @@ describe('LumeElement', () => {
 		expect(fooEl.boop).toBe('boop')
 		expect(fooEl.getAttribute('boop')).toBe(null)
 		// TODO test reactive var that wasn't set before the await
-		expect(fooEl.bop).toBe(
-			'beep',
-			"reactive var that wasn't set before the await should have the pre-upgrade value",
-		)
+		expect(fooEl.bop).toBe('beep', "reactive var that wasn't set before the await should have the pre-upgrade value")
 
 		// Regression fix: The initial prop handling process should not mess with the private
 		// variables defined in the LumeElement class, and thus this expectation
@@ -497,10 +494,7 @@ describe('LumeElement', () => {
 		expect(fooEl.boop).toBe('boop', 'post-deferral check')
 		expect(fooEl.getAttribute('boop')).toBe(null, 'post-deferral check')
 		// TODO test reactive var that wasn't set before the await
-		expect(fooEl.bop).toBe(
-			'beep',
-			"reactive var that wasn't set before the await should have the pre-upgrade value",
-		)
+		expect(fooEl.bop).toBe('beep', "reactive var that wasn't set before the await should have the pre-upgrade value")
 
 		// Regression fix: The initial prop handling process should not mess with the private
 		// variables defined in the LumeElement class, and thus this expectation
