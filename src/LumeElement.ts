@@ -9,17 +9,18 @@ import type {DashCasedProps} from './_utils'
 
 let ctor: typeof LumeElement
 
-// Throw a helpful error if no Custom Elements v1 API exists.
-if (!('customElements' in window)) {
-	// TODO: provide a link to the Docs.
-	throw new Error(`
-		Your browser does not support the Custom Elements v1 API. You'll
-		need to install a Custom Elements v1 polyfill.
-	`)
-}
+const HTMLElement =
+	globalThis.HTMLElement ??
+	class HTMLElement {
+		constructor() {
+			throw new Error(
+				"@lume/element needs a DOM to operate with! If this code is running during server-side rendering, it means your app is trying to instantiate elements when it shouldn't be, and should be refactored to avoid doing that when no DOM is present.",
+			)
+		}
+	}
 
-// TODO Make LumeElement `abstract`, which requires updating Mixin too (See
-// TypeScript 4.2 release notes on declaring abstract constructor types).
+// TODO Make LumeElement `abstract`, which had issues with mixins last time we
+// tried, but TS has been updated for abstract mixin support.
 
 class LumeElement extends HTMLElement {
 	static elementName: string = ''
