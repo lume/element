@@ -1,6 +1,8 @@
-import {Element, element, reactive, autorun} from './index.js'
-import {html} from './html.js'
-import {attribute, AttributeHandler} from './attribute.js'
+import {createEffect} from 'solid-js'
+import {reactive, signal, signalify} from 'classy-solid'
+import {Element, element} from './index.js'
+import html from 'solid-js/html'
+import {attribute, AttributeHandler, numberAttribute} from './attribute.js'
 
 describe('LumeElement', () => {
 	it('can be extended by custom element classes', () => {
@@ -82,8 +84,8 @@ describe('LumeElement', () => {
 	it('templates with reactivity (with the html template string tag)', () => {
 		@element('html-template')
 		class MyEl extends Element {
-			@reactive message = 'hello'
-			@reactive count = 0
+			@signal message = 'hello'
+			@signal count = 0
 			template = () => html`<div count=${() => this.count}>${() => this.message}</div>`
 			// TODO test prop:theCount once `html` supports the prop: namespace prefix.
 			// html`<div count=${() => this.count} prop:theCount=${() => this.count}>${() => this.message}</div>`
@@ -129,8 +131,8 @@ describe('LumeElement', () => {
 	it('same as previous test, but @reactive is required if @element is not used', () => {
 		@reactive
 		class MyEl extends Element {
-			@reactive message = 'hello'
-			@reactive count = 0
+			@signal message = 'hello'
+			@signal count = 0
 			template = () => html`<div count=${() => this.count}>${() => this.message}</div>`
 		}
 
@@ -152,22 +154,22 @@ describe('LumeElement', () => {
 	})
 
 	// TODO
-	xit('TODO same as previous test, but using reactify() instead of @reactive')
+	xit('TODO same as previous test, but using signalify() instead of @reactive')
 
-	it('forgetting to use the @reactive, @element, or reactify() class decorator would cause a runtime error', () => {
+	it('forgetting to use @reactive, @element, or signalify() causes a runtime error', () => {
 		// This error is caused due to an issue with Babel's legacy decorators
 		// making descriptors non-writable:
 		// https://github.com/babel/babel/issues/12419
 		//
-		// Without the class decorators (or reactify), then the descriptors on
+		// Without the class decorators (or signalify), then the descriptors on
 		// `this` will not be deleted (the reactive accessors will not be
 		// unshadowed) and the properties that Babel placed on `this` are
 		// non-writable.
 
-		// @reactive <---- user forgets to use the class decorator, or forgets to use `reactify()`
+		// @reactive <---- user forgets to use the class decorator, or forgets to use `signalify()`
 		class MyEl extends Element {
-			@reactive message = 'hello'
-			@reactive count = 0
+			@signal message = 'hello'
+			@signal count = 0
 			template = () => html`<div count=${() => this.count}>${() => this.message}</div>`
 		}
 
@@ -186,6 +188,7 @@ describe('LumeElement', () => {
 			el.count++
 		})
 
+		// CONTINUE delete this
 		// No longer the case because @lume/variable no longer sets descriptors
 		// on prototypes, and requires a class decoraator to finalize the
 		// reactivity implementation.
@@ -233,7 +236,7 @@ describe('LumeElement', () => {
 
 		// This triggers the Custom Element upgrade process for fooEl.
 		@element('foo-element')
-		// @ts-ignore, ignore type error for testing
+		// @ts-expect-error, ignore type error for testing
 		class FooElement extends Element {
 			// @ts-ignore, in case TS complains about overiding an accessor (valid JS)
 			root = this
@@ -241,16 +244,18 @@ describe('LumeElement', () => {
 			// TODO static readonly hasShadow = false
 
 			// Use both decorators so that we ensure both features surive the element upgrade.
-			@attribute foo = 3
-			@reactive bar = 4
+			// @attribute foo = 3
+			@numberAttribute foo = 3
+			// @attribute({default: 123}) foo = 3
+			@signal bar = 4
 			@attribute baz: string | number = 5
-			@reactive lorem = 6
+			@signal lorem = 6
 			ipsum = 7
 			@attribute ping = '123'
 			@attribute pong = '123'
 			@attribute beep = 'beep'
-			@reactive boop = 'boop'
-			@reactive bop = 'bop'
+			@signal boop = 'boop'
+			@signal bop = 'bop'
 
 			__handleInitialPropertyValuesIfAny() {
 				initialValuesHandled = true
@@ -292,26 +297,51 @@ describe('LumeElement', () => {
 
 		expect(fooEl.root).toBe(fooEl)
 
+		console.log('  )))) descriptor on element', Object.getOwnPropertyDescriptor(fooEl, 'foo'))
+
+		// CONTINUE: Check that default value gets applied.
+		console.log(' >>>>>>> check attributes <<<<<<< ')
+		fooEl.setAttribute('foo', '456')
+		console.log(fooEl.getAttribute('foo'), fooEl.foo)
+		expect(fooEl.foo).toBe(456)
+		fooEl.removeAttribute('foo')
+		console.log(fooEl.getAttribute('foo'), fooEl.foo)
+		// expect(fooEl.foo).toBe(123)
+		expect(fooEl.foo).toBe(3)
+
 		let count = 0
-		autorun(() => {
-			fooEl.foo
-			fooEl.bar
-			fooEl.baz
-			fooEl.lorem
+		createEffect(() => {
+			fooEl.foo // reactive
+			fooEl.bar // reactive
+			fooEl.baz // reactive
+			fooEl.lorem // reactive
 			fooEl.ipsum // Not tracked.
-			fooEl.beep
+			fooEl.beep // reactive
 			fooEl.boop // Not tracked.
 			count++
-		})
+		}) // run 1
 		expect(count).toBe(1)
 
-		fooEl.foo = 10
-		fooEl.bar = 20
-		fooEl.lorem = 30
-		fooEl.ipsum = 40 // Does not trigger autorun.
-		// Sets the prop via attributeChangedCallback, hence triggers an autorun.
-		fooEl.setAttribute('beep', 'bop')
-		expect(count).toBe(5)
+		console.log(' <<<<<<<<<<<<<< "foo" descriptor in test:', Object.getOwnPropertyDescriptor(fooEl, 'foo'))
+		fooEl.foo = 10 // run 2
+		expect(count).toBe(2)
+		fooEl.bar = 20 // run 3
+		expect(count).toBe(3)
+		fooEl.lorem = 30 // run 4
+		expect(count).toBe(4)
+		fooEl.ipsum = 40 // Does not trigger effects.
+		expect(count).toBe(4)
+		// Sets the prop via attributeChangedCallback, hence triggers effects.
+		fooEl.setAttribute('beep', 'bop') // run 5
+
+		// Reactivity with classy-solid currently triggers immediately (not a microtask).
+		// If this expectation fails, check to make sure there are not duplicate solid-js libs.
+		// TODO we want effects to run async in the next microtask (use this:
+		// https://github.com/solidjs/solid/discussions/943#discussioncomment-6654607)).
+		// But we can update this separately in a next step.
+		//
+		// await null
+		expect(count).toBe(5, 'reactivity should be triggered')
 
 		expect(fooEl.foo).toBe(10)
 		expect(fooEl.bar).toBe(20)
@@ -324,7 +354,6 @@ describe('LumeElement', () => {
 		// defer to the next microtask
 		await null
 
-		// TODO: Test these without use of the @element decorator.
 		expect(fooEl.foo).toBe(10)
 		expect(fooEl.bar).toBe(20)
 		expect(fooEl.baz).toBe('3')
@@ -381,11 +410,6 @@ describe('LumeElement', () => {
 				// @ts-ignore, in case TS complains about overiding an accessor (valid JS)
 				root = this
 
-				// TODO static readonly hasShadow = false
-
-				// When not using decorators, we have to do the following.
-				static reactiveProperties: string[] = ['bar', 'lorem', 'boop', 'bop']
-
 				// When not using decorators, we have to do the following.
 				static observedAttributes: Record<string, AttributeHandler> = {
 					foo: attribute.string(),
@@ -396,15 +420,29 @@ describe('LumeElement', () => {
 				}
 
 				foo = 3
-				bar = 4
+				bar = 4 //
 				baz: string | number = 5
-				lorem = 6
+				lorem = 6 //
 				ipsum = 7
 				ping = '123'
 				pong = '123'
 				beep = 'beep'
-				boop = 'boop'
-				bop = 'bop'
+				boop = 'boop' //
+				bop = 'bop' //
+
+				constructor() {
+					super()
+
+					// When not using decorators, we have to do the following.
+					// TODO perhaps this should not be required if already defined observedAttributes.
+					signalify(this, 'bar', 'lorem', 'boop', 'bop')
+
+					// CONTINUE: This is currently required because we removed
+					// the static signalProperties which the observedAttributes
+					// populated and then the reactive decorator made reactive.
+					// It was a bit of a coupling.
+					// signalify(this, 'foo', 'baz', 'ping', 'pong', 'beep')
+				}
 
 				__handleInitialPropertyValuesIfAny() {
 					initialValuesHandled = true
@@ -418,6 +456,10 @@ describe('LumeElement', () => {
 				}
 			},
 		)
+
+		// We need this in non-decorator usage mode because the element in that
+		// case is defined in the next microtask.
+		await customElements.whenDefined('foo-elemento')
 
 		// This triggers the Custom Element upgrade process for fooEl.
 		// customElements.define('foo-elemento', FooElemento)
@@ -451,7 +493,7 @@ describe('LumeElement', () => {
 		expect(fooEl.root).toBe(fooEl)
 
 		let count = 0
-		autorun(() => {
+		createEffect(() => {
 			fooEl.foo
 			fooEl.bar
 			fooEl.baz
@@ -462,13 +504,26 @@ describe('LumeElement', () => {
 			count++
 		})
 		expect(count).toBe(1)
+		console.log(' ------------- foo desc:', Object.getOwnPropertyDescriptor(fooEl, 'foo'))
 
-		fooEl.foo = 10
-		fooEl.bar = 20
-		fooEl.lorem = 30
-		fooEl.ipsum = 40 // Does not trigger autorun.
-		// Sets the prop via attributeChangedCallback, hence triggers an autorun.
-		fooEl.setAttribute('beep', 'bop')
+		fooEl.foo = 10 // run 2
+		expect(count).toBe(2)
+		fooEl.bar = 20 // run 3
+		expect(count).toBe(3)
+		fooEl.lorem = 30 // run 4
+		expect(count).toBe(4)
+		fooEl.ipsum = 40 // Does not trigger effects.
+		expect(count).toBe(4)
+		// Sets the prop via attributeChangedCallback, hence triggers effects.
+		fooEl.setAttribute('beep', 'bop') // run 5
+
+		// Reactivity with classy-solid currently triggers immediately (not a microtask).
+		// If this expectation fails, check to make sure there are not duplicate solid-js libs.
+		// TODO we want effects to run async in the next microtask (use this:
+		// https://github.com/solidjs/solid/discussions/943#discussioncomment-6654607)).
+		// But we can update this separately in a next step.
+		//
+		// await null
 		expect(count).toBe(5, 'reactivity should be triggered')
 
 		expect(fooEl.foo).toBe(10, 'reactivity check 1')
@@ -503,15 +558,16 @@ describe('LumeElement', () => {
 	})
 
 	xit(
-		'TODO similar to the previous test, but instead of using @reactive + @element, using reactify() with customElements.define() for plain JS environments.',
+		'TODO similar to the previous test, but instead of using @reactive + @element, using signalify() with customElements.define() for plain JS environments.',
 	)
 
-	it('ensure wrapped @reactive decorator still automatically does not track reactivity in constructors', () => {
+	fit('ensure wrapped @reactive decorator still automatically does not track reactivity in constructors', () => {
 		@element
 		class Foo extends Element {
 			@attribute amount = 3
 		}
 
+		// previously caused an infinite constructor loop
 		@element('no-loop')
 		class Bar extends Foo {
 			@attribute double = 0
@@ -526,13 +582,14 @@ describe('LumeElement', () => {
 		let count = 0
 
 		function noLoop() {
-			autorun(() => {
+			createEffect(() => {
 				b = new Bar() // this should not track
 				count++
 			})
 		}
 
 		expect(noLoop).not.toThrow()
+		expect(count).toBe(1)
 
 		const b2 = b!
 
@@ -574,7 +631,7 @@ describe('LumeElement', () => {
 		let count = 0
 
 		function noLoop() {
-			autorun(() => {
+			createEffect(() => {
 				b = new Bar() // this should not track
 				count++
 			})

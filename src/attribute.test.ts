@@ -1,10 +1,12 @@
-import {Element, element, attribute, numberAttribute, booleanAttribute, reactive, autorun} from './index.js'
+import {createEffect, createRoot} from 'solid-js'
+import {signal} from 'classy-solid'
+import {Element, element, attribute, numberAttribute, booleanAttribute} from './index.js'
 
-describe('lume/variable @reactive properties works with lume/element decorators on plain HTMLElements', () => {
-	it('reacts to updates using autorun', () => {
+describe('classy-solid @signal properties work with lume/element @element decorators on plain HTMLElements', () => {
+	it('reacts to updates using createEffect', () => {
 		@element('foo-el')
 		class FooEl extends HTMLElement {
-			@reactive foo = 123
+			@signal foo = 123
 		}
 
 		const f = new FooEl()
@@ -12,7 +14,7 @@ describe('lume/variable @reactive properties works with lume/element decorators 
 		let count = 0
 
 		// Runs once initially, then re-runs any time f.foo has changed.
-		autorun(() => {
+		createEffect(() => {
 			f.foo
 			count++
 		})
@@ -46,7 +48,7 @@ describe('@attribute tests', () => {
 		let count = 0
 
 		// Runs once initially, then re-runs any time f.foo has changed.
-		autorun(() => {
+		createEffect(() => {
 			f.foo
 			ff.foo
 			count++
@@ -72,7 +74,7 @@ describe('@attribute tests', () => {
 		expect(ff.foo).toBe('good night!')
 	})
 
-	it("@reactive doesn't need to be used if using @attribute, as those are @reactive too", () => {
+	it("@signal doesn't need to be used if using @attribute, as those are @signal too", () => {
 		@element('pur-pose')
 		class Purpose extends Element {
 			@attribute purpose: string | null = '0'
@@ -82,7 +84,7 @@ describe('@attribute tests', () => {
 
 		let count = 0
 
-		autorun(() => {
+		createEffect(() => {
 			f.purpose
 			count++
 		})
@@ -121,7 +123,7 @@ describe('@attribute tests', () => {
 
 		let count = 0
 
-		autorun(() => {
+		createEffect(() => {
 			f.purpose
 			count++
 		})
@@ -159,7 +161,7 @@ describe('various types of attributes', () => {
 
 		let count = 0
 
-		autorun(() => {
+		createEffect(() => {
 			p.age
 			p.weight
 			count++
@@ -244,7 +246,7 @@ describe('various types of attributes', () => {
 
 		let count = 0
 
-		autorun(() => {
+		createEffect(() => {
 			p.hasCat
 			p.hasDog
 			count++

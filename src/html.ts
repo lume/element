@@ -1,1 +1,3 @@
-export * from '@lume/variable/dist/html.js'
+import html from 'solid-js/html'
+export default html
+export {html}

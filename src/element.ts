@@ -1,16 +1,33 @@
-import {reactive} from './variable.js'
-import {Element} from './LumeElement.js'
-import {_attribute} from './attribute.js'
+// CONTINUE: classy-solid is on the old lume/cli, but we need to switch to new
+// CLI to track the build output on version updates and to use the electron-less
+// test setup.
 
-import type {Constructor} from 'lowclass'
+// Then we need to do the same here for lume/element
+
+// CONTINUE: ensure that el.__reactifiedProps__ (or similar, if we renamed it) does
+// not prevent subclasses from overriding a property. In lume/variable edition of
+// lume/element, if the list contains a property that was already reactified in a
+// super class, the subclass that defines an reactive proeprty (f.e. with
+// @attribute) will not have its property reactified, and the subclass property
+// will end up as a regular non-reactive class field with a value descriptor.
+
+import {reactive, signalify} from 'classy-solid'
+import {Element} from './LumeElement.js'
+import {__classFinishers, __setUpAttribute} from './attribute.js'
+
+import type {DecoratedValue, DecoratorArgs, DecoratorContext} from 'classy-solid/dist/decorators/types.js'
+// import type {Element as LumeElement} from './LumeElement.js'
 import type {AttributeHandler} from './attribute.js'
 
 type PossibleStatics = {
 	observedAttributes?: string[] | Record<string, AttributeHandler>
-	reactiveProperties?: string[]
+	signalProperties?: string[]
 	elementName?: string
+	__proto__?: any
 }
-type ElementCtor = Constructor<HTMLElement>
+// type ElementCtor = typeof LumeElement & {__proto__: any} & PossibleStatics
+// type ElementCtor = {__proto__: any} & PossibleStatics
+export type ElementCtor = typeof Element & PossibleStatics
 
 /**
  * A class decorator that defines the target class as a custom element with the
@@ -47,8 +64,8 @@ type ElementCtor = Constructor<HTMLElement>
  *
  * Sometimes you may not want to define a name for the element,
  * however the decorator is still needed for key functionality. In
- * this case use the decorator without a calling it first, then you can
- * manually define the element in any other way as needed later:
+ * this case use the decorator without calling it first, then you can
+ * manually define the element in another way as needed:
  *
  * ```js
  * \@element
@@ -80,74 +97,134 @@ type ElementCtor = Constructor<HTMLElement>
  * class CoolElement extends HTMLElement {...}
  * ```
  */
-export function element(tagName: string, autoDefine?: boolean): <T extends ElementCtor>(Class: T) => T
-export function element<T extends ElementCtor>(Class: T): T
-export function element(tagNameOrClassOrClassElement: string | ElementCtor, autoDefine = true): any {
-	let tagName = ''
+// export function element<T extends typeof HTMLElement>(Class: T, context?: DecoratorContext): T
+// export function element(
+// 	tagName: string,
+// 	autoDefine?: boolean,
+// ): <T extends typeof HTMLElement>(Class: T, context?: DecoratorContext) => T
+// CONTINUE: Update to TS 5, so we can use better types than `any`
+export function element(...args: any[]): any {
+	// tagNameOrClass: string | typeof HTMLElement,
+	// autoDefineOrContext: boolean | DecoratorContext = true,
 
-	// `@element('foo-bar') class MyEl ...` or `element('my-el')(class MyEl ...)`
-	if (typeof tagNameOrClassOrClassElement === 'string') {
-		tagName = tagNameOrClassOrClassElement
-		return elementDecorator.bind(null, tagName, autoDefine)
+	const [tagNameOrClass, autoDefineOrContext] = args as DecoratorArgs | [string, boolean | undefined]
+
+	let tagName = ''
+	let autoDefine = !!(autoDefineOrContext ?? true)
+
+	// when called as a decorator factory, f.e. `@element('foo-bar') class MyEl ...` or `element('my-el')(class MyEl ...)`
+	if (typeof tagNameOrClass === 'string') {
+		tagName = tagNameOrClass
+		return (...args: any[]) => {
+			const [Class, context] = args as DecoratorArgs
+			return applyElementDecoration(Class, context, tagName, autoDefine)
+		}
 	}
 
 	// Otherwise `@element class MyEl ...` or `element(class MyEl ...)`
 	autoDefine = false
-	const classOrClassElement = tagNameOrClassOrClassElement
-	return elementDecorator(tagName, autoDefine, classOrClassElement)
+	const Class = tagNameOrClass
+	const context = autoDefineOrContext as DecoratorContext
+	return applyElementDecoration(Class, context, tagName, autoDefine)
 }
 
-function elementDecorator(tagName: string, autoDefine: boolean, classOrClassElement: ElementCtor | {kind: any}): any {
-	// Newer v2 decorator (used in a Babel environment, no other tool supports them currently).
-	if ('kind' in classOrClassElement) {
-		const classElement = classOrClassElement
-		return {...classElement, finisher: elementFinisher.bind(null, tagName, autoDefine)}
-	}
+function applyElementDecoration(
+	Class: DecoratedValue,
+	context: DecoratorContext,
+	tagName: string,
+	autoDefine: boolean,
+): any {
+	if (typeof Class !== 'function' || (context && context.kind !== 'class'))
+		throw new Error('@element is only for use on classes.')
 
-	// Legacy v1 decorator
-	const Class = classOrClassElement
-	return elementFinisher(tagName, autoDefine, Class)
-}
+	let Ctor = Class as ElementCtor
+	const attrs = Ctor.observedAttributes
 
-function elementFinisher<C extends ElementCtor>(tagName: string, autoDefine: boolean, Class: C & PossibleStatics): C {
-	const attrs = Class.observedAttributes
-
-	if (Class.hasOwnProperty('elementName')) tagName = Class.elementName || tagName
-	else Class.elementName = tagName
+	if (Ctor.hasOwnProperty('elementName')) tagName = Ctor.elementName || tagName
+	else Ctor.elementName = tagName
 
 	if (Array.isArray(attrs)) {
 		// Nothing to do here: either the user provided a regular
 		// observedAttributes array like with plain Custom Elements, or
 		// they used our decorators which happen to create the array for
-		// them. Either way, the take it from here with the array.
+		// them.
 	} else if (attrs && typeof attrs === 'object') {
 		// When we're not using decorators, our users have the option to
-		// provide an observedAttributes object (insetad of the usual
+		// provide an observedAttributes object (instead of the usual
 		// array) to specify attribute types. In this case, we need to
 		// track the types, and convert observedAttributes to an array so
 		// the browser will understand it like usual.
 
 		// Delete it, so that it will be re-created as an array by the
-		// following _attribute calls.
-		Class.observedAttributes = undefined
+		// following _setUpAttribute calls.
+		Ctor.observedAttributes = undefined
 
-		// This also adds the props to Class.reactiveProperties.
-		for (const prop in attrs) _attribute(Class.prototype, prop, undefined, attrs[prop])
+		// This also adds the props to Class.signalProperties.
+		for (const prop in attrs) __setUpAttribute(Ctor, prop, attrs[prop])
 	}
 
-	Class = reactive(Class)
+	// We need to compose with @reactive so that it will signalify any @signal properties.
+	Ctor = reactive(Ctor, context)
 
-	class ElementDecoratorFinisher extends Class {
+	class ElementDecoratorFinisher extends Ctor {
 		constructor(...args: any[]) {
+			// @ts-expect-error we don't know what the user's args will be, just pass them all.
 			super(...args)
 			handlePreUpgradeValues(this)
+
+			// For each non-decorator observedAttribute, make it also a signal.
+			//
+			// This is signalifying any attribute props that may have been
+			// defined in `static observedAttribute` rather than with @attribute
+			// decorator (which composes @signal), so that we also cover
+			// non-decorator usage until native decorators are out.
+			//
+			// Note, `signalify()` returns early if a property was already
+			// signalified by @attribute (@signal), so this isn't going to
+			// double-signalify.
+			//
+			// TODO: Once native decorators are out, remove this, rely on the
+			// composition of decorators only, remove non-decorator usage
+			// because it won't be necessary (people won't need build tools),
+			// and having to duplicate keys in observedAttributes as well as
+			// class fields is more room for human error.
+			//
+			const keys: (keyof this)[] = []
+			const attrsToProps =
+				// @ts-expect-error private access
+				ElementDecoratorFinisher.prototype.__attributesToProps
+			for (const key in attrsToProps) {
+				// @ts-expect-error Object.hasOwn exists
+				if (Object.hasOwn(attrsToProps, key)) keys.push(attrsToProps[key].name as keyof this)
+			}
+			if (keys.length) signalify(this, ...keys)
 		}
 	}
 
-	// FIXME With autoDefineElements true, this won't work,
-	if (tagName && autoDefine) customElements.define(tagName, ElementDecoratorFinisher)
-	// but this will. Presumably because then all elements are defined after all behaviors.
-	// if (tagName && autoDefine) Promise.resolve().then(() => customElements.define(tagName, ElementDecoratorFinisher))
+	const classFinishers = [...__classFinishers]
+	__classFinishers.length = 0
+
+	function finishClass() {
+		for (const finisher of classFinishers) finisher(ElementDecoratorFinisher)
+
+		if (tagName && autoDefine) customElements.define(tagName, ElementDecoratorFinisher)
+	}
+
+	if (context?.addInitializer) {
+		// Use addInitializer to run logic after the class is fully defined
+		// (af class static initializers have ran, otherwise the class
+		// decorator runs at the top of a class static block before all
+		// other static members are defined).
+		context.addInitializer(finishClass)
+	} else {
+		// For JS without decorator support fall back to `queueMicrotask`
+		// because `context` will be `undefined` in that scenario, so there
+		// won't be a `context.addInitializer` function to call.
+		// Note, without queueMicrotask
+		// TODO: Once decorators are out natively, deprecate and remove
+		// non-decorator usage, remove queueMicrotask
+		queueMicrotask(finishClass)
+	}
 
 	return ElementDecoratorFinisher
 }
@@ -155,17 +232,15 @@ function elementFinisher<C extends ElementCtor>(tagName: string, autoDefine: boo
 function handlePreUpgradeValues(self: HTMLElement) {
 	if (!(self instanceof Element)) return
 
-	// @ts-ignore, protected access is ok
+	// @ts-expect-error, protected access is ok
 	for (const [key, value] of self._preUpgradeValues) {
 		// If the key is missing, it has already been handled, continue.
-		if (!(key in self)) {
-			continue
-		}
+		if (!(key in self)) continue
 
 		// Untrack the pre-upgrade value so that a subclass
 		// of this class won't re-run this same logic again.
 		// TODO needs testing.
-		// @ts-ignore, protected access is ok
+		// @ts-expect-error, protected access is ok
 		self._preUpgradeValues.delete(key)
 
 		// Unshadow any possible inherited accessor only if

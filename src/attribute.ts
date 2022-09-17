@@ -1,66 +1,96 @@
-import type {Element as LumeElement} from './LumeElement.js'
-import type {Constructor} from 'lowclass'
+// CONTINUE:
+// - Note: make sure correct package versions are installed (f.e.cli 0.10 with stage 3 decos) and continue fixing tests.
+// - Note: update the version of Babel in the top level lume repo because the
+//   linked cli gets it from there.
+// - [x] the new examples/kitchen-sink demo almost works (make sure to copy top-level lume repo's node_modules/solid-js into element/node_modules first)
+//   - [x] the `static css` property broke, doesn't work in the example
+//     - this was because the @element() decorator runs during the static block
+//       that Babel prepends at the top of the class in which the decorator is
+//       executed, and this static block runs (and calls customElements.define())
+//       before the rest of the static properties get initialized. We used
+//       queueMicrotask, for now, to solve the issue.
+
+import {signal} from 'classy-solid'
+// import type {Element as LumeElement} from './LumeElement.js'
 import {camelCaseToDash, defineProp} from './_utils.js'
+import type {DecoratorArgs} from 'classy-solid/dist/decorators/types.js'
+import type {ElementCtor} from './element.js'
+
+export const __classFinishers: ((Class: ElementCtor) => void)[] = []
 
 /**
- * A property or accessor decorator that maps an HTML attribute with the
- * dash-case version of the property, to the property. For example, if the
- * attribute decorator is used on a property called firstName, then the
- * property will be mapped to an attribute called first-name. Any time that the
- * attribute value changes (f.e. with setAttribute), then the property will
- * have this value set onto it.
+ * A decorator that when used on a property or accessor causes an HTML attribute
+ * with the same name (but dash-cased instead of camelCased) to be mapped to the
+ * decorated property. For example, if the `@attribute` decorator is used on a
+ * property called `firstName`, then an attribute called `first-name` will be
+ * mapped to the property. Any time that the attribute value changes (f.e. with
+ * `el.setAttribute`), the attribute value will propgate to the property a
+ * trigger an update.
+ *
+ * The decorated property is backed by a Solid.js signal, thus useful in effects
+ * or templates.
+ *
+ * Example (ignore backslashes):
+ *
+ * ```js
+ * \@element('my-el')
+ * class MyEl extends Element {
+ *   \@attribute name = 'Lazayah'
+ *
+ *   template = () => <p>Name: {this.name}</p>
+ * }
+ * ```
  */
-export function attribute(prototype: any, propName: string, descriptor?: PropertyDescriptor): any
-export function attribute(handler?: AttributeHandler): (proto: any, propName: string) => any
-export function attribute(handlerOrProto?: any, propName?: string, descriptor?: PropertyDescriptor): any {
-	// This is true only if we're using the decorator in a Babel-compiled app
-	// with non-legacy decorators. TypeScript only has legacy decorators.
-	const isDecoratorV2 = handlerOrProto && 'kind' in handlerOrProto
+export function attribute(handler?: AttributeHandler): (value: any, context: any) => any
+export function attribute(value: any, context: any): any
+export function attribute(...args: any[]): any {
+	// if used as a decorator directly with no options
+	if (args.length === 2) return handleAttributeDecoration(args as DecoratorArgs, undefined)
 
-	if (isDecoratorV2) {
-		const classElement = handlerOrProto
+	// otherwise used as a decorator factory, possibly being passed options, like `@attribute({...})`
+	const [handler] = args as [AttributeHandler | undefined]
+	return (...args: any[]): any => handleAttributeDecoration(args as DecoratorArgs, handler)
 
-		return {
-			...classElement,
-			finisher(Class: Constructor) {
-				_attribute(Class.prototype, classElement.key)
-				// return classElement.finisher?.(Class) ?? Class
-				return (classElement.finisher && classElement.finisher(Class)) ?? Class
-			},
+	// TODO check for @element used on class with @attribute decorations, similar to classy-solid @signal/@reactive.
+}
+
+function handleAttributeDecoration(args: DecoratorArgs, attributeHandler: AttributeHandler = {}) {
+	const [_, context] = args
+	const {kind, name, private: isPrivate, static: isStatic} = context
+
+	if (typeof name === 'symbol') throw new Error('@attribute is not supported on symbol fields yet.')
+	if (isPrivate) throw new Error('@attribute is not supported on private fields yet.')
+	if (isStatic) throw new Error('@attribute is not supported on static fields.')
+
+	// TODO decorate on prototype? Or decorate on instance?
+	__classFinishers.push((Class: ElementCtor) => __setUpAttribute(Class, name, attributeHandler))
+
+	if (kind === 'field') {
+		// CONTINUE: We aren't composing decorators here, instead we're using
+		// signalify() in the class finisher. Ideally we elimimnate the plain JS
+		// usage, and just have decorator composition, once decorators are out.
+		//
+		const signalInitializer = signal(_, context)
+
+		return function (this: object, initialValue: unknown) {
+			initialValue = signalInitializer(initialValue)
+
+			attributeHandler.default = 'default' in attributeHandler ? attributeHandler.default : initialValue
+
+			return initialValue
 		}
+	} else if (kind === 'accessor') {
+		// TODO accessor support
+		throw new Error(
+			'@attribute is not supported on `accessor` fields yet. Use it on a plain class field, along with the @element decorator applied on the same class.',
+		)
+	} else if (kind === 'getter' || kind === 'setter') {
+		signal(_, context)
+	} else {
+		throw new Error('@attribute is only for use on fields, accessors, getters, and setters.')
 	}
 
-	if (handlerOrProto && propName) {
-		// if being used as a legacy decorator directly
-		const prototype = handlerOrProto
-		return _attribute(prototype, propName, descriptor)
-	}
-
-	// `attribute` is being used as a decorator factory, possibly being passed a
-	// handler, like `@attribute({...})`
-
-	const handler = handlerOrProto
-
-	return (protoOrClassElement: any, propName?: string, descriptor?: PropertyDescriptor): any => {
-		// This is true only if we're using the decorator in a Babel-compiled app
-		// with non-legacy decorators. TypeScript only has legacy decorators.
-		const isDecoratorV2 = protoOrClassElement && 'kind' in protoOrClassElement
-
-		if (isDecoratorV2) {
-			const classElement = protoOrClassElement
-
-			return {
-				...classElement,
-				finisher(Class: Constructor) {
-					_attribute(Class.prototype, classElement.key, undefined, handler)
-					// return classElement.finisher?.(Class) ?? Class
-					return (classElement.finisher && classElement.finisher(Class)) ?? Class
-				},
-			}
-		}
-
-		return _attribute(protoOrClassElement, propName!, descriptor, handler)
-	}
+	return undefined // shush TS
 }
 
 // TODO Do similar as with the following attributeChangedCallback prototype
@@ -69,21 +99,18 @@ export function attribute(handlerOrProto?: any, propName?: string, descriptor?: 
 // Extending from the LumeElement base class will be the method that non-decorator
 // users must use.
 
-export function _attribute(
-	prototype: any,
-	propName: string,
-	descriptor?: PropertyDescriptor,
-	attributeHandler?: AttributeHandler,
-): any {
-	const ctor = prototype.constructor as typeof LumeElement & {__proto__: any}
-
-	if (!ctor.observedAttributes || !ctor.hasOwnProperty('observedAttributes')) {
+export function __setUpAttribute(ctor: ElementCtor, propName: string, attributeHandler: AttributeHandler): any {
+	if (
+		//
+		!ctor.observedAttributes ||
+		!ctor.hasOwnProperty('observedAttributes')
+	) {
 		const inheritedAttrs = ctor.__proto__.observedAttributes
 
 		// @prod-prune
 		if (inheritedAttrs && !Array.isArray(inheritedAttrs)) {
 			throw new TypeError(
-				'observedAttributes is in the wrong format. Maybe you forgot to decorate your custom element class with the `element` decorator.',
+				'observedAttributes is in the wrong format. Did you forget to decorate your custom element class with the `@element` decorator?',
 			)
 		}
 
@@ -93,7 +120,7 @@ export function _attribute(
 	// @prod-prune
 	if (!Array.isArray(ctor.observedAttributes)) {
 		throw new TypeError(
-			'observedAttributes is in the wrong format. Maybe you forgot to decorate your custom element class with the `element` decorator.',
+			'observedAttributes is in the wrong format. Maybe you forgot to decorate your custom element class with the `@element` decorator.',
 		)
 	}
 
@@ -101,21 +128,15 @@ export function _attribute(
 
 	if (!ctor.observedAttributes!.includes(attrName)) ctor.observedAttributes!.push(attrName)
 
-	if (!ctor.reactiveProperties || !ctor.hasOwnProperty('reactiveProperties'))
-		defineProp(ctor, 'reactiveProperties', [...(ctor.reactiveProperties || [])])
-
-	if (!ctor.reactiveProperties!.includes(propName)) ctor.reactiveProperties!.push(propName)
-
-	mapAttributeToProp(prototype, attrName, propName, attributeHandler)
-
-	if (descriptor) return descriptor
+	mapAttributeToProp(ctor.prototype, attrName, propName, attributeHandler)
 }
 
 // TODO this stores attributes as an inheritance chain on the constructor. It'd
 // be more fool-proof (not publicly exposed) to store attribute-prop mappings in
 // WeakMaps, but then we'd need to implement our own inheritance
 // (prototype-like) lookup for the attributes.
-function mapAttributeToProp(prototype: any, attr: string, prop: string, handler?: AttributeHandler): void {
+function mapAttributeToProp(prototype: any, attr: string, prop: string, attributeHandler: AttributeHandler): void {
+	// Only define attributeChangedCallback once.
 	if (!prototype.__hasAttributeChangedCallback) {
 		prototype.__hasAttributeChangedCallback = true
 
@@ -123,7 +144,7 @@ function mapAttributeToProp(prototype: any, attr: string, prop: string, handler?
 
 		prototype.attributeChangedCallback = function (attr: string, oldVal: string | null, newVal: string | null) {
 			// If the class already has an attributeChangedCallback, let is run,
-			// and let is call or not call super.attributeChangedCallback.
+			// and let it call or not call super.attributeChangedCallback.
 			if (originalAttrChanged) {
 				originalAttrChanged.call(this, attr, oldVal, newVal)
 			}
@@ -132,22 +153,40 @@ function mapAttributeToProp(prototype: any, attr: string, prop: string, handler?
 			else {
 				// This is equivalent to `super.attributeChangedCallback?()`
 				prototype.__proto__?.attributeChangedCallback?.call(this, attr, oldVal, newVal)
-				// prototype.__proto__ &&
-				// 	prototype.__proto__.attributeChangedCallback &&
-				// 	prototype.__proto__.attributeChangedCallback.call(this, attr, oldVal, newVal)
 			}
+
+			// CONTINUE it seems that removeAttribute() is not running through
+			// here, and the foo JS prop in the test is not being set to the
+			// default value.
+			// CONTINUE Verify if this is still happening
+			console.log(' %%%%%%%%%% attribute changed!', attr, oldVal, newVal)
+			if (newVal == null) console.log(' %%%%%%%%%% attribute removed!', attr)
 
 			// map from attribute to property
 			const prop = this.__attributesToProps && this.__attributesToProps[attr]
 
 			if (prop) {
 				const handler = prop.attributeHandler
-				this[prop.name] = handler && handler.from ? handler.from(newVal) : newVal
+				// prettier-ignore
+				this[prop.name] = !handler
+					? newVal
+					: newVal === null
+						? 'default' in handler
+							? handler.default
+							: null
+						: handler.from
+							? handler.from(newVal)
+							: newVal
 			}
 		}
 	}
+
 	// Extend the current prototype's __attributesToProps object from the super
-	// prototypes __attributesToProps object.
+	// prototype's __attributesToProps object.
+	//
+	// We use inheritance here or else all classes would pile their
+	// attribute-prop definitions on a shared base class (they can clash,
+	// override each other willy nilly and seemingly randomly).
 	if (!prototype.hasOwnProperty('__attributesToProps')) {
 		// using defineProperty so that it is non-writable, non-enumerable, non-configurable
 		Object.defineProperty(prototype, '__attributesToProps', {
@@ -157,68 +196,242 @@ function mapAttributeToProp(prototype: any, attr: string, prop: string, handler?
 		})
 	}
 
-	// TODO throw helpful warning if overriding an already-existing attribute-prop mapping
+	// throw a helpful log if overriding an already-existing attribute-prop mapping
 	if (prototype.__attributesToProps![attr]) {
-		console.warn(
+		console.debug(
 			'The `@attribute` decorator is overriding an already-existing attribute-to-property mapping for the "' +
 				attr +
 				'" attribute.',
 		)
 	}
 
-	prototype.__attributesToProps![attr] = {name: prop, attributeHandler: handler}
+	prototype.__attributesToProps![attr] = {name: prop, attributeHandler}
 }
 
-// TODO We need a way for the default value to be set from class
-// fields/properties initial values, instead of having to have them supplied to the
-// decorator. But at the moment, these attribute decorators do not create
-// accessors, so in a legacy decorator environment they have no way of seeing
-// the initial values (new decorators can supply initializers). So for legacy
-// decorators we need either a way to hook onto initial sets of @reactive
-// accessors during construction, or to define @attribute's own accessors. New
-// decorators can easily use initializers. Our test setup will ensure that the
-// decorators work in all decorator environments.
-
+/**
+ * Defines how values are mapped from an attribute to a JS property on a custom
+ * element class.
+ */
 export type AttributeHandler<T = any> = {
 	// TODO `to` handler currently does nothing. If it is present, then prop
 	// changes should reflect back to the attribute. In most cases, this is
 	// undesirable (for performance).
 	to?: (propValue: T) => string | null
-	from?: (AttributeValue: string | null) => T
+
+	/**
+	 * Define how to deserialize an attribute string value on its way to the
+	 * respective JS property.
+	 *
+	 * If not defined, the attribute string value is passed to the JS property
+	 * untouched.
+	 */
+	from?: (AttributeValue: string) => T
+
+	/**
+	 * The default value that the respective JS property should have when the
+	 * attribute is removed.
+	 *
+	 * When defined, an attribute's respective JS property will be set to this
+	 * value when the attribute is removed. If not defined, then the JS property
+	 * will receive `null` when the attribute is removed, just like
+	 * `attributeChangedCallback` does.
+	 */
 	default?: T
 }
 
-type AttributeType<T> = (defaultValue?: T) => AttributeHandler<T>
+type AttributeType<T> = () => AttributeHandler<T>
 
-attribute.string = ((def = '') => ({
-	default: def,
-	from(str) {
-		return str == null ? this.default : str
-	},
-})) as AttributeType<string>
+const toString = (str: string) => str
 
-export function stringAttribute(defaultValue = '') {
-	return attribute(attribute.string(defaultValue))
+// CONTINUE test the new default that works even with plain @attribute, in tests, and in kitchen sink
+/**
+ * An attribute type for use in the object form of `static observedAttributes`
+ * when not using decorators.
+ *
+ * Example usage without decorators:
+ *
+ * ```js
+ * element('my-el')(
+ *   class MyEl extends LumeElement {
+ *     static observedAttributes = {
+ *       name: attribute.string()
+ *     }
+ *
+ *     name = "honeybun" // default value when attribute removed
+ *   }
+ * )
+ * ```
+ */
+attribute.string = (() => ({from: toString})) as AttributeType<string>
+
+/**
+ * A decorator for mapping a string-valued attribute to a JS property. All
+ * attribute values get passed as-is, except for `null` (i.e. when an attribute
+ * is removed) which gets converted into an empty string or the default value of
+ * the class field. The handling of `null` (on attribute removed) is the only
+ * difference between this and plain `@attribute`, where `@attribute` will pass
+ * along `null`.
+ *
+ * Example decorator usage (note: ignore the backslashes):
+ *
+ * ```js
+ * \@element('my-el')
+ * class MyEl extends LumeElement {
+ *   \@stringAttribute color = "skyblue"
+ * }
+ * ```
+ *
+ * Example HTML attribute usage:
+ *
+ * ```html
+ * <!-- el.color === "", because an attribute without a written value has an empty string value. -->
+ * <my-el color></my-el>
+ *
+ * <!-- el.color === "skyblue", based on the default value defined on the class field. -->
+ * <my-el></my-el>
+ *
+ * <!-- el.color === "deeppink" -->
+ * <my-el color="deeppink"></my-el>
+ *
+ * <!-- el.color === "4.5" -->
+ * <my-el color="4.5"></my-el>
+ *
+ * <!-- el.color === "any string in here" -->
+ * <my-el color="any string in here"></my-el>
+ * ```
+ */
+export function stringAttribute(value: any, context: any) {
+	return attribute(attribute.string())(value, context)
 }
 
-attribute.number = ((def = 0) => ({
-	default: def,
-	from(str) {
-		return str == null ? this.default : +str
-	},
-})) as AttributeType<number>
+const toNumber = (str: string) => +str
 
-export function numberAttribute(defaultValue = 0) {
-	return attribute(attribute.number(defaultValue))
+/**
+ * An attribute type for use in the object form of `static observedAttributes`
+ * when not using decorators.
+ *
+ * Example usage without decorators:
+ *
+ * ```js
+ * element('my-el')(
+ *   class MyEl extends LumeElement {
+ *     static observedAttributes = {
+ *       money: attribute.number()
+ *     }
+ *
+ *     money = 1000 // default value when attribute removed
+ *   }
+ * )
+ * ```
+ */
+attribute.number = (() => ({from: toNumber})) as AttributeType<number>
+
+/**
+ * A decorator for mapping a number attribute to a JS property. The string value
+ * of the attribute will be parsed into a number.
+ *
+ * Example decorator usage (note: ignore the backslashes):
+ *
+ * ```js
+ * \@element('my-el')
+ * class MyEl extends LumeElement {
+ *   \@numberAttribute money = 123
+ * }
+ * ```
+ *
+ * Example HTML attribute usage:
+ *
+ * ```html
+ * <!-- el.money === 0, because an empty string gets coerced into 0. -->
+ * <my-el money></my-el>
+ *
+ * <!-- el.money === 123, based on the default value defined on the class field. -->
+ * <my-el></my-el>
+ *
+ * <!-- el.money === 10 -->
+ * <my-el money="10"></my-el>
+ *
+ * <!-- el.money === 4.5 -->
+ * <my-el money="4.5"></my-el>
+ *
+ * <!-- el.money === Infinity -->
+ * <my-el money="Infinity"></my-el>
+ *
+ * <!-- el.money === NaN -->
+ * <my-el money="NaN"></my-el>
+ *
+ * <!-- el.money === NaN -->
+ * <my-el money="blahblah"></my-el>
+ * ```
+ */
+export function numberAttribute(value: any, context: any) {
+	return attribute(attribute.number())(value, context)
 }
 
-attribute.boolean = ((def = false) => ({
-	default: def,
-	from(str) {
-		return str == null ? this.default : str !== 'false'
-	},
-})) as AttributeType<boolean>
+const toBoolean = (str: string) => str !== 'false'
 
-export function booleanAttribute(defaultValue = false) {
-	return attribute(attribute.boolean(defaultValue))
+/**
+ * An attribute type for use in the object form of `static observedAttributes`
+ * when not using decorators.
+ *
+ * Example usage without decorators:
+ *
+ * ```js
+ * element('my-el')(
+ *   class MyEl extends LumeElement {
+ *     static observedAttributes = {
+ *       hasCash: attribute.boolean()
+ *     }
+ *
+ *     hasCash = true // default value when attribute removed
+ *   }
+ * )
+ * ```
+ */
+attribute.boolean = (() => ({from: toBoolean})) as AttributeType<boolean>
+
+/**
+ * A decorator for mapping a boolean attribute to a JS property. The string
+ * value of the attribute will be converted into a boolean value on the JS
+ * property. A string value of `"false"` and a value of `null` (attribute
+ * removed) will be converted into a `false` value on the JS property. All other
+ * attribute values (strings) will be converted into `true`.
+ *
+ * Example decorator usage (note: ignore the backslashes):
+ *
+ * ```js
+ * \@element('my-el')
+ * class MyEl extends LumeElement {
+ *   \@booleanAttribute hasMoney = true
+ *   \@booleanAttribute excited = false
+ * }
+ * ```
+ *
+ * Example HTML attribute usage:
+ *
+ * ```html
+ * <!-- el.hasMoney === true, el.excited === true -->
+ * <my-el has-money excited></my-el>
+ *
+ * <!-- el.hasMoney === true, el.excited === false, based on the default values defined
+ * on the class fields. Start the a class field with a value of `false` to have
+ * behavior similar to traditional DOM boolean attributes where the presence of
+ * the attribute determines the boolean value of its respective JS property. -->
+ * <my-el></my-el>
+ *
+ * <!-- el.hasMoney === false, el.excited === true -->
+ * <my-el has-money="false"></my-el>
+ *
+ * <!-- el.hasMoney === true, el.excited === true -->
+ * <my-el has-money="true"></my-el>
+ *
+ * <!-- el.hasMoney === true, el.excited === true -->
+ * <my-el has-money=""></my-el>
+ *
+ * <!-- el.hasMoney === true, el.excited === true -->
+ * <my-el has-money="blahblah"></my-el>
+ * ```
+ */
+export function booleanAttribute(value: any, context: any) {
+	return attribute(attribute.boolean())(value, context)
 }

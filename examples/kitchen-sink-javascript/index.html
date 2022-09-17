@@ -1,0 +1,55 @@
+<!--
+ TODO:
+ - importmap file that can be imported in examples instead of writing it out in every html file
+-->
+<script type="importmap">
+	{
+		"imports": {
+			"@lume/element": "/node_modules/@lume/element/dist/index.js",
+			"@lume/element/": "/node_modules/@lume/element/",
+			"solid-js": "/node_modules/solid-js/dist/solid.js",
+			"solid-js/web": "/node_modules/solid-js/web/dist/web.js",
+			"solid-js/html": "/node_modules/solid-js/html/dist/html.js",
+			"classy-solid": "/node_modules/classy-solid/dist/index.js",
+			"lowclass": "/node_modules/lowclass/dist/index.js"
+		}
+	}
+</script>
+
+<script type="module" src="./dist/KitchenSink.js"></script>
+
+<!-- Start with an initial value of 5 -->
+<kitchen-sink id="sink" count="5" name="Mo" doing-something></kitchen-sink>
+
+<kitchen-sink id="sink2" count="1" name="Po" doing-something="false">
+	<p>child from light DOM, no slot specified</p>
+	<p slot="foo">child from light DOM, slotted to the foo slot</p>
+</kitchen-sink>
+
+<style>
+	kitchen-sink {
+		cursor: pointer;
+		user-select: none;
+	}
+</style>
+
+<script type="module">
+	import {createEffect} from 'solid-js'
+
+	sink.onclick = () => {
+		sink.count++
+		sink.name += 'Mo'
+		// Get or set attributes (dash-case)
+		sink.setAttribute(
+			'doing-something',
+			// Or get or set the same-name properties (camelCase)
+			sink.doingSomething ? 'false' : 'true',
+		)
+
+		console.log('doingSomething after attribute change:', sink.doingSomething)
+	}
+
+	createEffect(() => {
+		console.log('values outside the element:', sink.count, sink.name, sink.doingSomething)
+	})
+</script>

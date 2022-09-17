@@ -1,4 +1,4 @@
-import {render} from './web.js'
+import {render} from 'solid-js/web'
 import {defer} from './_utils.js'
 
 import type {AttributeHandler} from './attribute'
@@ -29,14 +29,14 @@ class LumeElement extends HTMLElement {
 		customElements.define(name || this.elementName, this)
 	}
 
-	/** Non-decorator users can use this to specify which props are reactive. */
-	static reactiveProperties?: string[]
+	// CONTINUE: we removed signalProperties (previously reactiveProperties) from
+	// classy-solid (previously variable). Update tests and code to use only
+	// signalify instead, remove this property def.
 
 	/** Non-decorator users can use this to specify attributes, which automatically map to reactive properties. */
 	static observedAttributes?: string[] | Record<string, AttributeHandler>
 
 	// Note, this is used in the @attribute decorator, see attribute.ts.
-	// @ts-ignore, property is used
 	private declare __attributesToProps?: Record<string, {name: string; attributeHandler?: AttributeHandler}>
 
 	protected declare _preUpgradeValues: Map<PropertyKey, unknown>
@@ -44,8 +44,10 @@ class LumeElement extends HTMLElement {
 	// __propsSetAtLeastOnce__ comes from @lume/variable's @reactive decorator.
 	// It is a Set<string> that tells us if a reactive property has been set at
 	// least once,
+	// TODO replace with new API from classy-solid
 	protected declare __propsSetAtLeastOnce__?: Set<PropertyKey>
 
+	// TODO replace with new API from classy-solid
 	protected declare __reactifiedProps__?: Set<PropertyKey>
 
 	// This property MUST be defined before any other non-static non-declared
@@ -124,6 +126,7 @@ class LumeElement extends HTMLElement {
 					const inheritsProperty = propName in (this as any).__proto__
 					const hasReactifiedProp = this.__reactifiedProps__?.has(propName)
 
+					// CONTINUE (see note about __reactifiedProps__ at top of element.ts)
 					// TODO: Should we detect if `this[propName]` is a
 					// non-inherited accessor (instead of hasReactifiedProp).
 					// Maybe a base class author extending from LumeElement
@@ -143,7 +146,7 @@ class LumeElement extends HTMLElement {
 
 	protected declare template?: Template
 	protected declare css?: string | (() => string)
-	protected static css?: string | (() => string)
+	protected declare static css?: string | (() => string)
 
 	/**
 	 * When `true`, the custom element will have a `ShadowRoot`. Set to `false`
@@ -164,6 +167,7 @@ class LumeElement extends HTMLElement {
 		if (!this.hasShadow) return this
 		if (this.__root) return this.__root
 		if (this.shadowRoot) return (this.__root = this.shadowRoot)
+		// TODO use `this.attachInternals()` (ElementInternals API) to get the root instead.
 		return (this.__root = this.attachShadow({mode: 'open'}))
 	}
 	protected set root(v: Node) {
@@ -236,6 +240,8 @@ class LumeElement extends HTMLElement {
 			// standard way to scope styles to a component.
 
 			this.styleRoot.appendChild(staticStyle)
+
+			// TODO use adoptedStyleSheets when that is supported by FF and Safari
 		} else {
 			// When this element doesn't have a shadow root, then we want to append the
 			// style only once to the rootNode where it lives (a ShadoowRoot or
@@ -366,7 +372,7 @@ type Template = TemplateContent | (() => TemplateContent)
  *   \@numberAttribute(123) loremIpsum = 123
  * }
  *
- * declare module '@lume/element' {
+ * declare module 'solid-js' {
  *   namespace JSX {
  *     interface IntrinsicElements {
  *       'cool-element': ElementAttributes<CoolElement, 'foo' | 'bar'>

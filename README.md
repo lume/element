@@ -176,7 +176,7 @@ name).
 import {
 	Element, // A base class for LUME custom elements
 	attribute, // A property decorator to map attributes to properties
-	reactive, // A property decorator to make a property reactive
+	signal, // A property decorator to make a property reactive
 	css, // A no-op identity function (useful to enable CSS syntax highlighting in various text editors)
 } from '@lume/element'
 
@@ -185,7 +185,7 @@ class GreetingCard extends Element {
 	// Make the firstName property a reactive variable, and also map any value
 	// from an attribute named 'first-name' back to this property (the attribute
 	// name is the dash-case version of the property name).
-	@reactive @attribute firstName = 'Roger'
+	@signal @attribute firstName = 'Roger'
 
 	// Define the structure of the DOM tree that we want rendered on screen by
 	// providing a template property. This template property should simply
@@ -451,13 +451,15 @@ export interface CoolElementAttributes extends JSX.HTMLAttributes<CoolElement> {
 }
 
 @element('cool-element')
-export class CoolElement extends Element {
-  @reactive @attribute coolType: 'beans' | 'hair' = 'beans'
-  @reactive @numberAttribute(100) coolFactor = 100
+class CoolElement extends Element {
+  @signal @attribute coolType: 'beans' | 'hair' = 'beans'
+  @signal @numberAttribute(100) coolFactor = 100
   // ^ NOTE: These are the camelCase equivalents of the attributes defined above.
 
 	// ... Define your class as described above. ...
 }
+
+export {CoolElement}
 
 // Add your element to the list of known HTML elements. This makes it possible
 // for browser APIs to have the expected return type. For example, the return
@@ -470,7 +472,7 @@ declare global {
 
 // Also register the element name in the JSX types for TypeScript to recognize
 // the element as a valid JSX tag.
-declare module '@lume/element' {
+declare module 'solid-js' {
 	namespace JSX {
 		interface IntrinsicElements {
 			'cool-element': CoolElementAttributes
