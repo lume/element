@@ -1,4 +1,4 @@
-import {render} from './web.js'
+import {render} from 'solid-js/web'
 import {defer} from './_utils.js'
 
 import type {AttributeHandler} from './attribute'
