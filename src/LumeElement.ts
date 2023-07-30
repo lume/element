@@ -23,10 +23,22 @@ const HTMLElement =
 // tried, but TS has been updated for abstract mixin support.
 
 class LumeElement extends HTMLElement {
+	/** The default tag name of the elements this class is instantiated for. */
 	static elementName: string = ''
 
-	static defineElement(name?: string) {
-		customElements.define(name || this.elementName, this)
+	/**
+	 * Define this class for the given element `name`, or using its default name
+	 * (`elementName`) if no `name` given. Defaults to using the global
+	 * `customElements` registry unless another registry is provided (for
+	 * example a ShadowRoot-scoped registry).
+	 */
+	static defineElement(name: string = '', registry: CustomElementRegistry = customElements) {
+		if (registry.get(name)) return
+		else {
+			if (name) registry.define(name, this)
+			// Allow the same element to be defined more than once using alternative names.
+			else registry.define(this.elementName, class extends this {})
+		}
 	}
 
 	/** Non-decorator users can use this to specify which props are reactive. */
@@ -141,9 +153,28 @@ class LumeElement extends HTMLElement {
 		}
 	}
 
+	/**
+	 * If a subclass provides this, it should return DOM. It is called with
+	 * Solid.js `render()`, so it can also contain Solid.js reactivity (signals
+	 * and effects) and templating (DOM-returning reactive JSX or html template
+	 * literals).
+	 */
 	protected declare template?: Template
+
+	/**
+	 * If provided, this style gets created once per ShadowRoot of each element
+	 * instantiated from this class. The expression can access `this` for string
+	 * interpolation.
+	 */
 	protected declare css?: string | (() => string)
-	protected static css?: string | (() => string)
+
+	/**
+	 * If provided, this style gets created a single time for all elements
+	 * instantiated from this class, instead of once per element. If you do not
+	 * need to interpolate values into the string using `this`, then use this
+	 * static property for more performance compared to the instance property.
+	 */
+	protected declare static css?: string | (() => string)
 
 	/**
 	 * When `true`, the custom element will have a `ShadowRoot`. Set to `false`
