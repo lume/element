@@ -591,4 +591,39 @@ describe('LumeElement', () => {
 		expect(b!).toBe(b2)
 		expect(count).toBe(1)
 	})
+
+	it('allows manually calling defineElement on a class to define it a name or its default name, or to give it multiple names', () => {
+		const name1 = 'manual-el'
+		@element(name1, false)
+		class ManualEl extends Element {}
+
+		const el = document.createElement(name1)
+		document.body.append(el)
+
+		expect(el).not.toBeInstanceOf(ManualEl)
+
+		ManualEl.defineElement()
+		ManualEl.defineElement() // no error
+
+		expect(el).toBeInstanceOf(ManualEl)
+		expect(el.tagName.toLowerCase()).toBe(ManualEl.elementName)
+		expect(el.tagName.toLowerCase()).toBe(name1)
+
+		const name2 = 'manual-el2'
+		const el2 = document.createElement(name2)
+		document.body.append(el2)
+
+		const ManualEl2 = ManualEl.defineElement(name2)
+		ManualEl.defineElement(name2) // no error
+		ManualEl2.defineElement(name2) // no error
+
+		expect(el2).toBeInstanceOf(ManualEl)
+		expect(el2).toBeInstanceOf(ManualEl2)
+		expect(el2.tagName.toLowerCase()).toBe(ManualEl2.elementName)
+		expect(el2.tagName.toLowerCase()).toBe(el2.constructor.elementName)
+		expect(el2.tagName.toLowerCase()).toBe(name2)
+
+		// TODO test scoped registries once those are out in browsers.
+		// const registry = new CustomElementRegistry()
+	})
 })

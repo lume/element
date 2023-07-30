@@ -31,13 +31,37 @@ class LumeElement extends HTMLElement {
 	 * (`elementName`) if no `name` given. Defaults to using the global
 	 * `customElements` registry unless another registry is provided (for
 	 * example a ShadowRoot-scoped registry).
+	 *
+	 * If a `name` is given, then the class will be extended with an empty
+	 * subclass so that a new class is used for each new name, because otherwise
+	 * a CustomElementRegistry does not allow the same exact class to be used
+	 * more than once regardless of the name.
+	 *
+	 * @returns Returns the defined element class, which is only going to be a
+	 * different subclass of the class this is called on if passing in a custom
+	 * `name`, otherwise returns the same class this is called on.
 	 */
-	static defineElement(name: string = '', registry: CustomElementRegistry = customElements) {
-		if (registry.get(name)) return
-		else {
-			if (name) registry.define(name, this)
-			// Allow the same element to be defined more than once using alternative names.
-			else registry.define(this.elementName, class extends this {})
+	static defineElement(name?: string, registry: CustomElementRegistry = customElements): typeof LumeElement {
+		if (!name) {
+			name = this.elementName
+			if (registry.get(name)) {
+				console.warn(`defineElement(): An element class was already defined for tag name ${name}.`)
+				return this
+			}
+			registry.define(name, this)
+			return this
+		} else {
+			if (registry.get(name)) {
+				console.warn(`defineElement(): An element class was already defined for tag name ${name}.`)
+				return this
+			} else {
+				// Allow the same element to be defined more than once using
+				// alternative names.
+				const Class = class extends this {}
+				Class.elementName = name
+				registry.define(name, Class)
+				return Class
+			}
 		}
 	}
 
