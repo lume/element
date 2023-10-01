@@ -31,7 +31,7 @@
 		"postversion": "lume postVersionHook"
 	},
 	"dependencies": {
-		"@lume/variable": "^0.8.0",
+		"@lume/variable": "^0.9.0",
 		"babel-preset-solid": "^1.0.0",
 		"lowclass": "^5.0.0",
 		"solid-js": "<1.5.0"
