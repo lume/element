@@ -1,18 +1,12 @@
-var __classPrivateFieldGet = (this && this.__classPrivateFieldGet) || function (receiver, state, kind, f) {
-    if (kind === "a" && !f) throw new TypeError("Private accessor was defined without a getter");
-    if (typeof state === "function" ? receiver !== state || !f : !state.has(receiver)) throw new TypeError("Cannot read private member from an object whose class did not declare it");
-    return kind === "m" ? f : kind === "a" ? f.call(receiver) : f ? f.value : state.get(receiver);
-};
-var _a;
-var _LumeElement_defaultHostStyle;
 import { render } from 'solid-js/web';
 import { defer } from './_utils.js';
 let ctor;
-const HTMLElement = (_a = globalThis.HTMLElement) !== null && _a !== void 0 ? _a : class HTMLElement {
-    constructor() {
-        throw new Error("@lume/element needs a DOM to operate with! If this code is running during server-side rendering, it means your app is trying to instantiate elements when it shouldn't be, and should be refactored to avoid doing that when no DOM is present.");
-    }
-};
+const HTMLElement = globalThis.HTMLElement ??
+    class HTMLElement {
+        constructor() {
+            throw new Error("@lume/element needs a DOM to operate with! If this code is running during server-side rendering, it means your app is trying to instantiate elements when it shouldn't be, and should be refactored to avoid doing that when no DOM is present.");
+        }
+    };
 class LumeElement extends HTMLElement {
     constructor() {
         super(...arguments);
@@ -22,12 +16,13 @@ class LumeElement extends HTMLElement {
         this.hasShadow = true;
         this.__root = null;
         this.__styleRootNode = null;
-        _LumeElement_defaultHostStyle.set(this, (hostSelector) => `${hostSelector} {
+        this.#defaultHostStyle = (hostSelector) => `${hostSelector} {
 		display: block;
-	}`);
+	}`;
         this.__id = LumeElement.__elementId++;
         this.__dynamicStyle = null;
     }
+    static { this.elementName = ''; }
     static defineElement(name, registry = customElements) {
         if (!name) {
             name = this.elementName;
@@ -61,12 +56,11 @@ class LumeElement extends HTMLElement {
                 delete this[propName];
                 this._preUpgradeValues.set(propName, descriptor.value);
                 defer(() => {
-                    var _a, _b;
-                    const propSetAtLeastOnce = (_a = this.__propsSetAtLeastOnce__) === null || _a === void 0 ? void 0 : _a.has(propName);
+                    const propSetAtLeastOnce = this.__propsSetAtLeastOnce__?.has(propName);
                     if (propSetAtLeastOnce)
                         return;
                     const inheritsProperty = propName in this.__proto__;
-                    const hasReactifiedProp = (_b = this.__reactifiedProps__) === null || _b === void 0 ? void 0 : _b.has(propName);
+                    const hasReactifiedProp = this.__reactifiedProps__?.has(propName);
                     if (inheritsProperty || hasReactifiedProp)
                         this[propName] = descriptor.value;
                 });
@@ -109,6 +103,8 @@ class LumeElement extends HTMLElement {
         this.__dispose && this.__dispose();
         this.__cleanupStyle();
     }
+    static { this.__styleRootNodeRefCountPerTagName = new WeakMap(); }
+    #defaultHostStyle;
     __setStyle() {
         ctor = this.constructor;
         const staticCSS = typeof ctor.css === 'function' ? (ctor.css = ctor.css()) : ctor.css || '';
@@ -117,7 +113,7 @@ class LumeElement extends HTMLElement {
             const hostSelector = ':host';
             const staticStyle = document.createElement('style');
             staticStyle.innerHTML = `
-				${__classPrivateFieldGet(this, _LumeElement_defaultHostStyle, "f").call(this, hostSelector)}
+				${this.#defaultHostStyle(hostSelector)}
 				${staticCSS}
 				${instanceCSS}
 			`;
@@ -135,7 +131,7 @@ class LumeElement extends HTMLElement {
                 const hostSelector = this.tagName.toLowerCase();
                 const staticStyle = document.createElement('style');
                 staticStyle.innerHTML = `
-					${__classPrivateFieldGet(this, _LumeElement_defaultHostStyle, "f").call(this, hostSelector)}
+					${this.#defaultHostStyle(hostSelector)}
 					${staticCSS ? staticCSS.replaceAll(':host', hostSelector) : staticCSS}
 				`;
                 staticStyle.id = this.tagName.toLowerCase();
@@ -153,6 +149,7 @@ class LumeElement extends HTMLElement {
             }
         }
     }
+    static { this.__elementId = 0; }
     __cleanupStyle() {
         do {
             if (this.hasShadow)
@@ -167,7 +164,7 @@ class LumeElement extends HTMLElement {
             if (refCount === 0) {
                 delete refCountPerTagName[this.tagName];
                 const style = this.__styleRootNode.querySelector('#' + this.tagName);
-                style === null || style === void 0 ? void 0 : style.remove();
+                style?.remove();
             }
         } while (false);
         if (this.__dynamicStyle)
@@ -175,9 +172,5 @@ class LumeElement extends HTMLElement {
     }
     adoptedCallback() { }
 }
-_LumeElement_defaultHostStyle = new WeakMap();
-LumeElement.elementName = '';
-LumeElement.__styleRootNodeRefCountPerTagName = new WeakMap();
-LumeElement.__elementId = 0;
 export { LumeElement as Element };
 //# sourceMappingURL=LumeElement.js.map

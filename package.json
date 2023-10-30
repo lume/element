@@ -7,7 +7,6 @@
 	"homepage": "http://github.com/lume/element#readme",
 	"type": "module",
 	"main": "dist/index.js",
-	"// main": "The 'main' field is fallback for legacy Node.js that has no type:module support, otherwise Node 13.2+ ignores it if type:module is set.",
 	"types": "dist/index.d.ts",
 	"scripts": {
 		"LUME SCRIPTS XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX": "",
@@ -20,7 +19,7 @@
 		"typecheck": "lume typecheck",
 		"typecheck:watch": "lume typecheckWatch",
 		"test": "lume test",
-		"test:debug": "lume testDebug",
+		"test:watch": "lume test --watch",
 		"prettier": "lume prettier",
 		"prettier:check": "lume prettierCheck",
 		"release:patch": "lume releasePatch",

@@ -6,9 +6,8 @@ export function attribute(handlerOrProto, propName, descriptor) {
         return {
             ...classElement,
             finisher(Class) {
-                var _a;
                 _attribute(Class.prototype, classElement.key);
-                return (_a = (classElement.finisher && classElement.finisher(Class))) !== null && _a !== void 0 ? _a : Class;
+                return (classElement.finisher && classElement.finisher(Class)) ?? Class;
             },
         };
     }
@@ -24,9 +23,8 @@ export function attribute(handlerOrProto, propName, descriptor) {
             return {
                 ...classElement,
                 finisher(Class) {
-                    var _a;
                     _attribute(Class.prototype, classElement.key, undefined, handler);
-                    return (_a = (classElement.finisher && classElement.finisher(Class))) !== null && _a !== void 0 ? _a : Class;
+                    return (classElement.finisher && classElement.finisher(Class)) ?? Class;
                 },
             };
         }
@@ -61,12 +59,11 @@ function mapAttributeToProp(prototype, attr, prop, handler) {
         prototype.__hasAttributeChangedCallback = true;
         const originalAttrChanged = prototype.attributeChangedCallback;
         prototype.attributeChangedCallback = function (attr, oldVal, newVal) {
-            var _a, _b;
             if (originalAttrChanged) {
                 originalAttrChanged.call(this, attr, oldVal, newVal);
             }
             else {
-                (_b = (_a = prototype.__proto__) === null || _a === void 0 ? void 0 : _a.attributeChangedCallback) === null || _b === void 0 ? void 0 : _b.call(this, attr, oldVal, newVal);
+                prototype.__proto__?.attributeChangedCallback?.call(this, attr, oldVal, newVal);
             }
             const prop = this.__attributesToProps && this.__attributesToProps[attr];
             if (prop) {
