@@ -18,13 +18,23 @@ jobs:
               uses: actions/setup-node@v3
               with:
                   node-version: latest
-            - name: npm install, build, and test
+            - name: install
               run: |
                   npm i
+            - name: check formatting
+              run: |
+                  npm run prettier:check
+            - name: build
+              run: |
                   npm run clean
                   npm run build
+            - name: test
+              run: |
                   npm test
-            - name: ensure no modifications
-              run: git add . && git diff --quiet && git diff --cached --quiet
+            - name: check repo is clean
+              # skip this check in windows for now, as the build outputs may get slightly modified in Windows, which we want to fix.
+              if: runner.os != 'Windows'
+              run: |
+                  git add . && git diff --quiet && git diff --cached --quiet
               env:
                   CI: true
