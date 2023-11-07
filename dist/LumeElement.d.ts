@@ -40,11 +40,11 @@ declare class LumeElement extends HTMLElement {
 }
 export { LumeElement as Element };
 import type { JSX } from './jsx-runtime';
-declare type JSXOrDOM = JSX.Element | globalThis.Element;
-declare type TemplateContent = JSXOrDOM | JSXOrDOM[];
-declare type Template = TemplateContent | (() => TemplateContent);
-export declare type ElementAttributes<ElementType, SelectedProperties extends keyof ElementType, AdditionalProperties extends object = {}> = WithStringValues<DashCasedProps<Partial<Pick<ElementType, SelectedProperties>>>> & AdditionalProperties & Omit<JSX.HTMLAttributes<ElementType>, SelectedProperties | keyof AdditionalProperties>;
-declare type WithStringValues<Type extends object> = {
+type JSXOrDOM = JSX.Element | globalThis.Element;
+type TemplateContent = JSXOrDOM | JSXOrDOM[];
+type Template = TemplateContent | (() => TemplateContent);
+export type ElementAttributes<ElementType, SelectedProperties extends keyof ElementType, AdditionalProperties extends object = {}> = WithStringValues<DashCasedProps<Partial<Pick<ElementType, SelectedProperties>>>> & AdditionalProperties & Omit<JSX.HTMLAttributes<ElementType>, SelectedProperties | keyof AdditionalProperties>;
+type WithStringValues<Type extends object> = {
     [Property in keyof Type]: Type[Property] extends string ? Type[Property] : Type[Property] | string;
 };
 //# sourceMappingURL=LumeElement.d.ts.map

@@ -8,21 +8,7 @@ const HTMLElement = globalThis.HTMLElement ??
         }
     };
 class LumeElement extends HTMLElement {
-    constructor() {
-        super(...arguments);
-        this.___init___ = (() => {
-            this.__handleInitialPropertyValuesIfAny();
-        })();
-        this.hasShadow = true;
-        this.__root = null;
-        this.__styleRootNode = null;
-        this.#defaultHostStyle = (hostSelector) => `${hostSelector} {
-		display: block;
-	}`;
-        this.__id = LumeElement.__elementId++;
-        this.__dynamicStyle = null;
-    }
-    static { this.elementName = ''; }
+    static elementName = '';
     static defineElement(name, registry = customElements) {
         if (!name) {
             name = this.elementName;
@@ -47,6 +33,11 @@ class LumeElement extends HTMLElement {
             }
         }
     }
+    static reactiveProperties;
+    static observedAttributes;
+    ___init___ = (() => {
+        this.__handleInitialPropertyValuesIfAny();
+    })();
     __handleInitialPropertyValuesIfAny() {
         const preUpgradeKeys = Object.keys(this);
         this._preUpgradeValues = new Map();
@@ -69,6 +60,8 @@ class LumeElement extends HTMLElement {
             }
         }
     }
+    hasShadow = true;
+    __root = null;
     get root() {
         if (!this.hasShadow)
             return this;
@@ -103,8 +96,11 @@ class LumeElement extends HTMLElement {
         this.__dispose && this.__dispose();
         this.__cleanupStyle();
     }
-    static { this.__styleRootNodeRefCountPerTagName = new WeakMap(); }
-    #defaultHostStyle;
+    static __styleRootNodeRefCountPerTagName = new WeakMap();
+    __styleRootNode = null;
+    #defaultHostStyle = (hostSelector) => `${hostSelector} {
+		display: block;
+	}`;
     __setStyle() {
         ctor = this.constructor;
         const staticCSS = typeof ctor.css === 'function' ? (ctor.css = ctor.css()) : ctor.css || '';
@@ -149,7 +145,9 @@ class LumeElement extends HTMLElement {
             }
         }
     }
-    static { this.__elementId = 0; }
+    static __elementId = 0;
+    __id = LumeElement.__elementId++;
+    __dynamicStyle = null;
     __cleanupStyle() {
         do {
             if (this.hasShadow)

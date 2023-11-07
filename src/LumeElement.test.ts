@@ -1,6 +1,12 @@
 import {Element, element, reactive, autorun} from './index.js'
 import html from 'solid-js/html'
-import {attribute, AttributeHandler} from './attribute.js'
+import {attribute, type AttributeHandler} from './attribute.js'
+
+// TODO move type def to @lume/cli, map @types/jest's `expect` type into the
+// global env.
+declare global {
+	function expect(...args: any[]): any
+}
 
 describe('LumeElement', () => {
 	it('can be extended by custom element classes', () => {
@@ -620,7 +626,7 @@ describe('LumeElement', () => {
 		expect(el2).toBeInstanceOf(ManualEl)
 		expect(el2).toBeInstanceOf(ManualEl2)
 		expect(el2.tagName.toLowerCase()).toBe(ManualEl2.elementName)
-		expect(el2.tagName.toLowerCase()).toBe(el2.constructor.elementName)
+		expect(el2.tagName.toLowerCase()).toBe((el2.constructor as typeof Element).elementName)
 		expect(el2.tagName.toLowerCase()).toBe(name2)
 
 		// TODO test scoped registries once those are out in browsers.
