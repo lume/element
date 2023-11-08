@@ -8,7 +8,6 @@ declare class LumeElement extends HTMLElement {
     #private;
     static elementName: string;
     static defineElement(name?: string, registry?: CustomElementRegistry): typeof LumeElement;
-    static reactiveProperties?: string[];
     static observedAttributes?: string[] | Record<string, AttributeHandler>;
     private __attributesToProps?;
     protected _preUpgradeValues: Map<PropertyKey, unknown>;

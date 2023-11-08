@@ -33,7 +33,6 @@ class LumeElement extends HTMLElement {
             }
         }
     }
-    static reactiveProperties;
     static observedAttributes;
     ___init___ = (() => {
         this.__handleInitialPropertyValuesIfAny();

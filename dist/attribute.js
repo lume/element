@@ -1,60 +1,59 @@
+import { signal } from 'classy-solid';
 import { camelCaseToDash, defineProp } from './_utils.js';
-export function attribute(handlerOrProto, propName, descriptor) {
-    const isDecoratorV2 = handlerOrProto && 'kind' in handlerOrProto;
-    if (isDecoratorV2) {
-        const classElement = handlerOrProto;
-        return {
-            ...classElement,
-            finisher(Class) {
-                _attribute(Class.prototype, classElement.key);
-                return (classElement.finisher && classElement.finisher(Class)) ?? Class;
-            },
+export const __classFinishers = [];
+export function attribute(...args) {
+    if (args.length === 2)
+        return handleAttributeDecoration(args, undefined);
+    const [handler] = args;
+    return (...args) => handleAttributeDecoration(args, handler);
+}
+function handleAttributeDecoration(args, attributeHandler = {}) {
+    const [_, context] = args;
+    const { kind, name, private: isPrivate, static: isStatic } = context;
+    if (typeof name === 'symbol')
+        throw new Error('@attribute is not supported on symbol fields yet.');
+    if (isPrivate)
+        throw new Error('@attribute is not supported on private fields yet.');
+    if (isStatic)
+        throw new Error('@attribute is not supported on static fields.');
+    __classFinishers.push((Class) => __setUpAttribute(Class, name, attributeHandler));
+    if (kind === 'field') {
+        const signalInitializer = signal(_, context);
+        return function (initialValue) {
+            initialValue = signalInitializer(initialValue);
+            attributeHandler.default = 'default' in attributeHandler ? attributeHandler.default : initialValue;
+            return initialValue;
         };
     }
-    if (handlerOrProto && propName) {
-        const prototype = handlerOrProto;
-        return _attribute(prototype, propName, descriptor);
+    else if (kind === 'accessor') {
+        throw new Error('@attribute is not supported on `accessor` fields yet. Use it on a plain class field, along with the @element decorator applied on the same class.');
     }
-    const handler = handlerOrProto;
-    return (protoOrClassElement, propName, descriptor) => {
-        const isDecoratorV2 = protoOrClassElement && 'kind' in protoOrClassElement;
-        if (isDecoratorV2) {
-            const classElement = protoOrClassElement;
-            return {
-                ...classElement,
-                finisher(Class) {
-                    _attribute(Class.prototype, classElement.key, undefined, handler);
-                    return (classElement.finisher && classElement.finisher(Class)) ?? Class;
-                },
-            };
-        }
-        return _attribute(protoOrClassElement, propName, descriptor, handler);
-    };
+    else if (kind === 'getter' || kind === 'setter') {
+        signal(_, context);
+    }
+    else {
+        throw new Error('@attribute is only for use on fields, accessors, getters, and setters.');
+    }
+    return undefined;
 }
-export function _attribute(prototype, propName, descriptor, attributeHandler) {
-    const ctor = prototype.constructor;
-    if (!ctor.observedAttributes || !ctor.hasOwnProperty('observedAttributes')) {
+export function __setUpAttribute(ctor, propName, attributeHandler) {
+    if (!ctor.observedAttributes ||
+        !ctor.hasOwnProperty('observedAttributes')) {
         const inheritedAttrs = ctor.__proto__.observedAttributes;
         if (inheritedAttrs && !Array.isArray(inheritedAttrs)) {
-            throw new TypeError('observedAttributes is in the wrong format. Maybe you forgot to decorate your custom element class with the `element` decorator.');
+            throw new TypeError('observedAttributes is in the wrong format. Did you forget to decorate your custom element class with the `@element` decorator?');
         }
         defineProp(ctor, 'observedAttributes', [...(inheritedAttrs || [])]);
     }
     if (!Array.isArray(ctor.observedAttributes)) {
-        throw new TypeError('observedAttributes is in the wrong format. Maybe you forgot to decorate your custom element class with the `element` decorator.');
+        throw new TypeError('observedAttributes is in the wrong format. Maybe you forgot to decorate your custom element class with the `@element` decorator.');
     }
     const attrName = camelCaseToDash(propName);
     if (!ctor.observedAttributes.includes(attrName))
         ctor.observedAttributes.push(attrName);
-    if (!ctor.reactiveProperties || !ctor.hasOwnProperty('reactiveProperties'))
-        defineProp(ctor, 'reactiveProperties', [...(ctor.reactiveProperties || [])]);
-    if (!ctor.reactiveProperties.includes(propName))
-        ctor.reactiveProperties.push(propName);
-    mapAttributeToProp(prototype, attrName, propName, attributeHandler);
-    if (descriptor)
-        return descriptor;
+    mapAttributeToProp(ctor.prototype, attrName, propName, attributeHandler);
 }
-function mapAttributeToProp(prototype, attr, prop, handler) {
+function mapAttributeToProp(prototype, attr, prop, attributeHandler) {
     if (!prototype.__hasAttributeChangedCallback) {
         prototype.__hasAttributeChangedCallback = true;
         const originalAttrChanged = prototype.attributeChangedCallback;
@@ -68,7 +67,15 @@ function mapAttributeToProp(prototype, attr, prop, handler) {
             const prop = this.__attributesToProps && this.__attributesToProps[attr];
             if (prop) {
                 const handler = prop.attributeHandler;
-                this[prop.name] = handler && handler.from ? handler.from(newVal) : newVal;
+                this[prop.name] = !handler
+                    ? newVal
+                    : newVal === null
+                        ? 'default' in handler
+                            ? handler.default
+                            : null
+                        : handler.from
+                            ? handler.from(newVal)
+                            : newVal;
             }
         };
     }
@@ -80,37 +87,25 @@ function mapAttributeToProp(prototype, attr, prop, handler) {
         });
     }
     if (prototype.__attributesToProps[attr]) {
-        console.warn('The `@attribute` decorator is overriding an already-existing attribute-to-property mapping for the "' +
+        console.debug('The `@attribute` decorator is overriding an already-existing attribute-to-property mapping for the "' +
             attr +
             '" attribute.');
     }
-    prototype.__attributesToProps[attr] = { name: prop, attributeHandler: handler };
+    prototype.__attributesToProps[attr] = { name: prop, attributeHandler };
 }
-attribute.string = ((def = '') => ({
-    default: def,
-    from(str) {
-        return str == null ? this.default : str;
-    },
-}));
-export function stringAttribute(defaultValue = '') {
-    return attribute(attribute.string(defaultValue));
+const toString = (str) => str;
+attribute.string = (() => ({ from: toString }));
+export function stringAttribute(value, context) {
+    return attribute(attribute.string())(value, context);
 }
-attribute.number = ((def = 0) => ({
-    default: def,
-    from(str) {
-        return str == null ? this.default : +str;
-    },
-}));
-export function numberAttribute(defaultValue = 0) {
-    return attribute(attribute.number(defaultValue));
+const toNumber = (str) => +str;
+attribute.number = (() => ({ from: toNumber }));
+export function numberAttribute(value, context) {
+    return attribute(attribute.number())(value, context);
 }
-attribute.boolean = ((def = false) => ({
-    default: def,
-    from(str) {
-        return str == null ? this.default : str !== 'false';
-    },
-}));
-export function booleanAttribute(defaultValue = false) {
-    return attribute(attribute.boolean(defaultValue));
+const toBoolean = (str) => str !== 'false';
+attribute.boolean = (() => ({ from: toBoolean }));
+export function booleanAttribute(value, context) {
+    return attribute(attribute.boolean())(value, context);
 }
 //# sourceMappingURL=attribute.js.map

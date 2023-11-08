@@ -163,15 +163,6 @@ describe('LumeElement', () => {
 	xit('TODO same as previous test, but using signalify() instead of @reactive')
 
 	it('forgetting to use @reactive, @element, or signalify() causes a runtime error', () => {
-		// This error is caused due to an issue with Babel's legacy decorators
-		// making descriptors non-writable:
-		// https://github.com/babel/babel/issues/12419
-		//
-		// Without the class decorators (or signalify), then the descriptors on
-		// `this` will not be deleted (the reactive accessors will not be
-		// unshadowed) and the properties that Babel placed on `this` are
-		// non-writable.
-
 		// @reactive <---- user forgets to use the class decorator, or forgets to use `signalify()`
 		class MyEl extends Element {
 			@signal message = 'hello'
@@ -180,6 +171,17 @@ describe('LumeElement', () => {
 		}
 
 		customElements.define('html-template3', MyEl)
+
+		// This class will throw when it detects an extraneous property due to
+		// the previous class missing @reactive.
+		expect(() => {
+			@reactive
+			class OtherClass {
+				@signal foo = 123
+			}
+
+			new OtherClass()
+		}).toThrow('Did you forget to use the `@reactive` decorator')
 
 		const el = new MyEl() as any
 		document.body.append(el)
@@ -193,13 +195,6 @@ describe('LumeElement', () => {
 			el.message = 'goodbye'
 			el.count++
 		})
-
-		// CONTINUE delete this
-		// No longer the case because @lume/variable no longer sets descriptors
-		// on prototypes, and requires a class decoraator to finalize the
-		// reactivity implementation.
-		// if (process.env.DECORATOR_CAUSES_NONWRITABLE_ERROR) expectation.toThrow()
-		// else expectation.not.toThrow()
 
 		expectation.not.toThrow()
 	})
@@ -303,15 +298,10 @@ describe('LumeElement', () => {
 
 		expect(fooEl.root).toBe(fooEl)
 
-		console.log('  )))) descriptor on element', Object.getOwnPropertyDescriptor(fooEl, 'foo'))
-
 		// CONTINUE: Check that default value gets applied.
-		console.log(' >>>>>>> check attributes <<<<<<< ')
 		fooEl.setAttribute('foo', '456')
-		console.log(fooEl.getAttribute('foo'), fooEl.foo)
 		expect(fooEl.foo).toBe(456)
 		fooEl.removeAttribute('foo')
-		console.log(fooEl.getAttribute('foo'), fooEl.foo)
 		// expect(fooEl.foo).toBe(123)
 		expect(fooEl.foo).toBe(3)
 
@@ -328,7 +318,6 @@ describe('LumeElement', () => {
 		}) // run 1
 		expect(count).toBe(1)
 
-		console.log(' <<<<<<<<<<<<<< "foo" descriptor in test:', Object.getOwnPropertyDescriptor(fooEl, 'foo'))
 		fooEl.foo = 10 // run 2
 		expect(count).toBe(2)
 		fooEl.bar = 20 // run 3
@@ -510,7 +499,6 @@ describe('LumeElement', () => {
 			count++
 		})
 		expect(count).toBe(1)
-		console.log(' ------------- foo desc:', Object.getOwnPropertyDescriptor(fooEl, 'foo'))
 
 		fooEl.foo = 10 // run 2
 		expect(count).toBe(2)
@@ -613,10 +601,7 @@ describe('LumeElement', () => {
 			@attribute amount = 3
 		}
 
-		function someOtherDecorator(Class: any) {
-			console.log('class:', Class)
-			if (arguments.length === 1 && 'kind' in Class && Class.kind === 'class')
-				return {...Class, finisher: (Klass: any) => class Foo extends Klass {}}
+		function someOtherDecorator(Class: any, _context: any): any {
 			return class Foo extends Class {}
 		}
 

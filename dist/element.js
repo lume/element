@@ -1,55 +1,75 @@
-import { reactive } from './variable.js';
+import { reactive, signalify } from 'classy-solid';
 import { Element } from './LumeElement.js';
-import { _attribute } from './attribute.js';
-export function element(tagNameOrClassOrClassElement, autoDefine = true) {
+import { __classFinishers, __setUpAttribute } from './attribute.js';
+export function element(...args) {
+    const [tagNameOrClass, autoDefineOrContext] = args;
     let tagName = '';
-    if (typeof tagNameOrClassOrClassElement === 'string') {
-        tagName = tagNameOrClassOrClassElement;
-        return elementDecorator.bind(null, tagName, autoDefine);
+    let autoDefine = !!(autoDefineOrContext ?? true);
+    if (typeof tagNameOrClass === 'string') {
+        tagName = tagNameOrClass;
+        return (...args) => {
+            const [Class, context] = args;
+            return applyElementDecoration(Class, context, tagName, autoDefine);
+        };
     }
     autoDefine = false;
-    const classOrClassElement = tagNameOrClassOrClassElement;
-    return elementDecorator(tagName, autoDefine, classOrClassElement);
+    const Class = tagNameOrClass;
+    const context = autoDefineOrContext;
+    return applyElementDecoration(Class, context, tagName, autoDefine);
 }
-function elementDecorator(tagName, autoDefine, classOrClassElement) {
-    if ('kind' in classOrClassElement) {
-        const classElement = classOrClassElement;
-        return { ...classElement, finisher: elementFinisher.bind(null, tagName, autoDefine) };
-    }
-    const Class = classOrClassElement;
-    return elementFinisher(tagName, autoDefine, Class);
-}
-function elementFinisher(tagName, autoDefine, Class) {
-    const attrs = Class.observedAttributes;
-    if (Class.hasOwnProperty('elementName'))
-        tagName = Class.elementName || tagName;
+function applyElementDecoration(Class, context, tagName, autoDefine) {
+    if (typeof Class !== 'function' || (context && context.kind !== 'class'))
+        throw new Error('@element is only for use on classes.');
+    let Ctor = Class;
+    const attrs = Ctor.observedAttributes;
+    if (Ctor.hasOwnProperty('elementName'))
+        tagName = Ctor.elementName || tagName;
     else
-        Class.elementName = tagName;
+        Ctor.elementName = tagName;
     if (Array.isArray(attrs)) {
     }
     else if (attrs && typeof attrs === 'object') {
-        Class.observedAttributes = undefined;
+        Ctor.observedAttributes = undefined;
         for (const prop in attrs)
-            _attribute(Class.prototype, prop, undefined, attrs[prop]);
+            __setUpAttribute(Ctor, prop, attrs[prop]);
     }
-    Class = reactive(Class);
-    class ElementDecoratorFinisher extends Class {
+    Ctor = reactive(Ctor, context);
+    class ElementDecoratorFinisher extends Ctor {
         constructor(...args) {
             super(...args);
             handlePreUpgradeValues(this);
+            const keys = [];
+            const attrsToProps = ElementDecoratorFinisher.prototype.__attributesToProps;
+            for (const key in attrsToProps) {
+                if (Object.hasOwn(attrsToProps, key))
+                    keys.push(attrsToProps[key].name);
+            }
+            if (keys.length)
+                signalify(this, ...keys);
         }
     }
-    if (tagName && autoDefine)
-        customElements.define(tagName, ElementDecoratorFinisher);
+    const classFinishers = [...__classFinishers];
+    __classFinishers.length = 0;
+    function finishClass() {
+        for (const finisher of classFinishers)
+            finisher(ElementDecoratorFinisher);
+        if (tagName && autoDefine)
+            customElements.define(tagName, ElementDecoratorFinisher);
+    }
+    if (context?.addInitializer) {
+        context.addInitializer(finishClass);
+    }
+    else {
+        queueMicrotask(finishClass);
+    }
     return ElementDecoratorFinisher;
 }
 function handlePreUpgradeValues(self) {
     if (!(self instanceof Element))
         return;
     for (const [key, value] of self._preUpgradeValues) {
-        if (!(key in self)) {
+        if (!(key in self))
             continue;
-        }
         self._preUpgradeValues.delete(key);
         const desc = Object.getOwnPropertyDescriptor(self, key);
         if (desc && 'value' in desc) {

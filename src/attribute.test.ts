@@ -1,4 +1,4 @@
-import {createEffect, createRoot} from 'solid-js'
+import {createEffect} from 'solid-js'
 import {signal} from 'classy-solid'
 import {Element, element, attribute, numberAttribute, booleanAttribute} from './index.js'
 
@@ -30,7 +30,7 @@ describe('@attribute tests', () => {
 	it('attributes can be mapped to properties with @attribute', () => {
 		@element('foo-bar')
 		class FooBar extends HTMLElement {
-			@attribute foo: string | null = '0'
+			@attribute foo: string = '0'
 		}
 
 		const f = new FooBar()
@@ -64,7 +64,7 @@ describe('@attribute tests', () => {
 
 		f.removeAttribute('foo')
 		expect(count).toBe(4)
-		expect(f.foo).toBe(null)
+		expect(f.foo).toBe('0')
 
 		ff.foo = 'good night!'
 		expect(count).toBe(5)
@@ -77,7 +77,7 @@ describe('@attribute tests', () => {
 	it("@signal doesn't need to be used if using @attribute, as those are @signal too", () => {
 		@element('pur-pose')
 		class Purpose extends Element {
-			@attribute purpose: string | null = '0'
+			@attribute purpose: string = '0'
 		}
 
 		const f = new Purpose()
@@ -152,9 +152,9 @@ describe('various types of attributes', () => {
 		@element('x-person')
 		class Person extends HTMLElement {
 			// Currently the typed attributes need an arg for the default value.
-			@numberAttribute(0) age = 0
-			@numberAttribute(0) weight = 0
-			@numberAttribute(0) height = 0
+			@numberAttribute age = 0
+			@numberAttribute weight = 0
+			@numberAttribute height = 0
 		}
 
 		const p = new Person()
@@ -238,8 +238,8 @@ describe('various types of attributes', () => {
 			// value to `false` to have the result be `false` when the
 			// attribute is not present or when it is explicitly set to
 			// "false".
-			@booleanAttribute(false) hasCat = false
-			@booleanAttribute(true) hasDog = true
+			@booleanAttribute hasCat = false
+			@booleanAttribute hasDog = true
 		}
 
 		const p = new PetLover()

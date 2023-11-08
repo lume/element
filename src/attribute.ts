@@ -155,13 +155,6 @@ function mapAttributeToProp(prototype: any, attr: string, prop: string, attribut
 				prototype.__proto__?.attributeChangedCallback?.call(this, attr, oldVal, newVal)
 			}
 
-			// CONTINUE it seems that removeAttribute() is not running through
-			// here, and the foo JS prop in the test is not being set to the
-			// default value.
-			// CONTINUE Verify if this is still happening
-			console.log(' %%%%%%%%%% attribute changed!', attr, oldVal, newVal)
-			if (newVal == null) console.log(' %%%%%%%%%% attribute removed!', attr)
-
 			// map from attribute to property
 			const prop = this.__attributesToProps && this.__attributesToProps[attr]
 

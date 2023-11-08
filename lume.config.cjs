@@ -3,7 +3,7 @@ module.exports = {
 
 	importMap: {
 		imports: {
-			'@lume/variable': '/node_modules/@lume/variable/dist/index.js',
+			'classy-solid': '/node_modules/classy-solid/dist/index.js',
 			lowclass: '/node_modules/lowclass/dist/index.js',
 			'solid-js': '/node_modules/solid-js/dist/solid.js',
 			'solid-js/web': '/node_modules/solid-js/web/dist/web.js',

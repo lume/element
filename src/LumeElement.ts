@@ -78,6 +78,7 @@ class LumeElement extends HTMLElement {
 	protected declare _preUpgradeValues: Map<PropertyKey, unknown>
 
 	// __propsSetAtLeastOnce__ comes from @lume/variable's @reactive decorator.
+	// CONTINUE delete if no longer needed on classy-solid
 	// It is a Set<string> that tells us if a reactive property has been set at
 	// least once,
 	// TODO replace with new API from classy-solid

@@ -194,7 +194,6 @@ function applyElementDecoration(
 				// @ts-expect-error private access
 				ElementDecoratorFinisher.prototype.__attributesToProps
 			for (const key in attrsToProps) {
-				// @ts-expect-error Object.hasOwn exists
 				if (Object.hasOwn(attrsToProps, key)) keys.push(attrsToProps[key].name as keyof this)
 			}
 			if (keys.length) signalify(this, ...keys)
