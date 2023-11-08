@@ -1,50 +1,47 @@
 {
 	"name": "@lume/element",
-	"version": "0.6.5",
+	"version": "0.10.1",
 	"description": "Create Custom Elements with reactivity and automatic re-rendering.",
 	"author": "Joe Pea <joe@trusktr.io>",
 	"license": "MIT",
 	"homepage": "http://github.com/lume/element#readme",
 	"type": "module",
 	"main": "dist/index.js",
-	"// main": "The 'main' field is fallback for legacy Node.js that has no type:module support, otherwise Node 13.2+ ignores it if type:module is set.",
 	"types": "dist/index.d.ts",
 	"scripts": {
 		"LUME SCRIPTS XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX": "",
 		"clean": "lume clean",
 		"build": "lume build && npm run build:copy",
-		"build:copy": "npm run build:copy:jsx-runtime && npm run build:copy:babel-preset",
+		"build:copy": "npm run build:copy:jsx-runtime",
 		"build:copy:jsx-runtime": "ncp ./dist/jsx-runtime.d.ts ./jsx-runtime.d.ts && ncp ./dist/jsx-runtime.js ./jsx-runtime.js",
-		"build:copy:babel-preset": "ncp ./babel-preset.cjs ./dist/babel-preset.cjs",
 		"// ^ build:copy TODO": "Add a copy files feature to lume build. This would copy specified files after each build or re-build. Perhaps add options for the existing copyAssets command",
 		"dev": "lume dev",
 		"typecheck": "lume typecheck",
 		"typecheck:watch": "lume typecheckWatch",
 		"test": "lume test",
-		"test:debug": "lume testDebug",
+		"test:watch": "lume test --watch",
 		"prettier": "lume prettier",
 		"prettier:check": "lume prettierCheck",
 		"release:patch": "lume releasePatch",
 		"release:minor": "lume releaseMinor",
 		"release:major": "lume releaseMajor",
 		"version": "lume versionHook",
-		"postversion": "lume postVersionHook",
-		"OTHER SCRIPTS XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX": "",
-		"prepare": "npm run build"
+		"postversion": "lume postVersionHook"
 	},
+	"// CONTINUE determine if lit-dom-expressions is needed here, maybe solid-js has needed type defs now": "",
 	"dependencies": {
 		"babel-preset-solid": "^1.0.0",
 		"classy-solid": "^0.2.0",
 		"lit-dom-expressions": "^0.35.9",
-		"lowclass": "^5.0.0",
+		"lowclass": "^6.0.0",
 		"solid-js": "^1.0.0"
 	},
 	"devDependencies": {
-		"@lume/cli": "^0.9.0",
+		"@lume/cli": "^0.10.0",
 		"@types/react": "^17.0.0",
 		"ncp": "^2.0.0",
-		"prettier": "^2.0.0",
-		"typescript": "4.4.3"
+		"prettier": "3.0.3",
+		"typescript": "^5.0.0"
 	},
 	"peerDependencies": {
 		"@types/react": "*"

@@ -1,8 +1,14 @@
 import {createEffect} from 'solid-js'
+import html from 'solid-js/html'
 import {reactive, signal, signalify} from 'classy-solid'
 import {Element, element} from './index.js'
-import html from 'solid-js/html'
-import {attribute, AttributeHandler, numberAttribute} from './attribute.js'
+import {attribute, type AttributeHandler, numberAttribute} from './attribute.js'
+
+// TODO move type def to @lume/cli, map @types/jest's `expect` type into the
+// global env.
+declare global {
+	function expect(...args: any[]): any
+}
 
 describe('LumeElement', () => {
 	it('can be extended by custom element classes', () => {
@@ -561,7 +567,7 @@ describe('LumeElement', () => {
 		'TODO similar to the previous test, but instead of using @reactive + @element, using signalify() with customElements.define() for plain JS environments.',
 	)
 
-	fit('ensure wrapped @reactive decorator still automatically does not track reactivity in constructors', () => {
+	it('ensure wrapped @reactive decorator still automatically does not track reactivity in constructors', () => {
 		@element
 		class Foo extends Element {
 			@attribute amount = 3
@@ -647,5 +653,40 @@ describe('LumeElement', () => {
 		// then both variables should reference the same instance
 		expect(b!).toBe(b2)
 		expect(count).toBe(1)
+	})
+
+	it('allows manually calling defineElement on a class to define it a name or its default name, or to give it multiple names', () => {
+		const name1 = 'manual-el'
+		@element(name1, false)
+		class ManualEl extends Element {}
+
+		const el = document.createElement(name1)
+		document.body.append(el)
+
+		expect(el).not.toBeInstanceOf(ManualEl)
+
+		ManualEl.defineElement()
+		ManualEl.defineElement() // no error
+
+		expect(el).toBeInstanceOf(ManualEl)
+		expect(el.tagName.toLowerCase()).toBe(ManualEl.elementName)
+		expect(el.tagName.toLowerCase()).toBe(name1)
+
+		const name2 = 'manual-el2'
+		const el2 = document.createElement(name2)
+		document.body.append(el2)
+
+		const ManualEl2 = ManualEl.defineElement(name2)
+		ManualEl.defineElement(name2) // no error
+		ManualEl2.defineElement(name2) // no error
+
+		expect(el2).toBeInstanceOf(ManualEl)
+		expect(el2).toBeInstanceOf(ManualEl2)
+		expect(el2.tagName.toLowerCase()).toBe(ManualEl2.elementName)
+		expect(el2.tagName.toLowerCase()).toBe((el2.constructor as typeof Element).elementName)
+		expect(el2.tagName.toLowerCase()).toBe(name2)
+
+		// TODO test scoped registries once those are out in browsers.
+		// const registry = new CustomElementRegistry()
 	})
 })

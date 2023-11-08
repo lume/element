@@ -23,10 +23,46 @@ const HTMLElement =
 // tried, but TS has been updated for abstract mixin support.
 
 class LumeElement extends HTMLElement {
+	/** The default tag name of the elements this class is instantiated for. */
 	static elementName: string = ''
 
-	static defineElement(name?: string) {
-		customElements.define(name || this.elementName, this)
+	/**
+	 * Define this class for the given element `name`, or using its default name
+	 * (`elementName`) if no `name` given. Defaults to using the global
+	 * `customElements` registry unless another registry is provided (for
+	 * example a ShadowRoot-scoped registry).
+	 *
+	 * If a `name` is given, then the class will be extended with an empty
+	 * subclass so that a new class is used for each new name, because otherwise
+	 * a CustomElementRegistry does not allow the same exact class to be used
+	 * more than once regardless of the name.
+	 *
+	 * @returns Returns the defined element class, which is only going to be a
+	 * different subclass of the class this is called on if passing in a custom
+	 * `name`, otherwise returns the same class this is called on.
+	 */
+	static defineElement(name?: string, registry: CustomElementRegistry = customElements): typeof LumeElement {
+		if (!name) {
+			name = this.elementName
+			if (registry.get(name)) {
+				console.warn(`defineElement(): An element class was already defined for tag name ${name}.`)
+				return this
+			}
+			registry.define(name, this)
+			return this
+		} else {
+			if (registry.get(name)) {
+				console.warn(`defineElement(): An element class was already defined for tag name ${name}.`)
+				return this
+			} else {
+				// Allow the same element to be defined more than once using
+				// alternative names.
+				const Class = class extends this {}
+				Class.elementName = name
+				registry.define(name, Class)
+				return Class
+			}
+		}
 	}
 
 	// CONTINUE: we removed signalProperties (previously reactiveProperties) from
@@ -144,8 +180,27 @@ class LumeElement extends HTMLElement {
 		}
 	}
 
+	/**
+	 * If a subclass provides this, it should return DOM. It is called with
+	 * Solid.js `render()`, so it can also contain Solid.js reactivity (signals
+	 * and effects) and templating (DOM-returning reactive JSX or html template
+	 * literals).
+	 */
 	protected declare template?: Template
+
+	/**
+	 * If provided, this style gets created once per ShadowRoot of each element
+	 * instantiated from this class. The expression can access `this` for string
+	 * interpolation.
+	 */
 	protected declare css?: string | (() => string)
+
+	/**
+	 * If provided, this style gets created a single time for all elements
+	 * instantiated from this class, instead of once per element. If you do not
+	 * need to interpolate values into the string using `this`, then use this
+	 * static property for more performance compared to the instance property.
+	 */
 	protected declare static css?: string | (() => string)
 
 	/**
