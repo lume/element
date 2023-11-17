@@ -28,7 +28,6 @@
 		"version": "lume versionHook",
 		"postversion": "lume postVersionHook"
 	},
-	"// CONTINUE determine if lit-dom-expressions is needed here, maybe solid-js has needed type defs now": "",
 	"dependencies": {
 		"babel-preset-solid": "^1.0.0",
 		"classy-solid": "^0.3.0",
