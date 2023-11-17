@@ -4,4 +4,4 @@ export * from './element.js'
 export * from './css.js'
 export type {JSX} from './jsx-runtime.js'
 
-export const version = '0.10.1'
+export const version = '0.11.0'
