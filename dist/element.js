@@ -1,14 +1,12 @@
 import { reactive, signalify } from 'classy-solid';
 import { Element } from './LumeElement.js';
 import { __classFinishers, __setUpAttribute } from './attribute.js';
-export function element(...args) {
-    const [tagNameOrClass, autoDefineOrContext] = args;
+export function element(tagNameOrClass, autoDefineOrContext) {
     let tagName = '';
     let autoDefine = !!(autoDefineOrContext ?? true);
     if (typeof tagNameOrClass === 'string') {
         tagName = tagNameOrClass;
-        return (...args) => {
-            const [Class, context] = args;
+        return (Class, context) => {
             return applyElementDecoration(Class, context, tagName, autoDefine);
         };
     }
@@ -38,14 +36,18 @@ function applyElementDecoration(Class, context, tagName, autoDefine) {
         constructor(...args) {
             super(...args);
             handlePreUpgradeValues(this);
-            const keys = [];
+            const props = [];
             const attrsToProps = ElementDecoratorFinisher.prototype.__attributesToProps;
-            for (const key in attrsToProps) {
-                if (Object.hasOwn(attrsToProps, key))
-                    keys.push(attrsToProps[key].name);
+            for (const attr in attrsToProps) {
+                const prop = attrsToProps[attr].name;
+                if (Object.hasOwn(attrsToProps, attr))
+                    props.push(prop);
+                const handler = attrsToProps[attr].attributeHandler;
+                if (handler && !('default' in handler))
+                    handler.default = this[prop];
             }
-            if (keys.length)
-                signalify(this, ...keys);
+            if (props.length)
+                signalify(this, ...props);
         }
     }
     const classFinishers = [...__classFinishers];

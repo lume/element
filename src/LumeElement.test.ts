@@ -244,10 +244,10 @@ describe('LumeElement', () => {
 
 			// TODO static readonly hasShadow = false
 
-			// Use both decorators so that we ensure both features surive the element upgrade.
-			// @attribute foo = 3
+			// Use both types of decorators so that we ensure both features surive the element upgrade.
 			@numberAttribute foo = 3
-			// @attribute({default: 123}) foo = 3
+			@attribute foo2 = 3.5
+			@attribute({default: true}) foo3: boolean | number = 3.6
 			@signal bar = 4
 			@attribute baz: string | number = 5
 			@signal lorem = 6
@@ -298,12 +298,22 @@ describe('LumeElement', () => {
 
 		expect(fooEl.root).toBe(fooEl)
 
-		// CONTINUE: Check that default value gets applied.
 		fooEl.setAttribute('foo', '456')
 		expect(fooEl.foo).toBe(456)
 		fooEl.removeAttribute('foo')
-		// expect(fooEl.foo).toBe(123)
 		expect(fooEl.foo).toBe(3)
+
+		expect(fooEl.foo2).toBe(3.5)
+		fooEl.setAttribute('foo2', '456')
+		expect(fooEl.foo2).toBe('456')
+		fooEl.removeAttribute('foo2')
+		expect(fooEl.foo2).toBe(3.5)
+
+		expect(fooEl.foo3).toBe(3.6)
+		fooEl.setAttribute('foo3', '456')
+		expect(fooEl.foo3).toBe('456')
+		fooEl.removeAttribute('foo3')
+		expect(fooEl.foo3).toBe(true)
 
 		let count = 0
 		createEffect(() => {
@@ -428,15 +438,8 @@ describe('LumeElement', () => {
 				constructor() {
 					super()
 
-					// When not using decorators, we have to do the following.
-					// TODO perhaps this should not be required if already defined observedAttributes.
+					// When not using decorators, we have to do the following for non-attribute properties.
 					signalify(this, 'bar', 'lorem', 'boop', 'bop')
-
-					// CONTINUE: This is currently required because we removed
-					// the static signalProperties which the observedAttributes
-					// populated and then the reactive decorator made reactive.
-					// It was a bit of a coupling.
-					// signalify(this, 'foo', 'baz', 'ping', 'pong', 'beep')
 				}
 
 				__handleInitialPropertyValuesIfAny() {

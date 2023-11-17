@@ -11,8 +11,6 @@ declare class LumeElement extends HTMLElement {
     static observedAttributes?: string[] | Record<string, AttributeHandler>;
     private __attributesToProps?;
     protected _preUpgradeValues: Map<PropertyKey, unknown>;
-    protected __propsSetAtLeastOnce__?: Set<PropertyKey>;
-    protected __reactifiedProps__?: Set<PropertyKey>;
     protected ___init___: void;
     private __handleInitialPropertyValuesIfAny;
     protected template?: Template;

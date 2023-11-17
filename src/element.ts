@@ -1,32 +1,16 @@
-// CONTINUE: classy-solid is on the old lume/cli, but we need to switch to new
-// CLI to track the build output on version updates and to use the electron-less
-// test setup.
-
-// Then we need to do the same here for lume/element
-
-// CONTINUE: ensure that el.__reactifiedProps__ (or similar, if we renamed it) does
-// not prevent subclasses from overriding a property. In lume/variable edition of
-// lume/element, if the list contains a property that was already reactified in a
-// super class, the subclass that defines an reactive proeprty (f.e. with
-// @attribute) will not have its property reactified, and the subclass property
-// will end up as a regular non-reactive class field with a value descriptor.
-
 import {reactive, signalify} from 'classy-solid'
 import {Element} from './LumeElement.js'
 import {__classFinishers, __setUpAttribute} from './attribute.js'
 
-import type {DecoratedValue, DecoratorArgs, DecoratorContext} from 'classy-solid/dist/decorators/types.js'
-// import type {Element as LumeElement} from './LumeElement.js'
+import type {AnyConstructor} from 'lowclass'
+import type {DecoratedValue} from 'classy-solid/dist/decorators/types.js'
 import type {AttributeHandler} from './attribute.js'
 
 type PossibleStatics = {
 	observedAttributes?: string[] | Record<string, AttributeHandler>
-	signalProperties?: string[]
 	elementName?: string
-	__proto__?: any
+	__proto__: PossibleStatics // used in attribute.ts
 }
-// type ElementCtor = typeof LumeElement & {__proto__: any} & PossibleStatics
-// type ElementCtor = {__proto__: any} & PossibleStatics
 export type ElementCtor = typeof Element & PossibleStatics
 
 /**
@@ -97,26 +81,22 @@ export type ElementCtor = typeof Element & PossibleStatics
  * class CoolElement extends HTMLElement {...}
  * ```
  */
-// export function element<T extends typeof HTMLElement>(Class: T, context?: DecoratorContext): T
-// export function element(
-// 	tagName: string,
-// 	autoDefine?: boolean,
-// ): <T extends typeof HTMLElement>(Class: T, context?: DecoratorContext) => T
-// CONTINUE: Update to TS 5, so we can use better types than `any`
-export function element(...args: any[]): any {
-	// tagNameOrClass: string | typeof HTMLElement,
-	// autoDefineOrContext: boolean | DecoratorContext = true,
-
-	const [tagNameOrClass, autoDefineOrContext] = args as DecoratorArgs | [string, boolean | undefined]
-
+export function element<T extends AnyConstructor<HTMLElement>>(Class: T, context?: ClassDecoratorContext): T
+export function element(
+	tagName: string,
+	autoDefine?: boolean,
+): <T extends AnyConstructor<HTMLElement>>(Class: T, context?: ClassDecoratorContext) => T
+export function element(
+	tagNameOrClass: string | AnyConstructor<HTMLElement>,
+	autoDefineOrContext?: boolean | ClassDecoratorContext,
+): any {
 	let tagName = ''
 	let autoDefine = !!(autoDefineOrContext ?? true)
 
 	// when called as a decorator factory, f.e. `@element('foo-bar') class MyEl ...` or `element('my-el')(class MyEl ...)`
 	if (typeof tagNameOrClass === 'string') {
 		tagName = tagNameOrClass
-		return (...args: any[]) => {
-			const [Class, context] = args as DecoratorArgs
+		return (Class: AnyConstructor<HTMLElement>, context: ClassDecoratorContext) => {
 			return applyElementDecoration(Class, context, tagName, autoDefine)
 		}
 	}
@@ -159,7 +139,6 @@ function applyElementDecoration(
 		// following _setUpAttribute calls.
 		Ctor.observedAttributes = undefined
 
-		// This also adds the props to Class.signalProperties.
 		for (const prop in attrs) __setUpAttribute(Ctor, prop, attrs[prop])
 	}
 
@@ -170,10 +149,25 @@ function applyElementDecoration(
 		constructor(...args: any[]) {
 			// @ts-expect-error we don't know what the user's args will be, just pass them all.
 			super(...args)
+
 			handlePreUpgradeValues(this)
 
-			// For each non-decorator observedAttribute, make it also a signal.
-			//
+			const props: (keyof this)[] = []
+			const attrsToProps =
+				// @ts-expect-error private access
+				ElementDecoratorFinisher.prototype.__attributesToProps
+
+			for (const attr in attrsToProps) {
+				const prop = attrsToProps[attr].name as keyof this
+
+				if (Object.hasOwn(attrsToProps, attr)) props.push(prop)
+
+				// Default values for fields are handled in their initializer,
+				// and this catches default values for getters/setters.
+				const handler = attrsToProps[attr].attributeHandler
+				if (handler && !('default' in handler)) handler.default = this[prop]
+			}
+
 			// This is signalifying any attribute props that may have been
 			// defined in `static observedAttribute` rather than with @attribute
 			// decorator (which composes @signal), so that we also cover
@@ -183,20 +177,14 @@ function applyElementDecoration(
 			// signalified by @attribute (@signal), so this isn't going to
 			// double-signalify.
 			//
-			// TODO: Once native decorators are out, remove this, rely on the
-			// composition of decorators only, remove non-decorator usage
-			// because it won't be necessary (people won't need build tools),
-			// and having to duplicate keys in observedAttributes as well as
-			// class fields is more room for human error.
+			// TODO: Once native decorators are out, remove this, and remove
+			// non-decorator usage because everyone will be able to use
+			// decorators.
 			//
-			const keys: (keyof this)[] = []
-			const attrsToProps =
-				// @ts-expect-error private access
-				ElementDecoratorFinisher.prototype.__attributesToProps
-			for (const key in attrsToProps) {
-				if (Object.hasOwn(attrsToProps, key)) keys.push(attrsToProps[key].name as keyof this)
-			}
-			if (keys.length) signalify(this, ...keys)
+			// Having to duplicate keys in observedAttributes as well as class
+			// fields is more room for human error, so it'll be nice to remove
+			// non-decorator usage.
+			if (props.length) signalify(this, ...props)
 		}
 	}
 

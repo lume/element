@@ -1,22 +1,10 @@
-// CONTINUE:
-// - Note: make sure correct package versions are installed (f.e.cli 0.10 with stage 3 decos) and continue fixing tests.
-// - Note: update the version of Babel in the top level lume repo because the
-//   linked cli gets it from there.
-// - [x] the new examples/kitchen-sink demo almost works (make sure to copy top-level lume repo's node_modules/solid-js into element/node_modules first)
-//   - [x] the `static css` property broke, doesn't work in the example
-//     - this was because the @element() decorator runs during the static block
-//       that Babel prepends at the top of the class in which the decorator is
-//       executed, and this static block runs (and calls customElements.define())
-//       before the rest of the static properties get initialized. We used
-//       queueMicrotask, for now, to solve the issue.
-
 import {signal} from 'classy-solid'
-// import type {Element as LumeElement} from './LumeElement.js'
 import {camelCaseToDash, defineProp} from './_utils.js'
-import type {DecoratorArgs} from 'classy-solid/dist/decorators/types.js'
 import type {ElementCtor} from './element.js'
 
 export const __classFinishers: ((Class: ElementCtor) => void)[] = []
+
+type AttributeDecoratorContext = ClassFieldDecoratorContext | ClassGetterDecoratorContext | ClassSetterDecoratorContext
 
 /**
  * A decorator that when used on a property or accessor causes an HTML attribute
@@ -41,21 +29,24 @@ export const __classFinishers: ((Class: ElementCtor) => void)[] = []
  * }
  * ```
  */
-export function attribute(handler?: AttributeHandler): (value: any, context: any) => any
-export function attribute(value: any, context: any): any
-export function attribute(...args: any[]): any {
+export function attribute(handler?: AttributeHandler): (value: unknown, context: AttributeDecoratorContext) => any
+export function attribute(value: unknown, context: AttributeDecoratorContext): any
+export function attribute(handlerOrValue: AttributeHandler | unknown, context?: AttributeDecoratorContext) {
 	// if used as a decorator directly with no options
-	if (args.length === 2) return handleAttributeDecoration(args as DecoratorArgs, undefined)
+	if (arguments.length === 2) return handleAttributeDecoration(handlerOrValue, context!, undefined)
 
 	// otherwise used as a decorator factory, possibly being passed options, like `@attribute({...})`
-	const [handler] = args as [AttributeHandler | undefined]
-	return (...args: any[]): any => handleAttributeDecoration(args as DecoratorArgs, handler)
+	const handler = handlerOrValue as AttributeHandler | undefined
+	return (value: unknown, context: AttributeDecoratorContext): any => handleAttributeDecoration(value, context, handler)
 
-	// TODO check for @element used on class with @attribute decorations, similar to classy-solid @signal/@reactive.
+	// TODO throw an error for cases when @element is not used on a class with @attribute decorations, similar to classy-solid @signal/@reactive.
 }
 
-function handleAttributeDecoration(args: DecoratorArgs, attributeHandler: AttributeHandler = {}) {
-	const [_, context] = args
+function handleAttributeDecoration(
+	value: unknown,
+	context: AttributeDecoratorContext,
+	attributeHandler: AttributeHandler = {},
+) {
 	const {kind, name, private: isPrivate, static: isStatic} = context
 
 	if (typeof name === 'symbol') throw new Error('@attribute is not supported on symbol fields yet.')
@@ -66,11 +57,7 @@ function handleAttributeDecoration(args: DecoratorArgs, attributeHandler: Attrib
 	__classFinishers.push((Class: ElementCtor) => __setUpAttribute(Class, name, attributeHandler))
 
 	if (kind === 'field') {
-		// CONTINUE: We aren't composing decorators here, instead we're using
-		// signalify() in the class finisher. Ideally we elimimnate the plain JS
-		// usage, and just have decorator composition, once decorators are out.
-		//
-		const signalInitializer = signal(_, context)
+		const signalInitializer = signal(value, context)
 
 		return function (this: object, initialValue: unknown) {
 			initialValue = signalInitializer(initialValue)
@@ -79,15 +66,12 @@ function handleAttributeDecoration(args: DecoratorArgs, attributeHandler: Attrib
 
 			return initialValue
 		}
-	} else if (kind === 'accessor') {
-		// TODO accessor support
-		throw new Error(
-			'@attribute is not supported on `accessor` fields yet. Use it on a plain class field, along with the @element decorator applied on the same class.',
-		)
 	} else if (kind === 'getter' || kind === 'setter') {
-		signal(_, context)
+		signal(value, context)
 	} else {
-		throw new Error('@attribute is only for use on fields, accessors, getters, and setters.')
+		throw new Error(
+			'@attribute is only for use on fields, getters, and setters. Auto accessor support is coming next if there is demand for it.',
+		)
 	}
 
 	return undefined // shush TS
@@ -189,15 +173,6 @@ function mapAttributeToProp(prototype: any, attr: string, prop: string, attribut
 		})
 	}
 
-	// throw a helpful log if overriding an already-existing attribute-prop mapping
-	if (prototype.__attributesToProps![attr]) {
-		console.debug(
-			'The `@attribute` decorator is overriding an already-existing attribute-to-property mapping for the "' +
-				attr +
-				'" attribute.',
-		)
-	}
-
 	prototype.__attributesToProps![attr] = {name: prop, attributeHandler}
 }
 
@@ -236,7 +211,6 @@ type AttributeType<T> = () => AttributeHandler<T>
 
 const toString = (str: string) => str
 
-// CONTINUE test the new default that works even with plain @attribute, in tests, and in kitchen sink
 /**
  * An attribute type for use in the object form of `static observedAttributes`
  * when not using decorators.

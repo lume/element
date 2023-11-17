@@ -31,9 +31,8 @@
 	"// CONTINUE determine if lit-dom-expressions is needed here, maybe solid-js has needed type defs now": "",
 	"dependencies": {
 		"babel-preset-solid": "^1.0.0",
-		"classy-solid": "^0.2.0",
-		"lit-dom-expressions": "^0.35.9",
-		"lowclass": "^6.0.0",
+		"classy-solid": "^0.3.0",
+		"lowclass": "^7.0.0",
 		"solid-js": "^1.0.0"
 	},
 	"devDependencies": {

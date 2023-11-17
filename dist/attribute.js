@@ -1,14 +1,13 @@
 import { signal } from 'classy-solid';
 import { camelCaseToDash, defineProp } from './_utils.js';
 export const __classFinishers = [];
-export function attribute(...args) {
-    if (args.length === 2)
-        return handleAttributeDecoration(args, undefined);
-    const [handler] = args;
-    return (...args) => handleAttributeDecoration(args, handler);
+export function attribute(handlerOrValue, context) {
+    if (arguments.length === 2)
+        return handleAttributeDecoration(handlerOrValue, context, undefined);
+    const handler = handlerOrValue;
+    return (value, context) => handleAttributeDecoration(value, context, handler);
 }
-function handleAttributeDecoration(args, attributeHandler = {}) {
-    const [_, context] = args;
+function handleAttributeDecoration(value, context, attributeHandler = {}) {
     const { kind, name, private: isPrivate, static: isStatic } = context;
     if (typeof name === 'symbol')
         throw new Error('@attribute is not supported on symbol fields yet.');
@@ -18,21 +17,18 @@ function handleAttributeDecoration(args, attributeHandler = {}) {
         throw new Error('@attribute is not supported on static fields.');
     __classFinishers.push((Class) => __setUpAttribute(Class, name, attributeHandler));
     if (kind === 'field') {
-        const signalInitializer = signal(_, context);
+        const signalInitializer = signal(value, context);
         return function (initialValue) {
             initialValue = signalInitializer(initialValue);
             attributeHandler.default = 'default' in attributeHandler ? attributeHandler.default : initialValue;
             return initialValue;
         };
     }
-    else if (kind === 'accessor') {
-        throw new Error('@attribute is not supported on `accessor` fields yet. Use it on a plain class field, along with the @element decorator applied on the same class.');
-    }
     else if (kind === 'getter' || kind === 'setter') {
-        signal(_, context);
+        signal(value, context);
     }
     else {
-        throw new Error('@attribute is only for use on fields, accessors, getters, and setters.');
+        throw new Error('@attribute is only for use on fields, getters, and setters. Auto accessor support is coming next if there is demand for it.');
     }
     return undefined;
 }
@@ -85,11 +81,6 @@ function mapAttributeToProp(prototype, attr, prop, attributeHandler) {
                 __proto__: prototype.__attributesToProps || Object.prototype,
             },
         });
-    }
-    if (prototype.__attributesToProps[attr]) {
-        console.debug('The `@attribute` decorator is overriding an already-existing attribute-to-property mapping for the "' +
-            attr +
-            '" attribute.');
     }
     prototype.__attributesToProps[attr] = { name: prop, attributeHandler };
 }

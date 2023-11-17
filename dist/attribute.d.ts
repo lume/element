@@ -1,7 +1,8 @@
 import type { ElementCtor } from './element.js';
 export declare const __classFinishers: ((Class: ElementCtor) => void)[];
-export declare function attribute(handler?: AttributeHandler): (value: any, context: any) => any;
-export declare function attribute(value: any, context: any): any;
+type AttributeDecoratorContext = ClassFieldDecoratorContext | ClassGetterDecoratorContext | ClassSetterDecoratorContext;
+export declare function attribute(handler?: AttributeHandler): (value: unknown, context: AttributeDecoratorContext) => any;
+export declare function attribute(value: unknown, context: AttributeDecoratorContext): any;
 export declare namespace attribute {
     var string: AttributeType<string>;
     var number: AttributeType<number>;

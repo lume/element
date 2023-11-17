@@ -1,4 +1,5 @@
 import { render } from 'solid-js/web';
+import { __isPropSetAtLeastOnce } from 'classy-solid';
 import { defer } from './_utils.js';
 let ctor;
 const HTMLElement = globalThis.HTMLElement ??
@@ -46,12 +47,11 @@ class LumeElement extends HTMLElement {
                 delete this[propName];
                 this._preUpgradeValues.set(propName, descriptor.value);
                 defer(() => {
-                    const propSetAtLeastOnce = this.__propsSetAtLeastOnce__?.has(propName);
+                    const propSetAtLeastOnce = __isPropSetAtLeastOnce(this, propName);
                     if (propSetAtLeastOnce)
                         return;
                     const inheritsProperty = propName in this.__proto__;
-                    const hasReactifiedProp = this.__reactifiedProps__?.has(propName);
-                    if (inheritsProperty || hasReactifiedProp)
+                    if (inheritsProperty)
                         this[propName] = descriptor.value;
                 });
             }

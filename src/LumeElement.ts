@@ -1,4 +1,9 @@
 import {render} from 'solid-js/web'
+// __isPropSetAtLeastOnce was exposed by classy-solid specifically for
+// @lume/element to use. It tells us if a signal property has been set at
+// least once, and if so allows us to skip overwriting it with a custom
+// element preupgrade value.
+import {__isPropSetAtLeastOnce} from 'classy-solid'
 import {defer} from './_utils.js'
 
 import type {AttributeHandler} from './attribute'
@@ -19,8 +24,7 @@ const HTMLElement =
 		}
 	}
 
-// TODO Make LumeElement `abstract`, which had issues with mixins last time we
-// tried, but TS has been updated for abstract mixin support.
+// TODO Make LumeElement `abstract`
 
 class LumeElement extends HTMLElement {
 	/** The default tag name of the elements this class is instantiated for. */
@@ -65,10 +69,6 @@ class LumeElement extends HTMLElement {
 		}
 	}
 
-	// CONTINUE: we removed signalProperties (previously reactiveProperties) from
-	// classy-solid (previously variable). Update tests and code to use only
-	// signalify instead, remove this property def.
-
 	/** Non-decorator users can use this to specify attributes, which automatically map to reactive properties. */
 	static observedAttributes?: string[] | Record<string, AttributeHandler>
 
@@ -77,33 +77,19 @@ class LumeElement extends HTMLElement {
 
 	protected declare _preUpgradeValues: Map<PropertyKey, unknown>
 
-	// __propsSetAtLeastOnce__ comes from @lume/variable's @reactive decorator.
-	// CONTINUE delete if no longer needed on classy-solid
-	// It is a Set<string> that tells us if a reactive property has been set at
-	// least once,
-	// TODO replace with new API from classy-solid
-	protected declare __propsSetAtLeastOnce__?: Set<PropertyKey>
-
-	// TODO replace with new API from classy-solid
-	protected declare __reactifiedProps__?: Set<PropertyKey>
-
 	// This property MUST be defined before any other non-static non-declared
 	// class properties . Its initializer needs to run before any other
 	// properties are defined, in order to detect and handle only instance
 	// properties that already exist from custom element pre-upgrade time.
 	protected ___init___ = (() => {
-		// XXX We could remove this and instead use a class decorator (returns a
-		// new class), which would allow us to run this logic during
-		// construction without requiring the user to extend from a specific
-		// base class (LumeElement) unless they elect not to use decorators.
 		this.__handleInitialPropertyValuesIfAny()
 
-		// XXX Should we handle initial attributes too?
+		// TODO Should we handle initial attributes too?
 	})()
 
 	private __handleInitialPropertyValuesIfAny() {
 		// We need to delete initial value-descriptor properties (if they exist)
-		// and store the initial values in the storage for our reactive variable
+		// and store the initial values in the storage for our @signal property
 		// accessors.
 		//
 		// If we don't do this, then DOM APIs like cloneNode will create our
@@ -134,26 +120,32 @@ class LumeElement extends HTMLElement {
 				// Delete the pre-upgrade value descriptor (1/2)...
 				delete this[propName]
 
+				// The @element decorator reads this, and the class finisher
+				// will set pre-upgrade values.
 				this._preUpgradeValues.set(propName, descriptor.value)
 
-				// NOTE, deferring allows preexisting preupgrade values
-				// to be handled *after* class fields have been set
-				// during Custom Element upgrade (because otherwise
-				// those would override the pre-existing values we're
-				// trying to assign here).
+				// NOTE, for classes not decorated with @element, deferring
+				// allows preexisting preupgrade values to be handled *after*
+				// class fields have been set during Custom Element upgrade
+				// construction (otherwise those class fields would override the
+				// preupgrade values we're trying to assign here).
 				defer(() => {
-					const propSetAtLeastOnce = this.__propsSetAtLeastOnce__?.has(propName)
+					const propSetAtLeastOnce = __isPropSetAtLeastOnce(this, propName as string | symbol)
 
-					// ... (2/2) and re-assign the value so that it goes through an
-					// inherited accessor.
+					// ... (2/2) and re-assign the value so that it goes through
+					// a @signal accessor that got defined, or through an
+					// inherited accessor that the preupgrade value shadowed.
 					//
 					// If the property has been set between the time LumeElement
 					// constructor ran and the deferred microtask, then we don't
 					// overwrite the property's value with the pre-upgrade value
-					// because it has been intentionally set to a desired value
-					// already.
+					// because it has already been intentionally set to a
+					// desired value post-construction.
+					// (NOTE: Avoid setting properties in constructors because
+					// that will set the signals at least once. Instead,
+					// override with a new @attribute or @signal class field.)
 					//
-					// AND we handle inherited props or reactified props only
+					// AND we handle inherited props or signal props only
 					// (because that means there may be an accessor that needs
 					// the value to be passed in). The @element decorator otherwise
 					// handles non-inherited props before construction
@@ -161,15 +153,7 @@ class LumeElement extends HTMLElement {
 					if (propSetAtLeastOnce) return
 
 					const inheritsProperty = propName in (this as any).__proto__
-					const hasReactifiedProp = this.__reactifiedProps__?.has(propName)
-
-					// CONTINUE (see note about __reactifiedProps__ at top of element.ts)
-					// TODO: Should we detect if `this[propName]` is a
-					// non-inherited accessor (instead of hasReactifiedProp).
-					// Maybe a base class author extending from LumeElement
-					// needs defines a new type of accessor that needs
-					// pre-upgrade value. Perhaps we can provide an opt-in.
-					if (inheritsProperty || hasReactifiedProp) this[propName] = descriptor.value
+					if (inheritsProperty) this[propName] = descriptor.value
 					// }}
 				})
 			} else {

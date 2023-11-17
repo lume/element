@@ -2,7 +2,7 @@ import {createEffect} from 'solid-js'
 import {signal} from 'classy-solid'
 import {Element, element, attribute, numberAttribute, booleanAttribute} from './index.js'
 
-describe('classy-solid @signal properties work with lume/element @element decorators on plain HTMLElements', () => {
+describe('classy-solid @signal properties with lume/element @element decorators on plain HTMLElements', () => {
 	it('reacts to updates using createEffect', () => {
 		@element('foo-el')
 		class FooEl extends HTMLElement {
@@ -10,7 +10,6 @@ describe('classy-solid @signal properties work with lume/element @element decora
 		}
 
 		const f = new FooEl()
-
 		let count = 0
 
 		// Runs once initially, then re-runs any time f.foo has changed.
@@ -20,9 +19,35 @@ describe('classy-solid @signal properties work with lume/element @element decora
 		})
 
 		expect(count).toBe(1)
-
 		f.foo = 123
 		expect(count).toBe(2)
+		expect(f.foo).toBe(123)
+	})
+
+	it('maintains reactivity for overridden fields', () => {
+		@element('foo-el2')
+		class FooEl extends HTMLElement {
+			@signal foo = 123
+		}
+
+		@element('override-el')
+		class OverrideEl extends FooEl {
+			@signal override foo = 123
+		}
+
+		const f = new OverrideEl()
+		let count = 0
+
+		// Runs once initially, then re-runs any time f.foo has changed.
+		createEffect(() => {
+			f.foo
+			count++
+		})
+
+		expect(count).toBe(1)
+		f.foo = 123
+		expect(count).toBe(2)
+		expect(f.foo).toBe(123)
 	})
 })
 
@@ -30,7 +55,7 @@ describe('@attribute tests', () => {
 	it('attributes can be mapped to properties with @attribute', () => {
 		@element('foo-bar')
 		class FooBar extends HTMLElement {
-			@attribute foo: string = '0'
+			@attribute foo = '0'
 		}
 
 		const f = new FooBar()
@@ -54,6 +79,7 @@ describe('@attribute tests', () => {
 			count++
 		})
 
+		expect(count).toBe(1)
 		f.setAttribute('foo', '123')
 		expect(count).toBe(2)
 		expect(f.foo).toBe('123')
@@ -74,10 +100,37 @@ describe('@attribute tests', () => {
 		expect(ff.foo).toBe('good night!')
 	})
 
+	// Ensure we didn't break this feature of classy-solid's @signal decorator.
+	it('maintains reactivity for overridden fields', () => {
+		@element('foo-bar2')
+		class FooBar extends HTMLElement {
+			@attribute foo = '0'
+		}
+
+		@element('overridden-foo')
+		class OverrideFoo extends FooBar {
+			@attribute override foo = '0'
+		}
+
+		const f = new OverrideFoo()
+		let count = 0
+
+		// Runs once initially, then re-runs any time f.foo has changed.
+		createEffect(() => {
+			f.foo
+			count++
+		})
+
+		expect(count).toBe(1)
+		f.setAttribute('foo', '123')
+		expect(count).toBe(2)
+		expect(f.foo).toBe('123')
+	})
+
 	it("@signal doesn't need to be used if using @attribute, as those are @signal too", () => {
 		@element('pur-pose')
 		class Purpose extends Element {
-			@attribute purpose: string = '0'
+			@attribute purpose = '0'
 		}
 
 		const f = new Purpose()
