@@ -13,12 +13,21 @@ describe('@element decorator', () => {
 			// @ts-expect-error undefined initial value
 			@stringAttribute baz
 			@stringAttribute baz2: string | null = null
+
+			// The default attribute value will be 123, from the .num property.
+			@numberAttribute
+			get accessor() {
+				return this.num
+			}
+			set accessor(v) {
+				this.num = v
+			}
 		}
 
 		let el = document.createElement('default-values-with-decorators')
 		document.body.append(el)
 
-		testAttributes(el)
+		testAttributes(el, 'accessor')
 
 		el.remove()
 
@@ -33,6 +42,15 @@ describe('@element decorator', () => {
 			// @ts-expect-error undefined initial value
 			@stringAttribute yes
 			@stringAttribute yes2: string | null = null
+
+			// The default attribute value will be 123, from the .dolor property.
+			@numberAttribute
+			get accessor2() {
+				return this.dolor
+			}
+			set accessor2(v) {
+				this.dolor = v
+			}
 		}
 
 		DefaultValueTestSubclass
@@ -40,7 +58,8 @@ describe('@element decorator', () => {
 		el = document.createElement('default-values-with-decorators-subclass')
 		document.body.append(el)
 
-		testAttributes(el, 'lorem', 'ipsum', 'dolor', 'set', 'amit', 'yes', 'yes2')
+		testAttributes(el, 'accessor')
+		testAttributes(el, 'accessor2', 'lorem', 'ipsum', 'dolor', 'set', 'amit', 'yes', 'yes2')
 
 		el.remove()
 	})
@@ -56,6 +75,7 @@ describe('@element decorator', () => {
 					bool2: attribute.boolean(),
 					baz: attribute.string(),
 					baz2: attribute.string(),
+					accessor: attribute.number(),
 				}
 
 				foo = 'foo'
@@ -67,13 +87,20 @@ describe('@element decorator', () => {
 				// @ts-expect-error undefined initial value
 				baz
 				baz2: string | null = null
+
+				get accessor() {
+					return this.num
+				}
+				set accessor(v) {
+					this.num = v
+				}
 			},
 		)
 
 		let el = document.createElement('default-values-without-decorators')
 		document.body.append(el)
 
-		testAttributes(el)
+		testAttributes(el, 'accessor')
 
 		el.remove()
 
@@ -87,6 +114,7 @@ describe('@element decorator', () => {
 					amit: attribute.boolean(),
 					yes: attribute.string(),
 					yes2: attribute.string(),
+					accessor2: attribute.number(),
 				}
 
 				lorem = 'foo'
@@ -98,13 +126,21 @@ describe('@element decorator', () => {
 				// @ts-expect-error undefined initial value
 				yes
 				yes2: string | null = null
+
+				get accessor2() {
+					return this.dolor
+				}
+				set accessor2(v) {
+					this.dolor = v
+				}
 			},
 		)
 
 		el = document.createElement('default-values-without-decorators-subclass')
 		document.body.append(el)
 
-		testAttributes(el, 'lorem', 'ipsum', 'dolor', 'set', 'amit', 'yes', 'yes2')
+		testAttributes(el, 'accessor')
+		testAttributes(el, 'accessor2', 'lorem', 'ipsum', 'dolor', 'set', 'amit', 'yes', 'yes2')
 
 		el.remove()
 	})
@@ -188,7 +224,8 @@ describe('@element decorator', () => {
 		el = document.createElement('default-values-without-decorators-constructor-props-subclass')
 		document.body.append(el)
 
-		testAttributes(el, 'lorem', 'ipsum', 'dolor', 'set', 'amit', 'yes', 'yes2')
+		testAttributes(el)
+		testAttributes(el, '', 'lorem', 'ipsum', 'dolor', 'set', 'amit', 'yes', 'yes2')
 
 		el.remove()
 	})
@@ -196,6 +233,7 @@ describe('@element decorator', () => {
 
 function testAttributes(
 	el: HTMLElement,
+	accessor = '',
 	foo = 'foo',
 	bar = 'bar',
 	num = 'num',
@@ -255,4 +293,13 @@ function testAttributes(
 	el.removeAttribute(baz2)
 	// @ts-ignore
 	expect(el[baz2] === null).toBe(true)
+
+	if (accessor) {
+		el.setAttribute(accessor, '456')
+		// @ts-ignore
+		expect(el[accessor]).toBe(456)
+		el.removeAttribute(accessor)
+		// @ts-ignore
+		expect(el[accessor]).toBe(123)
+	}
 }
