@@ -1215,6 +1215,42 @@ class CoolElement extends Element {
 > property in both the `observedAttributes` object and as a class field, and if
 > you miss one or the other things might not work as expected.
 
+Decorators, and the `observedAttributes` object format, both work with
+getter/setter properties as well:
+
+```js
+import {Element, element, numberAttribute, booleanAttribute} from '@lume/element'
+
+@element('cool-element')
+class CoolElement extends Element {
+	#foo = 123
+
+	// Like with class fields, the initial value is 123, so when the "foo"
+	// attribute is removed the setter will receive 123.
+	@numberAttribute
+	get foo() {
+		return this.#foo
+	}
+	set foo(v) {
+		this.#foo = v
+	}
+	// ...
+}
+```
+
+Auto accessors are not supported yet. If there is enough demand for them, we'll add support and they will look like so:
+
+```js
+@element('cool-element')
+class CoolElement extends Element {
+	// The same rules with initial values and attribute removal will apply.
+	@numberAttribute accessor foo = 123
+	@booleanAttribute accessor bar = false
+
+	// ...
+}
+```
+
 #### `static elementName`
 
 The default tag name of the elements this class instantiates. When using
