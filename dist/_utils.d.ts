@@ -1,4 +1,24 @@
+/**
+ * Execute the given `func`tion on the next micro "tick" of the JS engine.
+ */
 export declare function defer(func: () => unknown): Promise<unknown>;
+/**
+ * This is an identity "template string tag function", which when applied to a
+ * template string returns the equivalent of not having used a template tag on
+ * a template string to begin with.
+ *
+ * For example, The following two strings are equivalent:
+ *
+ * ```js
+ * const number = 42
+ * const string1 = `meaning of life: ${number}`
+ * const string2 = identityTemplateTag`meaning of life: ${number}`
+ * ```
+ *
+ * This can be useful when assigning it to variables like `css` or `html` in
+ * order to trigger syntax checking and highlighting inside template strings
+ * without actually doing anything to the string (a no-op).
+ */
 export declare function identityTemplateTag(stringsParts: TemplateStringsArray, ...values: any[]): string;
 export declare function camelCaseToDash(str: string): string;
 export declare function defineProp(obj: any, prop: string, value: any): void;

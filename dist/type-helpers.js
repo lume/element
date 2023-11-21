@@ -1,3 +1,6 @@
+/* eslint-disable typescript/explicit-function-return-type */
+// These are for use in TypeScript to cast JSX to certain DOM types. They are
+// not needed in plain JavaScript.
 export const div = (e) => e;
 export const h1 = (e) => e;
 export const h2 = (e) => e;
