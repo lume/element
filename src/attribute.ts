@@ -232,6 +232,9 @@ const toString = (str: string) => str
 attribute.string = (() => ({from: toString})) as AttributeType<string>
 
 /**
+ * This is essentially an alias for `@attribute`. You can just use `@attribute`
+ * if you want a more concise definition.
+ *
  * A decorator for mapping a string-valued attribute to a JS property. All
  * attribute values get passed as-is, except for `null` (i.e. when an attribute
  * is removed) which gets converted into an empty string or the default value of
@@ -267,7 +270,7 @@ attribute.string = (() => ({from: toString})) as AttributeType<string>
  * <my-el color="any string in here"></my-el>
  * ```
  */
-export function stringAttribute(value: any, context: any) {
+export function stringAttribute(value: unknown, context: AttributeDecoratorContext) {
 	return attribute(attribute.string())(value, context)
 }
 
@@ -331,7 +334,7 @@ attribute.number = (() => ({from: toNumber})) as AttributeType<number>
  * <my-el money="blahblah"></my-el>
  * ```
  */
-export function numberAttribute(value: any, context: any) {
+export function numberAttribute(value: unknown, context: AttributeDecoratorContext) {
 	return attribute(attribute.number())(value, context)
 }
 
@@ -399,6 +402,6 @@ attribute.boolean = (() => ({from: toBoolean})) as AttributeType<boolean>
  * <my-el has-money="blahblah"></my-el>
  * ```
  */
-export function booleanAttribute(value: any, context: any) {
+export function booleanAttribute(value: unknown, context: AttributeDecoratorContext) {
 	return attribute(attribute.boolean())(value, context)
 }

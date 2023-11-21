@@ -87,6 +87,36 @@ describe('LumeElement', () => {
 		expect(el.root.lastElementChild.outerHTML).toBe('<div>hello</div>')
 	})
 
+	// TODO: JSX support, a .tsx file should be compiled to .js, but currently
+	// it is compiled to .jsx without JSX untouched.
+	// it('templates with reactivity (with JSX syntax)', () => {
+	// 	@element('jsx-template')
+	// 	class MyEl extends Element {
+	// 		@signal message = 'hello'
+	// 		@signal count = 0
+	// 		// @ts-expect-error we did not enable Solid JSX types in the test files, so it complains about a React JSX type
+	// 		template = () => <div count={this.count}>{this.message}</div>
+	// 	}
+
+	// 	const el = new MyEl() as any
+	// 	document.body.append(el)
+
+	// 	expect(el.root.children.length).toBe(2)
+	// 	// The first element is the style element that LumeElement creates
+	// 	expect(el.root.firstElementChild.tagName.toLowerCase()).toBe('style')
+	// 	// The DOM element returned from template()
+	// 	expect(el.root.lastElementChild.outerHTML).toBe('<div count="0">hello</div>')
+
+	// 	el.message = 'goodbye'
+	// 	el.count++
+
+	// 	expect(el.root.lastElementChild.outerHTML).toBe('<div count="1">goodbye</div>')
+	// 	// By default the template sets attributes on builtin elements, so the same-name prop is undefined.
+	// 	expect(el.root.lastElementChild.count).toBe(undefined)
+	// 	// The attribute has the value.
+	// 	expect(el.root.lastElementChild.getAttribute('count')).toBe('1')
+	// })
+
 	it('templates with reactivity (with the html template string tag)', () => {
 		@element('html-template')
 		class MyEl extends Element {
@@ -159,8 +189,33 @@ describe('LumeElement', () => {
 		expect(el.root.lastElementChild.getAttribute('count')).toBe('1')
 	})
 
-	// TODO
-	xit('TODO same as previous test, but using signalify() instead of @reactive')
+	it('same as previous test, but using signalify() instead of @reactive', () => {
+		class MyEl extends Element {
+			message = 'hello'
+			count = 0
+			constructor() {
+				super()
+				signalify(this, 'message', 'count')
+			}
+			template = () => html`<div count=${() => this.count}>${() => this.message}</div>`
+		}
+
+		customElements.define('html-template2.5', MyEl)
+
+		const el = new MyEl() as any
+		document.body.append(el)
+
+		expect(el.root.children.length).toBe(2)
+		expect(el.root.firstElementChild.tagName.toLowerCase()).toBe('style')
+		expect(el.root.lastElementChild.outerHTML).toBe('<div count="0">hello</div>')
+
+		el.message = 'goodbye'
+		el.count++
+
+		expect(el.root.lastElementChild.outerHTML).toBe('<div count="1">goodbye</div>')
+		expect(el.root.lastElementChild.count).toBe(undefined)
+		expect(el.root.lastElementChild.getAttribute('count')).toBe('1')
+	})
 
 	it('forgetting to use @reactive, @element, or signalify() causes a runtime error', () => {
 		// @reactive <---- user forgets to use the class decorator, or forgets to use `signalify()`
@@ -213,7 +268,7 @@ describe('LumeElement', () => {
 	// work because they set properties on elements before they are upgraded due
 	// to the fact that cloneNode skips upgrade (the cloned node must
 	// subsequently be connected to the DOM to get upgraded).
-	it('initializes pre-upgrade properties by deleting them and re-assigning them after construction in a microtask, using @reactive', async () => {
+	it('initializes pre-upgrade properties by deleting them and re-assigning them after construction in a microtask, with decorator syntax', async () => {
 		const fooEl = document.createElement('foo-element') as FooElement
 
 		// fooEl is instanceof HTMLElement (not FooElement) at this point (ignore the type cast)

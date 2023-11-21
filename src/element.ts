@@ -81,11 +81,11 @@ export type ElementCtor = typeof Element & PossibleStatics
  * class CoolElement extends HTMLElement {...}
  * ```
  */
-export function element<T extends AnyConstructor<HTMLElement>>(Class: T, context?: ClassDecoratorContext): T
 export function element(
 	tagName: string,
 	autoDefine?: boolean,
 ): <T extends AnyConstructor<HTMLElement>>(Class: T, context?: ClassDecoratorContext) => T
+export function element<T extends AnyConstructor<HTMLElement>>(Class: T, context?: ClassDecoratorContext): T
 export function element(
 	tagNameOrClass: string | AnyConstructor<HTMLElement>,
 	autoDefineOrContext?: boolean | ClassDecoratorContext,
@@ -199,18 +199,23 @@ function applyElementDecoration(
 
 	if (context?.addInitializer) {
 		// Use addInitializer to run logic after the class is fully defined
-		// (af class static initializers have ran, otherwise the class
-		// decorator runs at the top of a class static block before all
-		// other static members are defined).
+		// (after class static initializers have ran, otherwise the class
+		// decorator runs before any static members are initialized)
 		context.addInitializer(finishClass)
 	} else {
-		// For JS without decorator support fall back to `queueMicrotask`
-		// because `context` will be `undefined` in that scenario, so there
-		// won't be a `context.addInitializer` function to call.
-		// Note, without queueMicrotask
-		// TODO: Once decorators are out natively, deprecate and remove
-		// non-decorator usage, remove queueMicrotask
-		queueMicrotask(finishClass)
+		// For JS without decorator support fall back manually running the
+		// initializer because `context` will be `undefined` in that scenario,
+		// so there won't be a `context.addInitializer` function to call.
+		// In this case all static members are already initialized too.
+		//
+		// TODO: Once decorators are out natively, deprecate and remove this
+		// non-decorator support
+		finishClass()
+
+		// TODO when this debugger is enabled, the lume shimmer-cube example
+		// does not work after unpausing. Not sure if its a devtools bug, or
+		// indicative of a lume issue (but it seems like the former).
+		// debugger
 	}
 
 	return ElementDecoratorFinisher

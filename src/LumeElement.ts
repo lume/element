@@ -27,7 +27,11 @@ const HTMLElement =
 // TODO Make LumeElement `abstract`
 
 class LumeElement extends HTMLElement {
-	/** The default tag name of the elements this class is instantiated for. */
+	/**
+	 * The default tag name of the elements this class instantiates. When using
+	 * the `@element` decorator, this property will be set to the value defined
+	 * by the decorator.
+	 */
 	static elementName: string = ''
 
 	/**
@@ -201,7 +205,8 @@ class LumeElement extends HTMLElement {
 
 	/**
 	 * Subclasses can override this to provide an alternate Node to render into
-	 * (f.e. a subclass can `return this` to render into itself instead of making a root)
+	 * (f.e. a subclass can `return this` to render into itself instead of
+	 * making a root) regardless of the value of `hasShadow`.
 	 */
 	protected get root(): Node {
 		if (!this.hasShadow) return this
@@ -224,6 +229,12 @@ class LumeElement extends HTMLElement {
 	 * sometimes needed for styles to be appended elsewhere than the root. For
 	 * example, return some other `Node` within the root to append styles to.
 	 * This is ignored if `hasShadow` is `false`.
+	 *
+	 * This can be useful for fixing issues where the default append of a style
+	 * sheet into the `ShadowRoot` conflicts with how DOM is created in
+	 * `template` (f.e.  if the user's DOM creation in `template` clears the
+	 * `ShadowRoot` content, or etc, then we want to place the stylesheet
+	 * somewhere else).
 	 */
 	protected get styleRoot(): Node {
 		return this.root

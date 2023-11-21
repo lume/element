@@ -1,0 +1,258 @@
+import {Element, element, attribute, numberAttribute, booleanAttribute, stringAttribute} from './index.js'
+
+describe('@element decorator', () => {
+	it('ensures initial field values act as default attribute values when attributes removed, with decorator syntax', () => {
+		@element('default-values-with-decorators')
+		class DefaultValueTest extends Element {
+			@attribute foo = 'foo'
+			@stringAttribute bar = 'bar'
+			@numberAttribute num = 123
+			@booleanAttribute bool = false
+			@booleanAttribute bool2 = true
+
+			// @ts-expect-error undefined initial value
+			@stringAttribute baz
+			@stringAttribute baz2: string | null = null
+		}
+
+		let el = document.createElement('default-values-with-decorators')
+		document.body.append(el)
+
+		testAttributes(el)
+
+		el.remove()
+
+		@element('default-values-with-decorators-subclass')
+		class DefaultValueTestSubclass extends DefaultValueTest {
+			@attribute lorem = 'foo'
+			@stringAttribute ipsum = 'bar'
+			@numberAttribute dolor = 123
+			@booleanAttribute set = false
+			@booleanAttribute amit = true
+
+			// @ts-expect-error undefined initial value
+			@stringAttribute yes
+			@stringAttribute yes2: string | null = null
+		}
+
+		DefaultValueTestSubclass
+
+		el = document.createElement('default-values-with-decorators-subclass')
+		document.body.append(el)
+
+		testAttributes(el, 'lorem', 'ipsum', 'dolor', 'set', 'amit', 'yes', 'yes2')
+
+		el.remove()
+	})
+
+	it('ensures initial field values act as default attribute values when attributes removed, no decorator syntax, class fields', () => {
+		const DefaultValueTest = element('default-values-without-decorators')(
+			class extends Element {
+				static override observedAttributes: any = {
+					foo: {},
+					bar: attribute.string(),
+					num: attribute.number(),
+					bool: attribute.boolean(),
+					bool2: attribute.boolean(),
+					baz: attribute.string(),
+					baz2: attribute.string(),
+				}
+
+				foo = 'foo'
+				bar = 'bar'
+				num = 123
+				bool = false
+				bool2 = true
+
+				// @ts-expect-error undefined initial value
+				baz
+				baz2: string | null = null
+			},
+		)
+
+		let el = document.createElement('default-values-without-decorators')
+		document.body.append(el)
+
+		testAttributes(el)
+
+		el.remove()
+
+		element('default-values-without-decorators-subclass')(
+			class DefaultValueTestSubclass extends DefaultValueTest {
+				static override observedAttributes: any = {
+					lorem: {},
+					ipsum: attribute.string(),
+					dolor: attribute.number(),
+					set: attribute.boolean(),
+					amit: attribute.boolean(),
+					yes: attribute.string(),
+					yes2: attribute.string(),
+				}
+
+				lorem = 'foo'
+				ipsum = 'bar'
+				dolor = 123
+				set = false
+				amit = true
+
+				// @ts-expect-error undefined initial value
+				yes
+				yes2: string | null = null
+			},
+		)
+
+		el = document.createElement('default-values-without-decorators-subclass')
+		document.body.append(el)
+
+		testAttributes(el, 'lorem', 'ipsum', 'dolor', 'set', 'amit', 'yes', 'yes2')
+
+		el.remove()
+	})
+
+	it('ensures initial field values act as default attribute values when attributes removed, no decorator syntax, constructor properties', () => {
+		const DefaultValueTest = element('default-values-without-decorators-constructor-props')(
+			class extends Element {
+				static override observedAttributes: any = {
+					foo: {},
+					bar: attribute.string(),
+					num: attribute.number(),
+					bool: attribute.boolean(),
+					bool2: attribute.boolean(),
+					baz: attribute.string(),
+					baz2: attribute.string(),
+				}
+
+				constructor() {
+					super()
+
+					// @ts-expect-error
+					this.foo = 'foo'
+					// @ts-expect-error
+					this.bar = 'bar'
+					// @ts-expect-error
+					this.num = 123
+					// @ts-expect-error
+					this.bool = false
+					// @ts-expect-error
+					this.bool2 = true
+
+					// @ts-expect-error undefined initial value
+					this.baz
+					// @ts-expect-error
+					this.baz2 = null
+				}
+			},
+		)
+
+		let el = document.createElement('default-values-without-decorators-constructor-props')
+		document.body.append(el)
+
+		testAttributes(el)
+
+		el.remove()
+
+		element('default-values-without-decorators-constructor-props-subclass')(
+			class DefaultValueTestSubclass extends DefaultValueTest {
+				static override observedAttributes: any = {
+					lorem: {},
+					ipsum: attribute.string(),
+					dolor: attribute.number(),
+					set: attribute.boolean(),
+					amit: attribute.boolean(),
+					yes: attribute.string(),
+					yes2: attribute.string(),
+				}
+
+				constructor() {
+					super()
+
+					// @ts-expect-error
+					this.lorem = 'foo'
+					// @ts-expect-error
+					this.ipsum = 'bar'
+					// @ts-expect-error
+					this.dolor = 123
+					// @ts-expect-error
+					this.set = false
+					// @ts-expect-error
+					this.amit = true
+
+					// @ts-expect-error undefined initial value
+					this.yes
+					// @ts-expect-error
+					this.yes2 = null
+				}
+			},
+		)
+
+		el = document.createElement('default-values-without-decorators-constructor-props-subclass')
+		document.body.append(el)
+
+		testAttributes(el, 'lorem', 'ipsum', 'dolor', 'set', 'amit', 'yes', 'yes2')
+
+		el.remove()
+	})
+})
+
+function testAttributes(
+	el: HTMLElement,
+	foo = 'foo',
+	bar = 'bar',
+	num = 'num',
+	bool = 'bool',
+	bool2 = 'bool2',
+	baz = 'baz',
+	baz2 = 'baz2',
+) {
+	el.setAttribute(foo, 'blah')
+	// @ts-ignore
+	expect(el[foo]).toBe('blah')
+	el.removeAttribute(foo)
+	// @ts-ignore
+	expect(el[foo]).toBe('foo')
+
+	el.setAttribute(bar, 'blah')
+	// @ts-ignore
+	expect(el[bar]).toBe('blah')
+	el.removeAttribute(bar)
+	// @ts-ignore
+	expect(el[bar]).toBe('bar')
+
+	el.setAttribute(num, '456')
+	// @ts-ignore
+	expect(el[num]).toBe(456)
+	el.removeAttribute(num)
+	// @ts-ignore
+	expect(el[num]).toBe(123)
+
+	el.setAttribute(bool, 'true')
+	// @ts-ignore
+	expect(el[bool]).toBe(true)
+	el.removeAttribute(bool)
+	// @ts-ignore
+	expect(el[bool]).toBe(false)
+
+	el.setAttribute(bool2, 'true')
+	// @ts-ignore
+	expect(el[bool2]).toBe(true)
+	el.setAttribute(bool2, 'false')
+	// @ts-ignore
+	expect(el[bool2]).toBe(false)
+	el.removeAttribute(bool2)
+	// @ts-ignore
+	expect(el[bool2]).toBe(true)
+
+	el.setAttribute(baz, 'true')
+	// @ts-ignore
+	expect(el[baz]).toBe('true')
+	el.removeAttribute(baz)
+	// @ts-ignore
+	expect(el[baz]).toBe(undefined)
+
+	el.setAttribute(baz2, 'oh yeah')
+	// @ts-ignore
+	expect(el[baz2]).toBe('oh yeah')
+	el.removeAttribute(baz2)
+	// @ts-ignore
+	expect(el[baz2] === null).toBe(true)
+}

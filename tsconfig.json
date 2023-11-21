@@ -1,11 +1,6 @@
 {
 	"extends": "./node_modules/@lume/cli/config/ts.config.json",
 	"compilerOptions": {
-		// We disabled this so that we can import React types (for the
-		// ReactElementAttributes type helper), but it causes unit test types
-		// not to be detected, so we had to exclude test files from type
-		// checking. That's fine for now, it is just test code.
-		// "typeRoots": [],
 		"types": ["mocha"]
 	}
 }

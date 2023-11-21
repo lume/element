@@ -15,8 +15,8 @@ export type AttributeHandler<T = any> = {
     default?: T;
 };
 type AttributeType<T> = () => AttributeHandler<T>;
-export declare function stringAttribute(value: any, context: any): any;
-export declare function numberAttribute(value: any, context: any): any;
-export declare function booleanAttribute(value: any, context: any): any;
+export declare function stringAttribute(value: unknown, context: AttributeDecoratorContext): any;
+export declare function numberAttribute(value: unknown, context: AttributeDecoratorContext): any;
+export declare function booleanAttribute(value: unknown, context: AttributeDecoratorContext): any;
 export {};
 //# sourceMappingURL=attribute.d.ts.map

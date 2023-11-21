@@ -62,7 +62,7 @@ function applyElementDecoration(Class, context, tagName, autoDefine) {
         context.addInitializer(finishClass);
     }
     else {
-        queueMicrotask(finishClass);
+        finishClass();
     }
     return ElementDecoratorFinisher;
 }

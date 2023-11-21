@@ -7,7 +7,7 @@ type PossibleStatics = {
     __proto__: PossibleStatics;
 };
 export type ElementCtor = typeof Element & PossibleStatics;
-export declare function element<T extends AnyConstructor<HTMLElement>>(Class: T, context?: ClassDecoratorContext): T;
 export declare function element(tagName: string, autoDefine?: boolean): <T extends AnyConstructor<HTMLElement>>(Class: T, context?: ClassDecoratorContext) => T;
+export declare function element<T extends AnyConstructor<HTMLElement>>(Class: T, context?: ClassDecoratorContext): T;
 export {};
 //# sourceMappingURL=element.d.ts.map

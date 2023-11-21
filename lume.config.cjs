@@ -1,6 +1,5 @@
+/** @type {import('@lume/cli/config/getUserConfig.js').UserConfig} */
 module.exports = {
-	testWithAllTSAndBabelDecoratorBuildConfigurations: true,
-
 	importMap: {
 		imports: {
 			'classy-solid': '/node_modules/classy-solid/dist/index.js',
