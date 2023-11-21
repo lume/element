@@ -87,15 +87,15 @@ Use the `<click-counter>` in a plain HTML file:
 Use the `<click-counter>` in another element's `template`,
 
 ```js
-import {Element, @element} from '@lume/element'
+import {Element, element} from '@lume/element'
 import html from 'solid-js/html'
 import {signal} from 'classy-solid'
 
 @element('counter-example')
 class CounterExample extends Element {
-  @signal count = 50 // Not an attribute, only a signal.
+	@signal count = 50 // Not an attribute, only a signal.
 
-  template = () => html`<click-counter count=${() => this.count}></click-counter>`
+	template = () => html`<click-counter count=${() => this.count}></click-counter>`
 }
 
 document.body.append(new CounterExample())
@@ -533,13 +533,15 @@ Continuing from above, here's a custom element that re-uses the `Greeting`
 component. This shows that any regular Solid.js component can be
 used in the `template` of a custom element made with `@lume/element`:
 
-```js
+```jsx
 @element('cool-element')
 class CoolElement extends Element {
-  template => () => (
-    <h2>Here's a greeting:</h2>
-    <Greeting />
-  )
+	template = () => (
+		<>
+			<h2>Here's a greeting:</h2>
+			<Greeting />
+		</>
+	)
 }
 
 document.body.inserAdjacentHTML('beforeend', `<cool-element></cool-element>`)
@@ -679,22 +681,22 @@ checking in JSX, use the following template.
 // We already use @jsxImportSource above, but if you need to reference JSX
 // anywhere in non-JSX parts of the code, you also need to import it from
 // solid-js:
-import {Element, element, stringAttribute, numberAttribute, ..., JSX} from 'solid-js'
-                                             // ^ We imported JSX so that...
+import {Element, element, stringAttribute, numberAttribute, /*...,*/ JSX} from 'solid-js'
+//                                                                   ^ We imported JSX so that...
 
 // Define the attributes that your element accepts
 export interface CoolElementAttributes extends JSX.HTMLAttributes<CoolElement> {
-                                            // ^ ...we can use it in this non-JSX code.
+	//                                           ^ ...we can use it in this non-JSX code.
 	'cool-type'?: 'beans' | 'hair'
 	'cool-factor'?: number
-  // ^ NOTE: These should be dash-case versions of your class's attribute properties.
+	// ^ NOTE: These should be dash-case versions of your class's attribute properties.
 }
 
 @element('cool-element')
 class CoolElement extends Element {
-  @stringAttribute coolType: 'beans' | 'hair' = 'beans'
-  @numberAttribute coolFactor = 100
-  // ^ NOTE: These are the camelCase equivalents of the attributes defined above.
+	@stringAttribute coolType: 'beans' | 'hair' = 'beans'
+	@numberAttribute coolFactor = 100
+	// ^ NOTE: These are the camelCase equivalents of the attributes defined above.
 
 	// ... Define your class as described above. ...
 }
@@ -907,14 +909,17 @@ The `static css` property can also be a function:
 ```js
 // ...
 
+class CoolElement extends Element {
+	// ...
 	static css = () => {
-    const color = 'cornflowerblue'
+		const color = 'cornflowerblue'
 
-    return `
+		return `
       span { color: ${color}; }
     `
-  }
+	}
 	// ...
+}
 ```
 
 > :bulb:**Tip:**
@@ -925,10 +930,15 @@ The `static css` property can also be a function:
 import {css} from '@lume/element'
 // ...
 
-	static css = css`
-    span { color: cornflowerblue; }
-  `
+class CoolElement extends Element {
 	// ...
+	static css = css`
+		span {
+			color: cornflowerblue;
+		}
+	`
+	// ...
+}
 ```
 
 #### `css`
@@ -1133,8 +1143,8 @@ Each value in the `observedAttributes` objects has the following shape:
  */
 export type AttributeHandler<T = any> = {
 	// TODO `to` handler currently does nothing. If it is present, then prop
-	// changes should reflect back to the attribute. In most cases, this is
-	// undesirable (for performance).
+	// changes should reflect back to the attribute. This will add a performance
+	// hit.
 	to?: (propValue: T) => string | null
 
 	/**
@@ -1344,7 +1354,7 @@ el.removeAttribute('first-name')
 console.log(el.firstName) // logs null
 ```
 
-Has we defined a different default value,
+Had we defined a different default value,
 
 ```js
 	@attribute firstName = 'Batman'

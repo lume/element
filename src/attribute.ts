@@ -182,8 +182,8 @@ function mapAttributeToProp(prototype: any, attr: string, prop: string, attribut
  */
 export type AttributeHandler<T = any> = {
 	// TODO `to` handler currently does nothing. If it is present, then prop
-	// changes should reflect back to the attribute. In most cases, this is
-	// undesirable (for performance).
+	// changes should reflect back to the attribute. This will add a performance
+	// hit.
 	to?: (propValue: T) => string | null
 
 	/**
