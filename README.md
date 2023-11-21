@@ -200,7 +200,12 @@ Follow the guide on [installing `lume` from
 CDN](https://docs.lume.io/guide/install/?id=cdn-easiest), but simply replace
 `lume` with `@lume/element`. The process is otherwise the same.
 
-Along with this method, see details on vanilla JavaScript usage below (no JSX, no decorators). CONTINUE
+> [!Note]
+> Decorator syntax and JSX syntax are both not supported with this install
+> method as it uses not build step. See more examples below for non-decorator
+> property definition examples and templates using an `html` template string tag, both of
+> which require no build step. In the near future, decorators will be out
+> natively in browsers (but not JSX).
 
 <!--
 TODO:
