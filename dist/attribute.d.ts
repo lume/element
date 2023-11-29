@@ -13,12 +13,12 @@ type AttributeDecoratorContext = ClassFieldDecoratorContext | ClassGetterDecorat
  * The decorated property is backed by a Solid.js signal, thus useful in effects
  * or templates.
  *
- * Example (ignore backslashes):
+ * Example:
  *
  * ```js
- * \@element('my-el')
+ * ⁣@element('my-el')
  * class MyEl extends Element {
- *   \@attribute name = 'Lazayah'
+ *   ⁣@attribute name = 'Lazayah'
  *
  *   template = () => <p>Name: {this.name}</p>
  * }
@@ -69,12 +69,12 @@ type AttributeType<T> = () => AttributeHandler<T>;
  * difference between this and plain `@attribute`, where `@attribute` will pass
  * along `null`.
  *
- * Example decorator usage (note: ignore the backslashes):
+ * Example decorator usage:
  *
  * ```js
- * \@element('my-el')
+ * ⁣@element('my-el')
  * class MyEl extends LumeElement {
- *   \@stringAttribute color = "skyblue"
+ *   ⁣@stringAttribute color = "skyblue"
  * }
  * ```
  *
@@ -102,12 +102,12 @@ export declare function stringAttribute(value: unknown, context: AttributeDecora
  * A decorator for mapping a number attribute to a JS property. The string value
  * of the attribute will be parsed into a number.
  *
- * Example decorator usage (note: ignore the backslashes):
+ * Example decorator usage:
  *
  * ```js
- * \@element('my-el')
+ * ⁣@element('my-el')
  * class MyEl extends LumeElement {
- *   \@numberAttribute money = 123
+ *   ⁣@numberAttribute money = 123
  * }
  * ```
  *
@@ -144,13 +144,13 @@ export declare function numberAttribute(value: unknown, context: AttributeDecora
  * removed) will be converted into a `false` value on the JS property. All other
  * attribute values (strings) will be converted into `true`.
  *
- * Example decorator usage (note: ignore the backslashes):
+ * Example decorator usage:
  *
  * ```js
- * \@element('my-el')
+ * ⁣@element('my-el')
  * class MyEl extends LumeElement {
- *   \@booleanAttribute hasMoney = true
- *   \@booleanAttribute excited = false
+ *   ⁣@booleanAttribute hasMoney = true
+ *   ⁣@booleanAttribute excited = false
  * }
  * ```
  *

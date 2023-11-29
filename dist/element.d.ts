@@ -15,7 +15,7 @@ export type ElementCtor = typeof Element & PossibleStatics;
  * If called with a name, it defines a custom element with that name automatically:
  *
  * ```js
- * \@element('cool-element')
+ * ⁣@element('cool-element')
  * class CoolElement extends HTMLElement {
  *   // ...
  * }
@@ -26,7 +26,7 @@ export type ElementCtor = typeof Element & PossibleStatics;
  * If called the second arg set to false, then the element definition should be manually triggered:
  *
  * ```js
- * \@element('cool-element', false)
+ * ⁣@element('cool-element', false)
  * class CoolElement extends HTMLElement {
  *   // ...
  * }
@@ -46,7 +46,7 @@ export type ElementCtor = typeof Element & PossibleStatics;
  * manually define the element in another way as needed:
  *
  * ```js
- * \@element
+ * ⁣@element
  * class CoolElement extends HTMLElement {
  *   // ...
  * }
@@ -66,12 +66,12 @@ export type ElementCtor = typeof Element & PossibleStatics;
  * If you call it with an empty string, it behaves the same as the previous example:
  *
  * ```js
- * \@element('')
+ * ⁣@element('')
  * class CoolElement extends HTMLElement {...}
  *
  * // is the same as
  *
- * \@element
+ * ⁣@element
  * class CoolElement extends HTMLElement {...}
  * ```
  */

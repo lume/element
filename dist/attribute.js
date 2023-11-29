@@ -147,12 +147,12 @@ attribute.string = (() => ({ from: toString }));
  * difference between this and plain `@attribute`, where `@attribute` will pass
  * along `null`.
  *
- * Example decorator usage (note: ignore the backslashes):
+ * Example decorator usage:
  *
  * ```js
- * \@element('my-el')
+ * ⁣@element('my-el')
  * class MyEl extends LumeElement {
- *   \@stringAttribute color = "skyblue"
+ *   ⁣@stringAttribute color = "skyblue"
  * }
  * ```
  *
@@ -202,12 +202,12 @@ attribute.number = (() => ({ from: toNumber }));
  * A decorator for mapping a number attribute to a JS property. The string value
  * of the attribute will be parsed into a number.
  *
- * Example decorator usage (note: ignore the backslashes):
+ * Example decorator usage:
  *
  * ```js
- * \@element('my-el')
+ * ⁣@element('my-el')
  * class MyEl extends LumeElement {
- *   \@numberAttribute money = 123
+ *   ⁣@numberAttribute money = 123
  * }
  * ```
  *
@@ -266,13 +266,13 @@ attribute.boolean = (() => ({ from: toBoolean }));
  * removed) will be converted into a `false` value on the JS property. All other
  * attribute values (strings) will be converted into `true`.
  *
- * Example decorator usage (note: ignore the backslashes):
+ * Example decorator usage:
  *
  * ```js
- * \@element('my-el')
+ * ⁣@element('my-el')
  * class MyEl extends LumeElement {
- *   \@booleanAttribute hasMoney = true
- *   \@booleanAttribute excited = false
+ *   ⁣@booleanAttribute hasMoney = true
+ *   ⁣@booleanAttribute excited = false
  * }
  * ```
  *

@@ -416,11 +416,11 @@ type Template = TemplateContent | (() => TemplateContent)
  * ```js
  * import {Element, attribute, numberAttribute, element, ElementAttributes} from '@lume/element'
  *
- * \@element('cool-element')
+ * ⁣@element('cool-element')
  * class CoolElement extends Element {
- *   \@attribute foo: string | null = null
- *   \@attribute bar: string | null = 'bar'
- *   \@numberAttribute(123) loremIpsum = 123
+ *   ⁣@attribute foo: string | null = null
+ *   ⁣@attribute bar: string | null = 'bar'
+ *   ⁣@numberAttribute(123) loremIpsum = 123
  * }
  *
  * declare module 'solid-js' {
