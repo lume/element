@@ -1,3 +1,4 @@
+import './metadata-shim.js';
 import { Element } from './LumeElement.js';
 import type { AnyConstructor } from 'lowclass';
 import type { AttributeHandler } from './attribute.js';

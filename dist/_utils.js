@@ -1,11 +1,4 @@
 /**
- * Execute the given `func`tion on the next micro "tick" of the JS engine.
- */
-export function defer(func) {
-    // "defer" is used as a semantic label for Promise.resolve().then
-    return Promise.resolve().then(func);
-}
-/**
  * This is an identity "template string tag function", which when applied to a
  * template string returns the equivalent of not having used a template tag on
  * a template string to begin with.
@@ -34,6 +27,9 @@ export function identityTemplateTag(stringsParts, ...values) {
 export function camelCaseToDash(str) {
     return str.replace(/([a-zA-Z])(?=[A-Z])/g, '$1-').toLowerCase();
 }
+export function dashCaseToCamelCase(str) {
+    return str.replace(/-([a-z])/g, g => g[1].toUpperCase());
+}
 export function defineProp(obj, prop, value) {
     Object.defineProperty(obj, prop, {
         value,
@@ -41,16 +37,6 @@ export function defineProp(obj, prop, value) {
         configurable: true,
         enumerable: true,
     });
-}
-export function getGlobal() {
-    if (typeof globalThis !== 'undefined')
-        return globalThis;
-    else if (typeof window !== 'undefined')
-        return window;
-    else if (typeof global !== 'undefined')
-        return global;
-    else
-        return Function('return this')();
 }
 // EXAMPLES
 // type foo0 = JoinToCamelCase<'fooBarBaz'> // Becomes "foobabaz"

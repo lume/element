@@ -4,7 +4,6 @@ import { render } from 'solid-js/web';
 // least once, and if so allows us to skip overwriting it with a custom
 // element preupgrade value.
 import { __isPropSetAtLeastOnce } from 'classy-solid';
-import { defer } from './_utils.js';
 // TODO `templateMode: 'append' | 'replace'`, which allows a subclass to specify
 // if template content replaces the content of `root`, or is appended to `root`.
 let ctor;
@@ -110,7 +109,7 @@ class LumeElement extends HTMLElement {
                 // class fields have been set during Custom Element upgrade
                 // construction (otherwise those class fields would override the
                 // preupgrade values we're trying to assign here).
-                defer(() => {
+                queueMicrotask(() => {
                     const propSetAtLeastOnce = __isPropSetAtLeastOnce(this, propName);
                     // ... (2/2) and re-assign the value so that it goes through
                     // a @signal accessor that got defined, or through an

@@ -1,3 +1,4 @@
+import './metadata-shim.js';
 import type { ElementCtor } from './element.js';
 export declare const __classFinishers: ((Class: ElementCtor) => void)[];
 type AttributeDecoratorContext = ClassFieldDecoratorContext | ClassGetterDecoratorContext | ClassSetterDecoratorContext;
@@ -31,6 +32,12 @@ export declare namespace attribute {
     var number: AttributeType<number>;
     var boolean: AttributeType<boolean>;
 }
+/**
+ * Place this decorator before `@element` to avoid the property from being
+ * backed by a Solid signal. I.e. the property will not be reactive, but will
+ * still receive values from the HTML attribute.
+ */
+export declare const noSignal: (_value: unknown, context: AttributeDecoratorContext) => void;
 export declare function __setUpAttribute(ctor: ElementCtor, propName: string, attributeHandler: AttributeHandler): any;
 /**
  * Defines how values are mapped from an attribute to a JS property on a custom

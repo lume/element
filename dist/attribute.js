@@ -1,3 +1,4 @@
+import './metadata-shim.js'; // TODO remove this shim once decorators land natively.
 import { signal } from 'classy-solid';
 import { camelCaseToDash, defineProp } from './_utils.js';
 export const __classFinishers = [];
@@ -10,8 +11,21 @@ export function attribute(handlerOrValue, context) {
     return (value, context) => handleAttributeDecoration(value, context, handler);
     // TODO throw an error for cases when @element is not used on a class with @attribute decorations, similar to classy-solid @signal/@reactive.
 }
+/**
+ * Place this decorator before `@element` to avoid the property from being
+ * backed by a Solid signal. I.e. the property will not be reactive, but will
+ * still receive values from the HTML attribute.
+ */
+export const noSignal = (_value, context) => {
+    if (!Object.hasOwn(context.metadata, 'noSignal'))
+        context.metadata.noSignal = new Set();
+    context.metadata.noSignal.add(context.name);
+};
 function handleAttributeDecoration(value, context, attributeHandler = {}) {
-    const { kind, name, private: isPrivate, static: isStatic } = context;
+    const { kind, name, private: isPrivate, static: isStatic, metadata } = context;
+    // Check only own metadata.noSignal, we don't want to use the one inherited from a base class.
+    const noSignal = (Object.hasOwn(metadata, 'noSignal') && metadata.noSignal) || undefined;
+    const useSignal = !noSignal?.has(name);
     if (typeof name === 'symbol')
         throw new Error('@attribute is not supported on symbol fields yet.');
     if (isPrivate)
@@ -21,15 +35,23 @@ function handleAttributeDecoration(value, context, attributeHandler = {}) {
     // TODO decorate on prototype? Or decorate on instance?
     __classFinishers.push((Class) => __setUpAttribute(Class, name, attributeHandler));
     if (kind === 'field') {
-        const signalInitializer = signal(value, context);
+        const signalInitializer = useSignal ? signal(value, context) : (v) => v;
         return function (initialValue) {
             initialValue = signalInitializer(initialValue);
-            attributeHandler.default = 'default' in attributeHandler ? attributeHandler.default : initialValue;
+            // Typically the first initializer to run for a class field (on
+            // instantiation of the first instance of its class) will be our
+            // source of truth for our default attribute value, but we check for
+            // 'default' in attributeHandler just in case that a an attribute
+            // decorator was passed an explicit default, f.e.
+            // `@attribute({default: 123})`.
+            if (!('default' in attributeHandler))
+                attributeHandler.default = initialValue;
             return initialValue;
         };
     }
     else if (kind === 'getter' || kind === 'setter') {
-        signal(value, context);
+        if (useSignal)
+            signal(value, context);
     }
     else {
         throw new Error('@attribute is only for use on fields, getters, and setters. Auto accessor support is coming next if there is demand for it.');
@@ -90,7 +112,7 @@ function mapAttributeToProp(prototype, attr, prop, attributeHandler) {
                 // prettier-ignore
                 this[prop.name] = !handler
                     ? newVal
-                    : newVal === null
+                    : newVal === null // attribute removed
                         ? 'default' in handler
                             ? handler.default
                             : null

@@ -1,9 +1,11 @@
+import './metadata-shim.js'
+import {untrack} from 'solid-js'
 import {reactive, signalify} from 'classy-solid'
 import {Element} from './LumeElement.js'
 import {__classFinishers, __setUpAttribute} from './attribute.js'
 
 import type {AnyConstructor} from 'lowclass'
-import type {DecoratedValue} from 'classy-solid/dist/decorators/types.js'
+import type {DecoratedValue, PropKey} from 'classy-solid/dist/decorators/types.js'
 import type {AttributeHandler} from './attribute.js'
 
 type PossibleStatics = {
@@ -104,18 +106,22 @@ export function element(
 	// Otherwise `@element class MyEl ...` or `element(class MyEl ...)`
 	autoDefine = false
 	const Class = tagNameOrClass
-	const context = autoDefineOrContext as DecoratorContext
+	const context = autoDefineOrContext as DecoratorContext | undefined
 	return applyElementDecoration(Class, context, tagName, autoDefine)
 }
 
 function applyElementDecoration(
 	Class: DecoratedValue,
-	context: DecoratorContext,
+	context: DecoratorContext | undefined,
 	tagName: string,
 	autoDefine: boolean,
 ): any {
 	if (typeof Class !== 'function' || (context && context.kind !== 'class'))
 		throw new Error('@element is only for use on classes.')
+
+	const {metadata = {}} = context ?? {} // context may be undefined with plain-JS element() usage.
+	// Check only own metadata.noSignal, we don't want to use the one inherited from a base class.
+	const noSignal = (Object.hasOwn(metadata, 'noSignal') && (metadata.noSignal as Set<PropKey>)) || undefined
 
 	let Ctor = Class as ElementCtor
 	const attrs = Ctor.observedAttributes
@@ -145,46 +151,55 @@ function applyElementDecoration(
 	// We need to compose with @reactive so that it will signalify any @signal properties.
 	Ctor = reactive(Ctor, context)
 
-	class ElementDecoratorFinisher extends Ctor {
+	class ElementDecorator extends Ctor {
 		constructor(...args: any[]) {
 			// @ts-expect-error we don't know what the user's args will be, just pass them all.
 			super(...args)
 
-			handlePreUpgradeValues(this)
+			// Untrack to be sure we don't cause dependencies during creation of
+			// objects (super() is already untracked by the reactive decorator).
+			untrack(() => {
+				handlePreUpgradeValues(this)
 
-			const props: (keyof this)[] = []
-			const attrsToProps =
-				// @ts-expect-error private access
-				ElementDecoratorFinisher.prototype.__attributesToProps
+				const propsToSignalify: (keyof this)[] = []
+				const attrsToProps =
+					// @ts-expect-error private access
+					ElementDecorator.prototype.__attributesToProps ?? {}
 
-			for (const attr in attrsToProps) {
-				const prop = attrsToProps[attr].name as keyof this
+				for (const propSpec of Object.values(attrsToProps)) {
+					const prop = propSpec.name as keyof this
+					const useSignal = !noSignal?.has(prop as PropKey)
 
-				if (Object.hasOwn(attrsToProps, attr)) props.push(prop)
+					// CONTINUE this is for non-deco usage, so decos should work without this (currently breaks if commented out because decos unintentionally rely on it, but decos should work only with the @signal composition)
+					if (useSignal) propsToSignalify.push(prop)
 
-				// Default values for fields are handled in their initializer,
-				// and this catches default values for getters/setters.
-				const handler = attrsToProps[attr].attributeHandler
-				if (handler && !('default' in handler)) handler.default = this[prop]
-			}
+					const handler = propSpec.attributeHandler
 
-			// This is signalifying any attribute props that may have been
-			// defined in `static observedAttribute` rather than with @attribute
-			// decorator (which composes @signal), so that we also cover
-			// non-decorator usage until native decorators are out.
-			//
-			// Note, `signalify()` returns early if a property was already
-			// signalified by @attribute (@signal), so this isn't going to
-			// double-signalify.
-			//
-			// TODO: Once native decorators are out, remove this, and remove
-			// non-decorator usage because everyone will be able to use
-			// decorators.
-			//
-			// Having to duplicate keys in observedAttributes as well as class
-			// fields is more room for human error, so it'll be nice to remove
-			// non-decorator usage.
-			if (props.length) signalify(this, ...props)
+					// Default values for fields are handled in their initializer,
+					// and this catches default values for getters/setters.
+					if (handler && !('default' in handler)) handler.default = this[prop]
+				}
+
+				// This is signalifying any attribute props that may have been
+				// defined in `static observedAttribute` rather than with @attribute
+				// decorator (which composes @signal), so that we also cover
+				// non-decorator usage until native decorators are out.
+				//
+				// Note, `signalify()` returns early if a property was already
+				// signalified by @attribute (@signal), so this isn't going to
+				// double-signalify.
+				//
+				// TODO: Once native decorators are out, remove this, and remove
+				// non-decorator usage because everyone will be able to use
+				// decorators. We can also then delete `noSignal` from `metadata`
+				// here in the class as it is no longer needed at class
+				// instantiation time.
+				//
+				// Having to duplicate keys in observedAttributes as well as class
+				// fields is more room for human error, so it'll be nice to remove
+				// non-decorator usage.
+				if (propsToSignalify.length) signalify(this, ...propsToSignalify)
+			})
 		}
 	}
 
@@ -192,9 +207,9 @@ function applyElementDecoration(
 	__classFinishers.length = 0
 
 	function finishClass() {
-		for (const finisher of classFinishers) finisher(ElementDecoratorFinisher)
+		for (const finisher of classFinishers) finisher(ElementDecorator)
 
-		if (tagName && autoDefine) customElements.define(tagName, ElementDecoratorFinisher)
+		if (tagName && autoDefine) customElements.define(tagName, ElementDecorator)
 	}
 
 	if (context?.addInitializer) {
@@ -211,14 +226,9 @@ function applyElementDecoration(
 		// TODO: Once decorators are out natively, deprecate and remove this
 		// non-decorator support
 		finishClass()
-
-		// TODO when this debugger is enabled, the lume shimmer-cube example
-		// does not work after unpausing. Not sure if its a devtools bug, or
-		// indicative of a lume issue (but it seems like the former).
-		// debugger
 	}
 
-	return ElementDecoratorFinisher
+	return ElementDecorator
 }
 
 function handlePreUpgradeValues(self: HTMLElement) {

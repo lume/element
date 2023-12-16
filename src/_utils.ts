@@ -1,12 +1,4 @@
 /**
- * Execute the given `func`tion on the next micro "tick" of the JS engine.
- */
-export function defer(func: () => unknown): Promise<unknown> {
-	// "defer" is used as a semantic label for Promise.resolve().then
-	return Promise.resolve().then(func)
-}
-
-/**
  * This is an identity "template string tag function", which when applied to a
  * template string returns the equivalent of not having used a template tag on
  * a template string to begin with.
@@ -39,6 +31,10 @@ export function camelCaseToDash(str: string): string {
 	return str.replace(/([a-zA-Z])(?=[A-Z])/g, '$1-').toLowerCase()
 }
 
+export function dashCaseToCamelCase(str: string) {
+	return str.replace(/-([a-z])/g, g => g[1].toUpperCase())
+}
+
 export function defineProp(obj: any, prop: string, value: any) {
 	Object.defineProperty(obj, prop, {
 		value,
@@ -46,15 +42,6 @@ export function defineProp(obj: any, prop: string, value: any) {
 		configurable: true,
 		enumerable: true,
 	})
-}
-
-declare const global: any
-
-export function getGlobal(): Window {
-	if (typeof globalThis !== 'undefined') return globalThis as any
-	else if (typeof window !== 'undefined') return window
-	else if (typeof global !== 'undefined') return global as any
-	else return Function('return this')()
 }
 
 // TYPES

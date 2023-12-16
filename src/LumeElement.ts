@@ -4,7 +4,6 @@ import {render} from 'solid-js/web'
 // least once, and if so allows us to skip overwriting it with a custom
 // element preupgrade value.
 import {__isPropSetAtLeastOnce} from 'classy-solid'
-import {defer} from './_utils.js'
 
 import type {AttributeHandler} from './attribute'
 import type {DashCasedProps} from './_utils'
@@ -133,7 +132,7 @@ class LumeElement extends HTMLElement {
 				// class fields have been set during Custom Element upgrade
 				// construction (otherwise those class fields would override the
 				// preupgrade values we're trying to assign here).
-				defer(() => {
+				queueMicrotask(() => {
 					const propSetAtLeastOnce = __isPropSetAtLeastOnce(this, propName as string | symbol)
 
 					// ... (2/2) and re-assign the value so that it goes through

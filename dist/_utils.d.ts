@@ -1,8 +1,4 @@
 /**
- * Execute the given `func`tion on the next micro "tick" of the JS engine.
- */
-export declare function defer(func: () => unknown): Promise<unknown>;
-/**
  * This is an identity "template string tag function", which when applied to a
  * template string returns the equivalent of not having used a template tag on
  * a template string to begin with.
@@ -21,8 +17,8 @@ export declare function defer(func: () => unknown): Promise<unknown>;
  */
 export declare function identityTemplateTag(stringsParts: TemplateStringsArray, ...values: any[]): string;
 export declare function camelCaseToDash(str: string): string;
+export declare function dashCaseToCamelCase(str: string): string;
 export declare function defineProp(obj: any, prop: string, value: any): void;
-export declare function getGlobal(): Window;
 export type JoinToCamelCase<S extends string, Sep extends string = '-', UPPER extends boolean = false, Res extends string = ''> = S extends `${infer L}${infer R}` ? L extends Sep ? JoinToCamelCase<R, Sep, true, Res> : UPPER extends true ? JoinToCamelCase<R, Sep, false, `${Res}${Uppercase<L>}`> : JoinToCamelCase<R, Sep, false, `${Res}${Lowercase<L>}`> : Res;
 type KebabMap = {
     A: "a";

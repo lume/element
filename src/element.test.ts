@@ -1,4 +1,6 @@
+import {signal} from 'classy-solid'
 import {Element, element, attribute, numberAttribute, booleanAttribute, stringAttribute} from './index.js'
+import {createEffect} from 'solid-js'
 
 describe('@element decorator', () => {
 	it('ensures initial field values act as default attribute values when attributes removed, with decorator syntax', () => {
@@ -228,6 +230,138 @@ describe('@element decorator', () => {
 		testAttributes(el, '', 'lorem', 'ipsum', 'dolor', 'set', 'amit', 'yes', 'yes2')
 
 		el.remove()
+	})
+
+	it('automatically does not track reactivity in constructors when using decorators, using @signal', () => {
+		@element('untracked-ctor')
+		class Foo extends Element {
+			@signal amount = 3
+		}
+
+		@element('untracked-ctor-sub')
+		class Bar extends Foo {
+			@signal double = 0
+
+			constructor() {
+				super()
+				this.double = this.amount * 2 // this read of .amount should not be tracked
+			}
+		}
+
+		let b: Bar
+		let count = 0
+
+		function noLoop() {
+			createEffect(() => {
+				b = new Bar() // this should not track
+				count++
+			})
+		}
+
+		expect(noLoop).not.toThrow()
+
+		const b2 = b!
+
+		b!.amount = 4 // hence this should not trigger
+		b!.double = 8 // hence this should not trigger
+
+		// If the effect ran only once initially, not when setting b.colors,
+		// then both variables should reference the same instance
+		expect(count).toBe(1)
+		expect(b!).toBe(b2)
+	})
+
+	it('automatically does not track reactivity in constructors when using decorators, using @attribute', () => {
+		@element('untracked-ctor2')
+		class Foo extends Element {
+			@numberAttribute amount = 3
+		}
+
+		@element('untracked-ctor-sub2')
+		class Bar extends Foo {
+			@numberAttribute double = 0
+
+			constructor() {
+				super()
+				this.double = this.amount * 2 // this read of .amount should not be tracked
+			}
+		}
+
+		let b: Bar
+		let count = 0
+
+		function noLoop() {
+			createEffect(() => {
+				b = new Bar() // this should not track
+				count++
+			})
+		}
+
+		expect(noLoop).not.toThrow()
+
+		const b2 = b!
+
+		b!.amount = 4 // hence this should not trigger
+		b!.double = 8 // hence this should not trigger
+
+		// If the effect ran only once initially, not when setting b.colors,
+		// then both variables should reference the same instance
+		expect(count).toBe(1)
+		expect(b!).toBe(b2)
+	})
+
+	it('automatically does not track reactivity in constructors when not using decorators', () => {
+		const Foo = element('untracked-ctor3')(
+			class Foo extends Element {
+				static observedAttributes: {} = {
+					amount: attribute.number(),
+				}
+
+				amount = 3
+			},
+		)
+		type _Foo = InstanceType<typeof Foo>
+		interface Foo extends _Foo {}
+
+		const Bar = element('untracked-ctor-sub3')(
+			class Bar extends Foo {
+				static observedAttributes: {} = {
+					// ...super.observedAttributes,
+					double: attribute.number(),
+				}
+
+				double = 0
+
+				constructor() {
+					super()
+					this.double = this.amount * 2 // this read of .amount should not be tracked
+				}
+			},
+		)
+		type _Bar = InstanceType<typeof Bar>
+		interface Bar extends _Bar {}
+
+		let b: Bar
+		let count = 0
+
+		function noLoop() {
+			createEffect(() => {
+				b = new Bar() // this should not track
+				count++
+			})
+		}
+
+		expect(noLoop).not.toThrow()
+
+		const b2 = b!
+
+		b!.amount = 4 // hence this should not trigger
+		b!.double = 8 // hence this should not trigger
+
+		// If the effect ran only once initially, not when setting b.colors,
+		// then both variables should reference the same instance
+		expect(count).toBe(1)
+		expect(b!).toBe(b2)
 	})
 })
 

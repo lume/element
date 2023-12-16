@@ -1,0 +1,1 @@
+{"version":3,"file":"metadata-shim.d.ts","sourceRoot":"","sources":["../src/metadata-shim.ts"],"names":[],"mappings":"AAGA,OAAO,EAAE,CAAA;AAET,OAAO,CAAC,MAAM,CAAC;IACd,UAAU,iBAAiB;QAC1B,QAAQ,CAAC,QAAQ,EAAE,OAAO,MAAM,CAAA;KAChC;CACD"}

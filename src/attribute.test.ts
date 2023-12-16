@@ -1,6 +1,6 @@
 import {createEffect} from 'solid-js'
 import {signal} from 'classy-solid'
-import {Element, element, attribute, numberAttribute, booleanAttribute} from './index.js'
+import {Element, element, attribute, numberAttribute, booleanAttribute, noSignal} from './index.js'
 
 describe('classy-solid @signal properties with lume/element @element decorators on plain HTMLElements', () => {
 	it('reacts to updates using createEffect', () => {
@@ -32,7 +32,7 @@ describe('classy-solid @signal properties with lume/element @element decorators 
 
 		@element('override-el')
 		class OverrideEl extends FooEl {
-			@signal override foo = 123
+			@signal override foo = 456
 		}
 
 		const f = new OverrideEl()
@@ -44,10 +44,11 @@ describe('classy-solid @signal properties with lume/element @element decorators 
 			count++
 		})
 
+		expect(f.foo).toBe(456)
 		expect(count).toBe(1)
-		f.foo = 123
+		f.foo = 789
 		expect(count).toBe(2)
-		expect(f.foo).toBe(123)
+		expect(f.foo).toBe(789)
 	})
 })
 
@@ -109,7 +110,7 @@ describe('@attribute tests', () => {
 
 		@element('overridden-foo')
 		class OverrideFoo extends FooBar {
-			@attribute override foo = '0'
+			@attribute override foo = '1'
 		}
 
 		const f = new OverrideFoo()
@@ -121,10 +122,16 @@ describe('@attribute tests', () => {
 			count++
 		})
 
+		expect(f.foo).toBe('1')
 		expect(count).toBe(1)
 		f.setAttribute('foo', '123')
 		expect(count).toBe(2)
 		expect(f.foo).toBe('123')
+
+		// Check that the default value for attribute removed is from the overriden initial value.
+		f.removeAttribute('foo')
+		expect(count).toBe(3)
+		expect(f.foo).toBe('1')
 	})
 
 	it("@signal doesn't need to be used if using @attribute, as those are @signal too", () => {
@@ -197,6 +204,77 @@ describe('@attribute tests', () => {
 
 		// There is no option to reflect props to attributes yet. Do we want that?
 		expect(f.getAttribute('purpose')).toBe('Born to create!')
+	})
+
+	it('skip composing with @signal if @noSignal is used before it', async () => {
+		@element('no-signal')
+		class NoSignal extends Element {
+			@attribute @noSignal foo = '123'
+			@attribute bar = '123'
+		}
+
+		const el = document.createElement('no-signal') as NoSignal
+		document.body.append(el)
+
+		let count = 0
+
+		createEffect(() => {
+			el.foo
+			el.bar
+			count++
+		})
+
+		expect(el.foo).toBe('123')
+		expect(el.bar).toBe('123')
+		expect(count).toBe(1)
+
+		el.setAttribute('foo', '456')
+
+		expect(el.foo).toBe('456')
+		expect(el.bar).toBe('123')
+		expect(count).toBe(1) // still 1, foo is not reactive
+
+		el.setAttribute('bar', '456')
+
+		expect(el.foo).toBe('456')
+		expect(el.bar).toBe('456')
+		expect(count).toBe(2) // 2, bar is reactive
+
+		////////////////////////////////////
+		// Ensure overriding fields works
+
+		@element('no-signal2')
+		class NoSignal2 extends NoSignal {
+			@attribute foo = '123'
+			@attribute @noSignal bar = '123'
+		}
+
+		const el2 = document.createElement('no-signal2') as NoSignal2
+		document.body.append(el2)
+
+		let count2 = 0
+
+		createEffect(() => {
+			el2.foo
+			el2.bar
+			count2++
+		})
+
+		expect(el2.foo).toBe('123')
+		expect(el2.bar).toBe('123')
+		expect(count2).toBe(1)
+
+		el2.setAttribute('foo', '456')
+
+		expect(el2.foo).toBe('456')
+		expect(el2.bar).toBe('123')
+		expect(count2).toBe(2) // 2, foo is reactive
+
+		el2.setAttribute('bar', '456')
+
+		expect(el2.foo).toBe('456')
+		expect(el2.bar).toBe('456')
+		expect(count2).toBe(2) // still 2, bar is not reactive
 	})
 })
 
