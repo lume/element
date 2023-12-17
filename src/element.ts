@@ -170,7 +170,6 @@ function applyElementDecoration(
 					const prop = propSpec.name as keyof this
 					const useSignal = !noSignal?.has(prop as PropKey)
 
-					// CONTINUE this is for non-deco usage, so decos should work without this (currently breaks if commented out because decos unintentionally rely on it, but decos should work only with the @signal composition)
 					if (useSignal) propsToSignalify.push(prop)
 
 					const handler = propSpec.attributeHandler
