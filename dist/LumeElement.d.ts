@@ -1,10 +1,20 @@
 import type { AttributeHandler } from './attribute';
 import type { DashCasedProps } from './_utils';
-declare const HTMLElement: {
+declare const LumeElement_base: (new (...a: any[]) => {
+    "__#1@#effects": Set<import("classy-solid").Effect>;
+    createEffect(fn: () => void): void;
+    stopEffects(): void;
+    "__#1@#createEffect1"(fn: () => void): void;
+    "__#1@#stopEffects1"(): void;
+    "__#1@#owner": import("solid-js").Owner | null;
+    "__#1@#dispose": (() => void) | null;
+    "__#1@#createEffect2"(fn: () => void): void;
+    "__#1@#stopEffects2"(): void;
+}) & {
     new (): HTMLElement;
     prototype: HTMLElement;
 };
-declare class LumeElement extends HTMLElement {
+declare class LumeElement extends LumeElement_base {
     #private;
     /**
      * The default tag name of the elements this class instantiates. When using
@@ -30,10 +40,21 @@ declare class LumeElement extends HTMLElement {
     static defineElement(name?: string, registry?: CustomElementRegistry): typeof LumeElement;
     /** Non-decorator users can use this to specify attributes, which automatically map to reactive properties. */
     static observedAttributes?: string[] | Record<string, AttributeHandler>;
+    /** Note, this is internal and used by the @attribute decorator, see attribute.ts. */
     private __attributesToProps?;
+    /**
+     * This can be used by a subclass, or other frameworks handling elements, to
+     * detect property values that exist from before custom element upgrade.
+     *
+     * When this base class runs (before any subclass constructor does), it will
+     * track any discovered pre-upgrade property values here, then subclasses
+     * can subequently handle (if needed, as this base class will automatically
+     * convert pre-upgrade properties into reactive/signal descriptors if they
+     * were defined to be reactive with `classy-solid`'s `@signal` decorator,
+     * LumeElement's `@attribute` decorator (and derivatives), or `static
+     * observedAttributes`.
+     */
     protected _preUpgradeValues: Map<PropertyKey, unknown>;
-    protected ___init___: void;
-    private __handleInitialPropertyValuesIfAny;
     /**
      * If a subclass provides this, it should return DOM. It is called with
      * Solid.js `render()`, so it can also contain Solid.js reactivity (signals
@@ -86,17 +107,11 @@ declare class LumeElement extends HTMLElement {
      */
     protected get styleRoot(): Node;
     attachShadow(options: ShadowRootInit): ShadowRoot;
-    private __dispose?;
     connectedCallback(): void;
     disconnectedCallback(): void;
     attributeChangedCallback?(name: string, oldVal: string | null, newVal: string | null): void;
     private static __styleRootNodeRefCountPerTagName;
-    private __styleRootNode;
-    private __setStyle;
     private static __elementId;
-    private __id;
-    private __dynamicStyle;
-    private __cleanupStyle;
     adoptedCallback(): void;
 }
 export { LumeElement as Element };

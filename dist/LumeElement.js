@@ -1,9 +1,10 @@
+var _a;
 import { render } from 'solid-js/web';
 // __isPropSetAtLeastOnce was exposed by classy-solid specifically for
 // @lume/element to use. It tells us if a signal property has been set at
 // least once, and if so allows us to skip overwriting it with a custom
 // element preupgrade value.
-import { __isPropSetAtLeastOnce } from 'classy-solid';
+import { Effectful, __isPropSetAtLeastOnce } from 'classy-solid';
 // TODO `templateMode: 'append' | 'replace'`, which allows a subclass to specify
 // if template content replaces the content of `root`, or is appended to `root`.
 let ctor;
@@ -14,7 +15,7 @@ const HTMLElement = globalThis.HTMLElement ??
         }
     };
 // TODO Make LumeElement `abstract`
-class LumeElement extends HTMLElement {
+class LumeElement extends Effectful(HTMLElement) {
     /**
      * The default tag name of the elements this class instantiates. When using
      * the `@element` decorator, this property will be set to the value defined
@@ -64,15 +65,7 @@ class LumeElement extends HTMLElement {
     }
     /** Non-decorator users can use this to specify attributes, which automatically map to reactive properties. */
     static observedAttributes;
-    // This property MUST be defined before any other non-static non-declared
-    // class properties . Its initializer needs to run before any other
-    // properties are defined, in order to detect and handle only instance
-    // properties that already exist from custom element pre-upgrade time.
-    ___init___ = (() => {
-        this.__handleInitialPropertyValuesIfAny();
-        // TODO Should we handle initial attributes too?
-    })();
-    __handleInitialPropertyValuesIfAny() {
+    #handleInitialPropertyValuesIfAny() {
         // We need to delete initial value-descriptor properties (if they exist)
         // and store the initial values in the storage for our @signal property
         // accessors.
@@ -109,6 +102,9 @@ class LumeElement extends HTMLElement {
                 // class fields have been set during Custom Element upgrade
                 // construction (otherwise those class fields would override the
                 // preupgrade values we're trying to assign here).
+                // TODO Once decorators are out everywhere, deprecate
+                // non-decorator usage, and eventually remove code intended for
+                // non-decorator usage such as this.
                 queueMicrotask(() => {
                     const propSetAtLeastOnce = __isPropSetAtLeastOnce(this, propName);
                     // ... (2/2) and re-assign the value so that it goes through
@@ -145,6 +141,13 @@ class LumeElement extends HTMLElement {
             }
         }
     }
+    // This property MUST be defined before any other non-static non-declared
+    // class properties so that the initializer runs before any other properties
+    // are defined, in order to detect and handle instance properties that
+    // already pre-exist from custom element pre-upgrade time.
+    // TODO Should we handle initial attributes too?
+    // @ts-expect-error unused
+    #___init___ = this.#handleInitialPropertyValuesIfAny();
     /**
      * When `true`, the custom element will have a `ShadowRoot`. Set to `false`
      * to not use a `ShadowRoot`. When `false`, styles will not be scoped via
@@ -199,23 +202,27 @@ class LumeElement extends HTMLElement {
             console.warn('Element already has a root defined.');
         return (this.__root = super.attachShadow(options));
     }
+    #disposeTemplate;
     connectedCallback() {
-        this.__setStyle();
+        this.#setStyle();
         const template = this.template;
-        // TODO This needs testing to ensure it works with DOM or the result of JSX alike.
         if (template)
-            this.__dispose = render(typeof template === 'function' ? template.bind(this) : () => template, this.root);
+            this.#disposeTemplate = render(typeof template === 'function' ? template.bind(this) : () => template, this.root);
     }
     disconnectedCallback() {
-        this.__dispose && this.__dispose();
-        this.__cleanupStyle();
+        this.stopEffects();
+        this.#disposeTemplate?.();
+        this.#cleanupStyle();
     }
     static __styleRootNodeRefCountPerTagName = new WeakMap();
-    __styleRootNode = null;
+    #styleRootNode = null;
     #defaultHostStyle = (hostSelector) => /*css*/ `${hostSelector} {
 		display: block;
 	}`;
-    __setStyle() {
+    static __elementId = 0;
+    #id = _a.__elementId++;
+    #dynamicStyle = null;
+    #setStyle() {
         ctor = this.constructor;
         const staticCSS = typeof ctor.css === 'function' ? (ctor.css = ctor.css()) : ctor.css || '';
         const instanceCSS = typeof this.css === 'function' ? this.css() : this.css || '';
@@ -241,10 +248,10 @@ class LumeElement extends HTMLElement {
             // Because we're connected, getRootNode will return either the
             // Document, or a ShadowRoot.
             const rootNode = this.getRootNode();
-            this.__styleRootNode = rootNode === document ? document.head : rootNode;
-            let refCountPerTagName = LumeElement.__styleRootNodeRefCountPerTagName.get(this.__styleRootNode);
+            this.#styleRootNode = rootNode === document ? document.head : rootNode;
+            let refCountPerTagName = _a.__styleRootNodeRefCountPerTagName.get(this.#styleRootNode);
             if (!refCountPerTagName)
-                LumeElement.__styleRootNodeRefCountPerTagName.set(this.__styleRootNode, (refCountPerTagName = {}));
+                _a.__styleRootNodeRefCountPerTagName.set(this.#styleRootNode, (refCountPerTagName = {}));
             const refCount = refCountPerTagName[this.tagName] || 0;
             refCountPerTagName[this.tagName] = refCount + 1;
             if (refCount === 0) {
@@ -255,13 +262,13 @@ class LumeElement extends HTMLElement {
 					${staticCSS ? staticCSS.replaceAll(':host', hostSelector) : staticCSS}
 				`;
                 staticStyle.id = this.tagName.toLowerCase();
-                this.__styleRootNode.appendChild(staticStyle);
+                this.#styleRootNode.appendChild(staticStyle);
             }
             if (instanceCSS) {
                 // For dynamic per-instance styles, make one style element per
                 // element instance so it contains that element's unique styles,
                 // associated to a unique attribute selector.
-                const id = this.tagName.toLowerCase() + '-' + this.__id;
+                const id = this.tagName.toLowerCase() + '-' + this.#id;
                 // Add the unique attribute that the style selector will target.
                 this.setAttribute(id, '');
                 // TODO Instead of creating one style element per custom
@@ -270,23 +277,20 @@ class LumeElement extends HTMLElement {
                 // (but innerHTML is nice for dev mode because it shows the
                 // content in the DOM when looking in element inspector, so
                 // allow option for both).
-                const instanceStyle = (this.__dynamicStyle = document.createElement('style'));
+                const instanceStyle = (this.#dynamicStyle = document.createElement('style'));
                 instanceStyle.id = id;
                 instanceStyle.innerHTML = instanceCSS.replaceAll(':host', `[${id}]`);
                 const rootNode = this.getRootNode();
-                this.__styleRootNode = rootNode === document ? document.head : rootNode;
-                this.__styleRootNode.appendChild(instanceStyle);
+                this.#styleRootNode = rootNode === document ? document.head : rootNode;
+                this.#styleRootNode.appendChild(instanceStyle);
             }
         }
     }
-    static __elementId = 0;
-    __id = LumeElement.__elementId++;
-    __dynamicStyle = null;
-    __cleanupStyle() {
+    #cleanupStyle() {
         do {
             if (this.hasShadow)
                 break;
-            const refCountPerTagName = LumeElement.__styleRootNodeRefCountPerTagName.get(this.__styleRootNode);
+            const refCountPerTagName = _a.__styleRootNodeRefCountPerTagName.get(this.#styleRootNode);
             if (!refCountPerTagName)
                 break;
             let refCount = refCountPerTagName[this.tagName];
@@ -297,17 +301,18 @@ class LumeElement extends HTMLElement {
                 delete refCountPerTagName[this.tagName];
                 // TODO PERF Improve performance by saving the style
                 // instance on a static var, instead of querying for it.
-                const style = this.__styleRootNode.querySelector('#' + this.tagName);
+                const style = this.#styleRootNode.querySelector('#' + this.tagName);
                 style?.remove();
             }
         } while (false);
-        if (this.__dynamicStyle)
-            this.__dynamicStyle.remove();
+        if (this.#dynamicStyle)
+            this.#dynamicStyle.remove();
     }
     // not used currently, but we'll leave this here so that child classes can
     // call super, and that way we can add an implementation later when needed.
     adoptedCallback() { }
 }
+_a = LumeElement;
 // TODO rename the export to LumeElement in a breaking version bump.
 export { LumeElement as Element };
 //# sourceMappingURL=LumeElement.js.map

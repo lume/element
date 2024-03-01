@@ -287,12 +287,12 @@ describe('LumeElement', () => {
 		fooEl.setAttribute('pong', 'pong')
 		fooEl.bop = 'beep'
 
-		let initialValuesHandled = false
+		let fooDescriptor = Object.getOwnPropertyDescriptor(fooEl, 'foo')
+		let initialValuesHandled = !('value' in fooDescriptor!)
 		let attributeChangedCalled = false
 
 		// This triggers the Custom Element upgrade process for fooEl.
 		@element('foo-element')
-		// @ts-expect-error, ignore type error for testing
 		class FooElement extends Element {
 			// @ts-ignore, in case TS complains about overiding an accessor (valid JS)
 			root = this
@@ -313,19 +313,16 @@ describe('LumeElement', () => {
 			@signal boop = 'boop'
 			@signal bop = 'bop'
 
-			__handleInitialPropertyValuesIfAny() {
-				initialValuesHandled = true
-				// @ts-ignore, private access
-				super.__handleInitialPropertyValuesIfAny()
-			}
-
 			attributeChangedCallback(a: string, o: string | null, n: string | null) {
 				attributeChangedCalled = true
 				super.attributeChangedCallback?.(a, o, n)
 			}
 		}
 
-		expect(initialValuesHandled).toBe(true)
+		fooDescriptor = Object.getOwnPropertyDescriptor(fooEl, 'foo')
+		initialValuesHandled = !('value' in fooDescriptor!)
+
+		expect(initialValuesHandled).toBe(true, 'should have handled pre-upgrade values (they have accessor descriptors)')
 		expect(attributeChangedCalled).toBe(true)
 
 		// At this point, fooEl is now instanceof FooElement due to the Custom
@@ -458,14 +455,16 @@ describe('LumeElement', () => {
 		fooEl.setAttribute('pong', 'pong')
 		fooEl.bop = 'beep'
 
-		let initialValuesHandled = false
+		let fooDescriptor = Object.getOwnPropertyDescriptor(fooEl, 'foo')
+		let initialValuesHandled = !('value' in fooDescriptor!)
 		let attributeChangedCalled = false
+
+		expect(initialValuesHandled).toBe(false, 'pre-upgrade properties are plain properties')
 
 		type FooElemento = InstanceType<typeof FooElemento>
 
 		// const FooElemento = element(
 		const FooElemento = element('foo-elemento')(
-			// @ts-expect-error, overrides private base class method
 			class FooElemento extends Element {
 				// @ts-ignore, in case TS complains about overiding an accessor (valid JS)
 				root = this
@@ -497,12 +496,6 @@ describe('LumeElement', () => {
 					signalify(this, 'bar', 'lorem', 'boop', 'bop')
 				}
 
-				__handleInitialPropertyValuesIfAny() {
-					initialValuesHandled = true
-					// @ts-ignore, private access
-					super.__handleInitialPropertyValuesIfAny()
-				}
-
 				attributeChangedCallback(attr: string, oldVal: string | null, newVal: string | null) {
 					super.attributeChangedCallback?.(attr, oldVal, newVal)
 					attributeChangedCalled = true
@@ -517,8 +510,11 @@ describe('LumeElement', () => {
 		// This triggers the Custom Element upgrade process for fooEl.
 		// customElements.define('foo-elemento', FooElemento)
 
-		expect(initialValuesHandled).toBe(true, 'should have handled initial values (pre-deferral)')
-		expect(attributeChangedCalled).toBe(true, 'should have handled initial attributes (pre-deferral)')
+		fooDescriptor = Object.getOwnPropertyDescriptor(fooEl, 'foo')
+		initialValuesHandled = !('value' in fooDescriptor!)
+
+		expect(initialValuesHandled).toBe(true, 'should have handled pre-upgrade values (they have accessor descriptors)')
+		expect(attributeChangedCalled).toBe(true, 'should have handled initial attributes')
 
 		// At this point, fooEl is now instanceof FooElement due to the Custom
 		// Element upgrade process.
