@@ -19,7 +19,7 @@ jobs:
                   node-version: 21
             - name: install
               run: |
-                  npm i
+                  npm clean-install
                   npx playwright install
             - name: check formatting
               run: |
