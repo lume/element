@@ -3,5 +3,5 @@ export * from './attribute.js';
 export * from './element.js';
 export * from './css.js';
 export { identityTemplateTag, camelCaseToDash, dashCaseToCamelCase, } from './_utils.js';
-export const version = '0.11.7';
+export const version = '0.11.8';
 //# sourceMappingURL=index.js.map
