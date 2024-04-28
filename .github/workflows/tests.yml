@@ -8,19 +8,19 @@ jobs:
 
         strategy:
             matrix:
-                # TODO testing in Windows (help wanted!)
-                # windows-latest
-                operating-system: [ubuntu-latest, macos-latest]
+                operating-system: [ubuntu-latest, macos-latest, windows-latest]
 
         steps:
-            - uses: actions/checkout@v1
+            - uses: actions/checkout@v4
             - name: Use Node.js latest
-              uses: actions/setup-node@v3
+              uses: actions/setup-node@v4
               with:
-                  node-version: latest
+                  # hard code until this bug is fixed with Node 22: https://github.com/nodejs/node/issues/52682
+                  node-version: 21
             - name: install
               run: |
                   npm i
+                  npx playwright install
             - name: check formatting
               run: |
                   npm run prettier:check

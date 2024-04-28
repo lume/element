@@ -204,10 +204,10 @@ class LumeElement extends Effectful(HTMLElement) {
     }
     #disposeTemplate;
     connectedCallback() {
-        this.#setStyle();
         const template = this.template;
         if (template)
             this.#disposeTemplate = render(typeof template === 'function' ? template.bind(this) : () => template, this.root);
+        this.#setStyle();
     }
     disconnectedCallback() {
         this.stopEffects();

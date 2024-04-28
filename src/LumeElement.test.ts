@@ -81,10 +81,10 @@ describe('LumeElement', () => {
 		document.body.append(el)
 
 		expect(el.root.children.length).toBe(2)
-		// The first element is the style element that LumeElement creates
-		expect(el.root.firstElementChild.tagName.toLowerCase()).toBe('style')
 		// The DOM element returned from template()
-		expect(el.root.lastElementChild.outerHTML).toBe('<div>hello</div>')
+		expect(el.root.firstElementChild.outerHTML).toBe('<div>hello</div>')
+		// The style element that LumeElement creates
+		expect(el.root.lastElementChild.tagName.toLowerCase()).toBe('style')
 	})
 
 	// TODO: JSX support, a .tsx file should be compiled to .js, but currently
@@ -131,21 +131,21 @@ describe('LumeElement', () => {
 		document.body.append(el)
 
 		expect(el.root.children.length).toBe(2)
-		// The first element is the style element that LumeElement creates
-		expect(el.root.firstElementChild.tagName.toLowerCase()).toBe('style')
 		// The DOM element returned from template()
-		expect(el.root.lastElementChild.outerHTML).toBe('<div count="0">hello</div>')
+		expect(el.root.firstElementChild.outerHTML).toBe('<div count="0">hello</div>')
+		// The style element that LumeElement creates
+		expect(el.root.lastElementChild.tagName.toLowerCase()).toBe('style')
 
 		el.message = 'goodbye'
 		el.count++
 
-		expect(el.root.lastElementChild.outerHTML).toBe('<div count="1">goodbye</div>')
+		expect(el.root.firstElementChild.outerHTML).toBe('<div count="1">goodbye</div>')
 		// By default the template sets attributes on builtin elements, so the same-name prop is undefined.
-		expect(el.root.lastElementChild.count).toBe(undefined)
+		expect(el.root.firstElementChild.count).toBe(undefined)
 		// The attribute has the value.
-		expect(el.root.lastElementChild.getAttribute('count')).toBe('1')
+		expect(el.root.firstElementChild.getAttribute('count')).toBe('1')
 		// TODO If the prop: prefix was used, then the template sets the JS property on the element. `html` doesn't have namespace prefixes yet.
-		// expect(el.root.lastElementChild.theCount).toBe(1)
+		// expect(el.root.firstElementChild.theCount).toBe(1)
 
 		/**
 		 * Simulate a click event.
@@ -178,15 +178,15 @@ describe('LumeElement', () => {
 		document.body.append(el)
 
 		expect(el.root.children.length).toBe(2)
-		expect(el.root.firstElementChild.tagName.toLowerCase()).toBe('style')
-		expect(el.root.lastElementChild.outerHTML).toBe('<div count="0">hello</div>')
+		expect(el.root.firstElementChild.outerHTML).toBe('<div count="0">hello</div>')
+		expect(el.root.lastElementChild.tagName.toLowerCase()).toBe('style')
 
 		el.message = 'goodbye'
 		el.count++
 
-		expect(el.root.lastElementChild.outerHTML).toBe('<div count="1">goodbye</div>')
-		expect(el.root.lastElementChild.count).toBe(undefined)
-		expect(el.root.lastElementChild.getAttribute('count')).toBe('1')
+		expect(el.root.firstElementChild.outerHTML).toBe('<div count="1">goodbye</div>')
+		expect(el.root.firstElementChild.count).toBe(undefined)
+		expect(el.root.firstElementChild.getAttribute('count')).toBe('1')
 	})
 
 	it('same as previous test, but using signalify() instead of @reactive', () => {
@@ -206,15 +206,15 @@ describe('LumeElement', () => {
 		document.body.append(el)
 
 		expect(el.root.children.length).toBe(2)
-		expect(el.root.firstElementChild.tagName.toLowerCase()).toBe('style')
-		expect(el.root.lastElementChild.outerHTML).toBe('<div count="0">hello</div>')
+		expect(el.root.firstElementChild.outerHTML).toBe('<div count="0">hello</div>')
+		expect(el.root.lastElementChild.tagName.toLowerCase()).toBe('style')
 
 		el.message = 'goodbye'
 		el.count++
 
-		expect(el.root.lastElementChild.outerHTML).toBe('<div count="1">goodbye</div>')
-		expect(el.root.lastElementChild.count).toBe(undefined)
-		expect(el.root.lastElementChild.getAttribute('count')).toBe('1')
+		expect(el.root.firstElementChild.outerHTML).toBe('<div count="1">goodbye</div>')
+		expect(el.root.firstElementChild.count).toBe(undefined)
+		expect(el.root.firstElementChild.getAttribute('count')).toBe('1')
 	})
 
 	it('forgetting to use @reactive, @element, or signalify() causes a runtime error', () => {
@@ -242,8 +242,8 @@ describe('LumeElement', () => {
 		document.body.append(el)
 
 		expect(el.root.children.length).toBe(2)
-		expect(el.root.firstElementChild.tagName.toLowerCase()).toBe('style')
-		expect(el.root.lastElementChild.outerHTML).toBe('<div count="0">hello</div>')
+		expect(el.root.firstElementChild.outerHTML).toBe('<div count="0">hello</div>')
+		expect(el.root.lastElementChild.tagName.toLowerCase()).toBe('style')
 
 		const expectation = expect(() => {
 			// Error writing to these properties
