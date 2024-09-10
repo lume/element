@@ -459,5 +459,5 @@ export type ElementAttributes<
 	Omit<JSX.HTMLAttributes<ElementType>, SelectedProperties | keyof AdditionalProperties>
 
 type WithStringValues<Type extends object> = {
-	[Property in keyof Type]: Type[Property] extends string ? Type[Property] : Type[Property] | string
+	[Property in keyof Type]: NonNullable<Type[Property]> extends string ? Type[Property] : Type[Property] | string
 }
