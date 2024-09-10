@@ -1,0 +1,21 @@
+{
+	"type": "module",
+	"scripts": {
+		"build": "npm run clean && tsc && babel .tmp -d dist",
+		"dev": "npm run clean && tsc && (tsc --watch & babel .tmp -d dist --watch)",
+		"clean": "rimraf .tmp/ dist/",
+		"serve": "five-server ."
+	},
+	"dependencies": {
+		"@lume/element": "../.."
+	},
+	"devDependencies": {
+		"@babel/cli": "7.21.0",
+		"@babel/core": "7.22.0",
+		"@babel/plugin-proposal-decorators": "7.22.0",
+		"babel-preset-solid": "^1.8.22",
+		"five-server": "0.3.1",
+		"rimraf": "4.4.0",
+		"typescript": "^5.6.2"
+	}
+}
