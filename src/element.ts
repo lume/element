@@ -145,7 +145,7 @@ function applyElementDecoration(
 		// following _setUpAttribute calls.
 		Ctor.observedAttributes = undefined
 
-		for (const prop in attrs) __setUpAttribute(Ctor, prop, attrs[prop])
+		for (const prop in attrs) __setUpAttribute(Ctor, prop, attrs[prop]!)
 	}
 
 	// We need to compose with @reactive so that it will signalify any @signal properties.

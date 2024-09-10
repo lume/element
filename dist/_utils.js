@@ -28,7 +28,7 @@ export function camelCaseToDash(str) {
     return str.replace(/([a-zA-Z])(?=[A-Z])/g, '$1-').toLowerCase();
 }
 export function dashCaseToCamelCase(str) {
-    return str.replace(/-([a-z])/g, g => g[1].toUpperCase());
+    return str.replace(/-([a-z])/g, match => match[1].toUpperCase());
 }
 export function defineProp(obj, prop, value) {
     Object.defineProperty(obj, prop, {

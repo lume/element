@@ -32,7 +32,7 @@ export function camelCaseToDash(str: string): string {
 }
 
 export function dashCaseToCamelCase(str: string) {
-	return str.replace(/-([a-z])/g, g => g[1].toUpperCase())
+	return str.replace(/-([a-z])/g, match => match[1]!.toUpperCase())
 }
 
 export function defineProp(obj: any, prop: string, value: any) {
