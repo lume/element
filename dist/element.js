@@ -103,7 +103,8 @@ function applyElementDecoration(Class, context, tagName, autoDefine) {
         for (const finisher of classFinishers)
             finisher(ElementDecorator);
         if (tagName && autoDefine)
-            customElements.define(tagName, ElementDecorator);
+            // guard against missing DOM API (f.e. SSR)
+            globalThis.window?.customElements?.define(tagName, ElementDecorator);
     }
     if (context?.addInitializer) {
         // Use addInitializer to run logic after the class is fully defined
