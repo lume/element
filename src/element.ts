@@ -4,7 +4,7 @@ import {reactive, signalify} from 'classy-solid'
 import {Element} from './LumeElement.js'
 import {__classFinishers, __setUpAttribute} from './attribute.js'
 
-import type {AnyConstructor} from 'lowclass'
+import type {AnyConstructor} from 'lowclass/dist/Constructor.js'
 import type {DecoratedValue, PropKey} from 'classy-solid/dist/decorators/types.js'
 import type {AttributeHandler} from './attribute.js'
 

@@ -1,6 +1,6 @@
 import './metadata-shim.js';
 import { Element } from './LumeElement.js';
-import type { AnyConstructor } from 'lowclass';
+import type { AnyConstructor } from 'lowclass/dist/Constructor.js';
 import type { AttributeHandler } from './attribute.js';
 type PossibleStatics = {
     observedAttributes?: string[] | Record<string, AttributeHandler>;
