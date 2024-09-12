@@ -5,8 +5,8 @@ import {render} from 'solid-js/web'
 // element preupgrade value.
 import {Effectful, __isPropSetAtLeastOnce} from 'classy-solid'
 
+import type {DashCasedProps, IsString} from './_utils'
 import type {AttributeHandler} from './attribute'
-import type {DashCasedProps} from './_utils'
 
 // TODO `templateMode: 'append' | 'replace'`, which allows a subclass to specify
 // if template content replaces the content of `root`, or is appended to `root`.
@@ -459,5 +459,5 @@ export type ElementAttributes<
 	Omit<JSX.HTMLAttributes<ElementType>, SelectedProperties | keyof AdditionalProperties>
 
 type WithStringValues<Type extends object> = {
-	[Property in keyof Type]: NonNullable<Type[Property]> extends string ? Type[Property] : Type[Property] | string
+	[Property in keyof Type]: IsString<Type[Property]> extends false ? Type[Property] | string : Type[Property]
 }

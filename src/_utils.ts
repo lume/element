@@ -161,3 +161,11 @@ export type DashCasedProps<T> = {
 //    fooBar: string;
 //    foo: number;
 // }
+
+/**
+ * Returns
+ * - `true` if all of union-types are `string`
+ *  - `false` if none of union-types are `string`
+ *  - `boolean` if >1 of union-types are `string`
+ */
+export type IsString<U> = U extends string ? true : false
