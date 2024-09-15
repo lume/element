@@ -1078,21 +1078,29 @@ class CoolElement extends Element {
 }
 ```
 
-Additionally, Lume supports defining an object form of `observedAttributes` only
-when using the `@element` decorator. This can be used to map attributes to JS
-properties:
+#### `static observedAttributeHandlers`
+
+As an alternative to `static observedAttributes`, and mainly for non-decorator
+users (because not all JS engines support them yet at time of writing), observed
+attributes can be defined with `static observedAttributeHandlers` map of
+attribute names to attribute handlers. This requires using the `@element`
+decorator (calling it as a plain function for non-decorator usage). This will
+map attributes to reactive JS properties.
+
+Here's an example of an element definition with no decorators, with
+HTML attributes mapped to same-name JS properties:
 
 ```js
 import {Element, element} from '@lume/element'
 
 element('cool-element')(
 	class CoolElement extends Element {
-		static observedAttributes = {
+		static observedAttributeHandlers = {
 			foo: {from: Number},
 			bar: {from: Boolean},
 		}
 
-		// Due to the `observedAttributes` definition, any time the `"foo"` attribute
+		// Due to the `observedAttributeHandlers` definition, any time the `"foo"` attribute
 		// on the element changes, the attribute string value will be converted into a
 		// `Number` and assigned to the JS `.foo` property.
 		// Not only does `.foo` have an initial value of `123`, but when the element's
@@ -1100,7 +1108,7 @@ element('cool-element')(
 		// of `123`.
 		foo = 123
 
-		// Due to the `observedAttributes` definition, any time the `"bar"` attribute
+		// Due to the `observedAttributeHandlers` definition, any time the `"bar"` attribute
 		// on the element changes, the attribute string value will be converted into a
 		// `Boolean` and assigned to the JS `.bar` property.
 		// Not only does `.bar` have an initial value of `123`, but when the element's
@@ -1113,21 +1121,23 @@ element('cool-element')(
 )
 ```
 
-`@lume/element` has a few types built in for this non-decorator usage format:
+`@lume/element` has a set of basic handlers available out of the box, each of
+which are alternatives to the default set of decorators:
 
 ```js
 import {Element, element, attribute} from '@lume/element'
 
 element('cool-element')(
 	class CoolElement extends Element {
-		static observedAttributes = {
+		static observedAttributeHandlers = {
 			lorem: {}, // Effectively the same as attribute.string()
-			foo: attribute.string(), // Effectively an the same as `{}`, effectively the same as the @attribute or @stringAttribute decorators. Values get passed to the JS property as strings.
+			foo: attribute.string(), // Effectively an the same as `{}`, effectively the same as @stringAttribute decorator. Values get passed to the JS property as strings.
 			bar: attribute.number(), // Effectively the same as the @numberAttribute decorator. Values get passed to the JS property as numbers.
 			baz: attribute.boolean(), // Effectively the same as the @booleanAttribute decorator. Values get passed to the JS property as booleans.
-			bespoke: {from: value => JSON.Parse(value)}, // Custom mapping of the attribute value to the JS property, f.e. besoke='{"n": 123}' -> {n: 123}
+			bespoke: {from: value => JSON.Parse(value)}, // Custom mapping of the attribute value to the JS property, f.e. besoke='{"n": 123}' results in the JS property having the value `{n: 123}`
 		}
 
+		// The initial values of the JS properties also define the values that the JS properties get reset back to when the corresponding attribute is removed or the JS property is set to `null`.
 		lorem = 'hello'
 		foo = 'blah'
 		bar = 123
@@ -1139,7 +1149,7 @@ element('cool-element')(
 )
 ```
 
-Each value in the `observedAttributes` objects has the following shape:
+Each value in the `observedAttributeHandlers` object has the following shape:
 
 ```ts
 /**
@@ -1182,7 +1192,8 @@ export type AttributeHandler<T = any> = {
 }
 ```
 
-If you will have decorator support in your app's build, it is easier to write the same using decorators.
+If you will have decorator support (either with a build, or natively in
+near-future JS engines), definine attributes is simple and concise:
 
 ```js
 import {Element, element, numberAttribute, booleanAttribute} from '@lume/element'
@@ -1197,25 +1208,25 @@ class CoolElement extends Element {
 	// of `123`.
 	@numberAttribute foo = 123
 
-	// Due to the `observedAttributes` definition, any time the `"bar"` attribute
+	// Due to the `@booleanAttribute` decorator, any time the `"bar"` attribute
 	// on the element changes, the attribute string value will be converted into a
 	// `Boolean` and assigned to the JS `.bar` property.
-	// Not only does `.bar` have an initial value of `123`, but when the element's
+	// Not only does `.bar` have an initial value of `true`, but when the element's
 	// `"bar"` attribute is removed, `.bar` will be set back to the initial value
-	// of `false`.
-	@booleanAttribute bar = false
+	// of `true`.
+	@booleanAttribute bar = true
 
 	// ...
 }
 ```
 
 > [!Note]
-> Not only do decorators make the definition more concise, but it avoids surface
+> Not only do decorators make the definition more concise, but they avoid surface
 > area for human error: the non-decorator form requires defining the same-name
-> property in both the `observedAttributes` object and as a class field, and if
+> property in both the `observedAttributeHandlers` object and in the class fields, and if
 > you miss one or the other things might not work as expected.
 
-Decorators, and the `observedAttributes` object format, both work with
+Decorators, and the `observedAttributeHandlers` object format, both work with
 getter/setter properties as well:
 
 ```js
