@@ -84,14 +84,13 @@ export function __setUpAttribute(ctor, propName, attributeHandler) {
         ctor.observedAttributes.push(attrName);
     mapAttributeToProp(ctor.prototype, attrName, propName, attributeHandler);
 }
-// TODO this stores attributes as an inheritance chain on the constructor. It'd
-// be more fool-proof (not publicly exposed) to store attribute-prop mappings in
-// WeakMaps, but then we'd need to implement our own inheritance
-// (prototype-like) lookup for the attributes.
+const hasAttributeChangedCallback = Symbol('hasAttributeChangedCallback');
+export const attributesToProps = Symbol('attributesToProps');
+// This stores attribute definitions as an inheritance chain on the constructor.
 function mapAttributeToProp(prototype, attr, prop, attributeHandler) {
     // Only define attributeChangedCallback once.
-    if (!prototype.__hasAttributeChangedCallback) {
-        prototype.__hasAttributeChangedCallback = true;
+    if (!prototype[hasAttributeChangedCallback]) {
+        prototype[hasAttributeChangedCallback] = true;
         const originalAttrChanged = prototype.attributeChangedCallback;
         prototype.attributeChangedCallback = function (attr, oldVal, newVal) {
             // If the class already has an attributeChangedCallback, let is run,
@@ -106,7 +105,7 @@ function mapAttributeToProp(prototype, attr, prop, attributeHandler) {
                 prototype.__proto__?.attributeChangedCallback?.call(this, attr, oldVal, newVal);
             }
             // map from attribute to property
-            const prop = this.__attributesToProps && this.__attributesToProps[attr];
+            const prop = this[attributesToProps]?.[attr];
             if (prop) {
                 const handler = prop.attributeHandler;
                 // prettier-ignore
@@ -122,25 +121,26 @@ function mapAttributeToProp(prototype, attr, prop, attributeHandler) {
             }
         };
     }
-    // Extend the current prototype's __attributesToProps object from the super
-    // prototype's __attributesToProps object.
+    // Extend the current prototype's attributesToProps object from the super
+    // prototype's attributesToProps object.
     //
     // We use inheritance here or else all classes would pile their
     // attribute-prop definitions on a shared base class (they can clash,
     // override each other willy nilly and seemingly randomly).
-    if (!prototype.hasOwnProperty('__attributesToProps')) {
+    if (!prototype.hasOwnProperty(attributesToProps)) {
         // using defineProperty so that it is non-writable, non-enumerable, non-configurable
-        Object.defineProperty(prototype, '__attributesToProps', {
+        Object.defineProperty(prototype, attributesToProps, {
             value: {
-                __proto__: prototype.__attributesToProps || Object.prototype,
+                __proto__: prototype[attributesToProps] || Object.prototype,
             },
         });
+        // Object.create(prototype[attributesToProps] || Object.prototype)
     }
-    prototype.__attributesToProps[attr] = { name: prop, attributeHandler };
+    prototype[attributesToProps][attr] = { name: prop, attributeHandler };
 }
 const toString = (str) => str;
 /**
- * An attribute type for use in the object form of `static observedAttributes`
+ * An attribute type for use in the `static observedAttributeHandlers` map
  * when not using decorators.
  *
  * Example usage without decorators:
@@ -148,7 +148,7 @@ const toString = (str) => str;
  * ```js
  * element('my-el')(
  *   class MyEl extends LumeElement {
- *     static observedAttributes = {
+ *     static observedAttributeHandlers = {
  *       name: attribute.string()
  *     }
  *
@@ -202,7 +202,7 @@ export function stringAttribute(value, context) {
 }
 const toNumber = (str) => +str;
 /**
- * An attribute type for use in the object form of `static observedAttributes`
+ * An attribute type for use in the `static observedAttributeHandlers` map
  * when not using decorators.
  *
  * Example usage without decorators:
@@ -210,7 +210,7 @@ const toNumber = (str) => +str;
  * ```js
  * element('my-el')(
  *   class MyEl extends LumeElement {
- *     static observedAttributes = {
+ *     static observedAttributeHandlers = {
  *       money: attribute.number()
  *     }
  *
@@ -263,7 +263,7 @@ export function numberAttribute(value, context) {
 }
 const toBoolean = (str) => str !== 'false';
 /**
- * An attribute type for use in the object form of `static observedAttributes`
+ * An attribute type for use in the `static observedAttributeHandlers` map
  * when not using decorators.
  *
  * Example usage without decorators:
@@ -271,7 +271,7 @@ const toBoolean = (str) => str !== 'false';
  * ```js
  * element('my-el')(
  *   class MyEl extends LumeElement {
- *     static observedAttributes = {
+ *     static observedAttributeHandlers = {
  *       hasCash: attribute.boolean()
  *     }
  *

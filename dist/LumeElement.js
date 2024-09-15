@@ -14,6 +14,7 @@ const HTMLElement = globalThis.HTMLElement ??
             throw new Error("@lume/element needs a DOM to operate with! If this code is running during server-side rendering, it means your app is trying to instantiate elements when it shouldn't be, and should be refactored to avoid doing that when no DOM is present.");
         }
     };
+const root = Symbol('root');
 // TODO Make LumeElement `abstract`
 class LumeElement extends Effectful(HTMLElement) {
     /**
@@ -63,8 +64,46 @@ class LumeElement extends Effectful(HTMLElement) {
             }
         }
     }
-    /** Non-decorator users can use this to specify attributes, which automatically map to reactive properties. */
+    /**
+     * Non-decorator users can use this to specify a list of attributes, and the
+     * attributes will automatically be mapped to reactive properties. All
+     * attributes in the list will be treated with the equivalent of the
+     * `@attribute` decorator.
+     *
+     * The ability to provide a map of attribute names to attribute handlers
+     * (`Record<string, AttributeHandler>`) has been deprecaated, and instead
+     * that map should be provided via the `static observedAttributeHandlers`
+     * property, while this property is now typed to accept only a string array
+     * as per DOM spec.
+     */
     static observedAttributes;
+    /**
+     * Non-decorator users can use this instead of `observedAttributes` to
+     * specify a map of attribute names to attribute handlers. The named
+     * attributes will automatically be mapped to reactive properties, and each
+     * attribute will be treated with the corresponding attribute handler.
+     *
+     * Example:
+     *
+     * ```js
+     * element('my-el')(
+     *   class MyEl extends LumeElement {
+     *     static observedAttributeHandlers = {
+     *       foo: attribute.string(),
+     *       bar: attribute.number(),
+     *       baz: attribute.boolean(),
+     *     }
+     *
+     *     // The initial values defined here will be the values that these
+     *     // properties revert to when the respective attributes are removed.
+     *     foo = 'hello'
+     *     bar = 123
+     *     baz = false
+     *   }
+     * )
+     * ```
+     */
+    static observedAttributeHandlers;
     #handleInitialPropertyValuesIfAny() {
         // We need to delete initial value-descriptor properties (if they exist)
         // and store the initial values in the storage for our @signal property
@@ -156,7 +195,7 @@ class LumeElement extends Effectful(HTMLElement) {
      * selectors converted to tag names.
      */
     hasShadow = true;
-    __root = null;
+    [root] = null;
     /**
      * Subclasses can override this to provide an alternate Node to render into
      * (f.e. a subclass can `return this` to render into itself instead of
@@ -165,20 +204,20 @@ class LumeElement extends Effectful(HTMLElement) {
     get root() {
         if (!this.hasShadow)
             return this;
-        if (this.__root)
-            return this.__root;
+        if (this[root])
+            return this[root];
         if (this.shadowRoot)
-            return (this.__root = this.shadowRoot);
+            return (this[root] = this.shadowRoot);
         // TODO use `this.attachInternals()` (ElementInternals API) to get the root instead.
-        return (this.__root = this.attachShadow({ mode: 'open' }));
+        return (this[root] = this.attachShadow({ mode: 'open' }));
     }
     set root(v) {
         if (!this.hasShadow)
             throw new Error('Can not set root, element.hasShadow is false.');
         // @prod-prune
-        if (this.__root || this.shadowRoot)
+        if (this[root] || this.shadowRoot)
             throw new Error('Element root can only be set once if there is no ShadowRoot.');
-        this.__root = v;
+        this[root] = v;
     }
     /**
      * Define which `Node` to append style sheets to when `hasShadow` is `true`.
@@ -198,9 +237,9 @@ class LumeElement extends Effectful(HTMLElement) {
         return this.root;
     }
     attachShadow(options) {
-        if (this.__root)
+        if (this[root])
             console.warn('Element already has a root defined.');
-        return (this.__root = super.attachShadow(options));
+        return (this[root] = super.attachShadow(options));
     }
     #disposeTemplate;
     connectedCallback() {
@@ -214,13 +253,13 @@ class LumeElement extends Effectful(HTMLElement) {
         this.#disposeTemplate?.();
         this.#cleanupStyle();
     }
-    static __styleRootNodeRefCountPerTagName = new WeakMap();
+    static #styleRootNodeRefCountPerTagName = new WeakMap();
     #styleRootNode = null;
     #defaultHostStyle = (hostSelector) => /*css*/ `${hostSelector} {
 		display: block;
 	}`;
-    static __elementId = 0;
-    #id = _a.__elementId++;
+    static #elementId = 0;
+    #id = _a.#elementId++;
     #dynamicStyle = null;
     #setStyle() {
         ctor = this.constructor;
@@ -249,9 +288,9 @@ class LumeElement extends Effectful(HTMLElement) {
             // Document, or a ShadowRoot.
             const rootNode = this.getRootNode();
             this.#styleRootNode = rootNode === document ? document.head : rootNode;
-            let refCountPerTagName = _a.__styleRootNodeRefCountPerTagName.get(this.#styleRootNode);
+            let refCountPerTagName = _a.#styleRootNodeRefCountPerTagName.get(this.#styleRootNode);
             if (!refCountPerTagName)
-                _a.__styleRootNodeRefCountPerTagName.set(this.#styleRootNode, (refCountPerTagName = {}));
+                _a.#styleRootNodeRefCountPerTagName.set(this.#styleRootNode, (refCountPerTagName = {}));
             const refCount = refCountPerTagName[this.tagName] || 0;
             refCountPerTagName[this.tagName] = refCount + 1;
             if (refCount === 0) {
@@ -290,7 +329,7 @@ class LumeElement extends Effectful(HTMLElement) {
         do {
             if (this.hasShadow)
                 break;
-            const refCountPerTagName = _a.__styleRootNodeRefCountPerTagName.get(this.#styleRootNode);
+            const refCountPerTagName = _a.#styleRootNodeRefCountPerTagName.get(this.#styleRootNode);
             if (!refCountPerTagName)
                 break;
             let refCount = refCountPerTagName[this.tagName];

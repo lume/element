@@ -2,7 +2,7 @@ import './metadata-shim.js';
 import { untrack } from 'solid-js';
 import { reactive, signalify } from 'classy-solid';
 import { Element } from './LumeElement.js';
-import { __classFinishers, __setUpAttribute } from './attribute.js';
+import { __classFinishers, __setUpAttribute, attributesToProps } from './attribute.js';
 export function element(tagNameOrClass, autoDefineOrContext) {
     let tagName = '';
     let autoDefine = !!(autoDefineOrContext ?? true);
@@ -44,11 +44,20 @@ function applyElementDecoration(Class, context, tagName, autoDefine) {
         // track the types, and convert observedAttributes to an array so
         // the browser will understand it like usual.
         // Delete it, so that it will be re-created as an array by the
-        // following _setUpAttribute calls.
+        // following __setUpAttribute calls.
         Ctor.observedAttributes = undefined;
-        for (const prop in attrs)
+        const stack = new Error().stack;
+        console.warn('Defining the static observedAttributes property as a map of attribute names to attribute handlers is now deprecated, please use the static observedAttributeHandlers property to define the map instead.\n' +
+            stack);
+        const _attrs = attrs;
+        for (const prop in _attrs)
             __setUpAttribute(Ctor, prop, attrs[prop]);
     }
+    const handlers = Ctor.observedAttributeHandlers;
+    // if (handlers) for (const prop in handlers) __setUpAttribute(Ctor, prop, handlers[prop]!)
+    if (handlers)
+        for (const prop of Object.keys(handlers))
+            __setUpAttribute(Ctor, prop, handlers[prop]);
     // We need to compose with @reactive so that it will signalify any @signal properties.
     Ctor = reactive(Ctor, context);
     class ElementDecorator extends Ctor {
@@ -60,9 +69,7 @@ function applyElementDecoration(Class, context, tagName, autoDefine) {
             untrack(() => {
                 handlePreUpgradeValues(this);
                 const propsToSignalify = [];
-                const attrsToProps = 
-                // @ts-expect-error private access
-                ElementDecorator.prototype.__attributesToProps ?? {};
+                const attrsToProps = ElementDecorator.prototype[attributesToProps] ?? {};
                 for (const propSpec of Object.values(attrsToProps)) {
                     const prop = propSpec.name;
                     const useSignal = !noSignal?.has(prop);

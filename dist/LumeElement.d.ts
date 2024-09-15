@@ -1,5 +1,6 @@
-import type { AttributeHandler } from './attribute';
+import type { AttributeHandler, attributesToProps } from './attribute';
 import type { DashCasedProps } from './_utils';
+declare const root: unique symbol;
 declare const LumeElement_base: (new (...a: any[]) => {
     "__#1@#effects": Set<import("classy-solid").Effect>;
     createEffect(fn: () => void): void;
@@ -38,10 +39,51 @@ declare class LumeElement extends LumeElement_base {
      * `name`, otherwise returns the same class this is called on.
      */
     static defineElement(name?: string, registry?: CustomElementRegistry): typeof LumeElement;
-    /** Non-decorator users can use this to specify attributes, which automatically map to reactive properties. */
-    static observedAttributes?: string[] | Record<string, AttributeHandler>;
+    /**
+     * Non-decorator users can use this to specify a list of attributes, and the
+     * attributes will automatically be mapped to reactive properties. All
+     * attributes in the list will be treated with the equivalent of the
+     * `@attribute` decorator.
+     *
+     * The ability to provide a map of attribute names to attribute handlers
+     * (`Record<string, AttributeHandler>`) has been deprecaated, and instead
+     * that map should be provided via the `static observedAttributeHandlers`
+     * property, while this property is now typed to accept only a string array
+     * as per DOM spec.
+     */
+    static observedAttributes?: string[];
+    /**
+     * Non-decorator users can use this instead of `observedAttributes` to
+     * specify a map of attribute names to attribute handlers. The named
+     * attributes will automatically be mapped to reactive properties, and each
+     * attribute will be treated with the corresponding attribute handler.
+     *
+     * Example:
+     *
+     * ```js
+     * element('my-el')(
+     *   class MyEl extends LumeElement {
+     *     static observedAttributeHandlers = {
+     *       foo: attribute.string(),
+     *       bar: attribute.number(),
+     *       baz: attribute.boolean(),
+     *     }
+     *
+     *     // The initial values defined here will be the values that these
+     *     // properties revert to when the respective attributes are removed.
+     *     foo = 'hello'
+     *     bar = 123
+     *     baz = false
+     *   }
+     * )
+     * ```
+     */
+    static observedAttributeHandlers?: AttributeHandlerMap;
     /** Note, this is internal and used by the @attribute decorator, see attribute.ts. */
-    private __attributesToProps?;
+    [attributesToProps]?: Record<string, {
+        name: string;
+        attributeHandler?: AttributeHandler;
+    }>;
     /**
      * This can be used by a subclass, or other frameworks handling elements, to
      * detect property values that exist from before custom element upgrade.
@@ -83,7 +125,7 @@ declare class LumeElement extends LumeElement_base {
      * selectors converted to tag names.
      */
     readonly hasShadow: boolean;
-    private __root;
+    [root]: Node | null;
     /**
      * Subclasses can override this to provide an alternate Node to render into
      * (f.e. a subclass can `return this` to render into itself instead of
@@ -110,11 +152,10 @@ declare class LumeElement extends LumeElement_base {
     connectedCallback(): void;
     disconnectedCallback(): void;
     attributeChangedCallback?(name: string, oldVal: string | null, newVal: string | null): void;
-    private static __styleRootNodeRefCountPerTagName;
-    private static __elementId;
     adoptedCallback(): void;
 }
 export { LumeElement as Element };
+export type AttributeHandlerMap = Record<string, AttributeHandler>;
 import type { JSX } from './jsx-runtime';
 type JSXOrDOM = JSX.Element | globalThis.Element;
 type TemplateContent = JSXOrDOM | JSXOrDOM[];
