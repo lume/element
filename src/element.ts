@@ -1,15 +1,14 @@
 import './metadata-shim.js'
 import {untrack} from 'solid-js'
 import {reactive, signalify} from 'classy-solid'
-import {Element} from './LumeElement.js'
-import {__classFinishers, __setUpAttribute} from './attribute.js'
-
+import {Element, type AttributeHandlerMap} from './LumeElement.js'
+import {__classFinishers, __setUpAttribute, attributesToProps} from './attribute.js'
 import type {AnyConstructor} from 'lowclass/dist/Constructor.js'
 import type {DecoratedValue, PropKey} from 'classy-solid/dist/decorators/types.js'
-import type {AttributeHandler} from './attribute.js'
 
 type PossibleStatics = {
-	observedAttributes?: string[] | Record<string, AttributeHandler>
+	observedAttributes?: string[]
+	observedAttributeHandlers?: AttributeHandlerMap
 	elementName?: string
 	__proto__: PossibleStatics // used in attribute.ts
 }
@@ -142,11 +141,23 @@ function applyElementDecoration(
 		// the browser will understand it like usual.
 
 		// Delete it, so that it will be re-created as an array by the
-		// following _setUpAttribute calls.
+		// following __setUpAttribute calls.
 		Ctor.observedAttributes = undefined
 
-		for (const prop in attrs) __setUpAttribute(Ctor, prop, attrs[prop]!)
+		const stack = new Error().stack
+		console.warn(
+			'Defining the static observedAttributes property as a map of attribute names to attribute handlers is now deprecated, please use the static observedAttributeHandlers property to define the map instead.\n' +
+				stack,
+		)
+
+		const _attrs = attrs as AttributeHandlerMap
+
+		for (const prop in _attrs) __setUpAttribute(Ctor, prop, attrs[prop]!)
 	}
+
+	const handlers = Ctor.observedAttributeHandlers
+	// if (handlers) for (const prop in handlers) __setUpAttribute(Ctor, prop, handlers[prop]!)
+	if (handlers) for (const prop of Object.keys(handlers)) __setUpAttribute(Ctor, prop, handlers[prop]!)
 
 	// We need to compose with @reactive so that it will signalify any @signal properties.
 	Ctor = reactive(Ctor, context)
@@ -162,9 +173,7 @@ function applyElementDecoration(
 				handlePreUpgradeValues(this)
 
 				const propsToSignalify: (keyof this)[] = []
-				const attrsToProps =
-					// @ts-expect-error private access
-					ElementDecorator.prototype.__attributesToProps ?? {}
+				const attrsToProps = ElementDecorator.prototype[attributesToProps] ?? {}
 
 				for (const propSpec of Object.values(attrsToProps)) {
 					const prop = propSpec.name as keyof this

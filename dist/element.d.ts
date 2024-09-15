@@ -1,9 +1,9 @@
 import './metadata-shim.js';
-import { Element } from './LumeElement.js';
+import { Element, type AttributeHandlerMap } from './LumeElement.js';
 import type { AnyConstructor } from 'lowclass/dist/Constructor.js';
-import type { AttributeHandler } from './attribute.js';
 type PossibleStatics = {
-    observedAttributes?: string[] | Record<string, AttributeHandler>;
+    observedAttributes?: string[];
+    observedAttributeHandlers?: AttributeHandlerMap;
     elementName?: string;
     __proto__: PossibleStatics;
 };

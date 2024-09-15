@@ -1,7 +1,8 @@
 import './metadata-shim.js';
 import type { ElementCtor } from './element.js';
 export declare const __classFinishers: ((Class: ElementCtor) => void)[];
-type AttributeDecoratorContext = ClassFieldDecoratorContext | ClassGetterDecoratorContext | ClassSetterDecoratorContext;
+/** The `@attribute` decorator currently works only on fields, getters, and setters. */
+type AttributeDecoratorContext<This = unknown, Value = unknown> = ClassFieldDecoratorContext<This, Value> | ClassGetterDecoratorContext<This, Value> | ClassSetterDecoratorContext<This, Value>;
 /**
  * A decorator that when used on a property or accessor causes an HTML attribute
  * with the same name (but dash-cased instead of camelCased) to be mapped to the
@@ -25,8 +26,8 @@ type AttributeDecoratorContext = ClassFieldDecoratorContext | ClassGetterDecorat
  * }
  * ```
  */
-export declare function attribute(handler?: AttributeHandler): (value: unknown, context: AttributeDecoratorContext) => any;
 export declare function attribute(value: unknown, context: AttributeDecoratorContext): any;
+export declare function attribute(handler?: AttributeHandler): (value: unknown, context: AttributeDecoratorContext) => any;
 export declare namespace attribute {
     var string: AttributeType<string>;
     var number: AttributeType<number>;
@@ -39,6 +40,7 @@ export declare namespace attribute {
  */
 export declare const noSignal: (_value: unknown, context: AttributeDecoratorContext) => void;
 export declare function __setUpAttribute(ctor: ElementCtor, propName: string, attributeHandler: AttributeHandler): any;
+export declare const attributesToProps: unique symbol;
 /**
  * Defines how values are mapped from an attribute to a JS property on a custom
  * element class.

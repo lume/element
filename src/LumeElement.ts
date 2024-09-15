@@ -5,7 +5,7 @@ import {render} from 'solid-js/web'
 // element preupgrade value.
 import {Effectful, __isPropSetAtLeastOnce} from 'classy-solid'
 
-import type {AttributeHandler} from './attribute'
+import type {AttributeHandler, attributesToProps} from './attribute'
 import type {DashCasedProps} from './_utils'
 
 // TODO `templateMode: 'append' | 'replace'`, which allows a subclass to specify
@@ -22,6 +22,8 @@ const HTMLElement =
 			)
 		}
 	}
+
+const root = Symbol('root')
 
 // TODO Make LumeElement `abstract`
 
@@ -72,11 +74,50 @@ class LumeElement extends Effectful(HTMLElement) {
 		}
 	}
 
-	/** Non-decorator users can use this to specify attributes, which automatically map to reactive properties. */
-	static observedAttributes?: string[] | Record<string, AttributeHandler>
+	/**
+	 * Non-decorator users can use this to specify a list of attributes, and the
+	 * attributes will automatically be mapped to reactive properties. All
+	 * attributes in the list will be treated with the equivalent of the
+	 * `@attribute` decorator.
+	 *
+	 * The ability to provide a map of attribute names to attribute handlers
+	 * (`Record<string, AttributeHandler>`) has been deprecaated, and instead
+	 * that map should be provided via the `static observedAttributeHandlers`
+	 * property, while this property is now typed to accept only a string array
+	 * as per DOM spec.
+	 */
+	static observedAttributes?: string[]
+
+	/**
+	 * Non-decorator users can use this instead of `observedAttributes` to
+	 * specify a map of attribute names to attribute handlers. The named
+	 * attributes will automatically be mapped to reactive properties, and each
+	 * attribute will be treated with the corresponding attribute handler.
+	 *
+	 * Example:
+	 *
+	 * ```js
+	 * element('my-el')(
+	 *   class MyEl extends LumeElement {
+	 *     static observedAttributeHandlers = {
+	 *       foo: attribute.string(),
+	 *       bar: attribute.number(),
+	 *       baz: attribute.boolean(),
+	 *     }
+	 *
+	 *     // The initial values defined here will be the values that these
+	 *     // properties revert to when the respective attributes are removed.
+	 *     foo = 'hello'
+	 *     bar = 123
+	 *     baz = false
+	 *   }
+	 * )
+	 * ```
+	 */
+	static observedAttributeHandlers?: AttributeHandlerMap;
 
 	/** Note, this is internal and used by the @attribute decorator, see attribute.ts. */
-	private declare __attributesToProps?: Record<string, {name: string; attributeHandler?: AttributeHandler}>
+	declare [attributesToProps]?: Record<string, {name: string; attributeHandler?: AttributeHandler}>
 
 	/**
 	 * This can be used by a subclass, or other frameworks handling elements, to
@@ -211,9 +252,9 @@ class LumeElement extends Effectful(HTMLElement) {
 	 * shared style sheet placed at the nearest root node, with `:host`
 	 * selectors converted to tag names.
 	 */
-	readonly hasShadow: boolean = true
+	readonly hasShadow: boolean = true;
 
-	private __root: Node | null = null
+	[root]: Node | null = null
 
 	/**
 	 * Subclasses can override this to provide an alternate Node to render into
@@ -222,16 +263,16 @@ class LumeElement extends Effectful(HTMLElement) {
 	 */
 	protected get root(): Node {
 		if (!this.hasShadow) return this
-		if (this.__root) return this.__root
-		if (this.shadowRoot) return (this.__root = this.shadowRoot)
+		if (this[root]) return this[root]
+		if (this.shadowRoot) return (this[root] = this.shadowRoot)
 		// TODO use `this.attachInternals()` (ElementInternals API) to get the root instead.
-		return (this.__root = this.attachShadow({mode: 'open'}))
+		return (this[root] = this.attachShadow({mode: 'open'}))
 	}
 	protected set root(v: Node) {
 		if (!this.hasShadow) throw new Error('Can not set root, element.hasShadow is false.')
 		// @prod-prune
-		if (this.__root || this.shadowRoot) throw new Error('Element root can only be set once if there is no ShadowRoot.')
-		this.__root = v
+		if (this[root] || this.shadowRoot) throw new Error('Element root can only be set once if there is no ShadowRoot.')
+		this[root] = v
 	}
 
 	/**
@@ -253,8 +294,8 @@ class LumeElement extends Effectful(HTMLElement) {
 	}
 
 	attachShadow(options: ShadowRootInit) {
-		if (this.__root) console.warn('Element already has a root defined.')
-		return (this.__root = super.attachShadow(options))
+		if (this[root]) console.warn('Element already has a root defined.')
+		return (this[root] = super.attachShadow(options))
 	}
 
 	#disposeTemplate?: () => void
@@ -276,15 +317,15 @@ class LumeElement extends Effectful(HTMLElement) {
 
 	attributeChangedCallback?(name: string, oldVal: string | null, newVal: string | null): void
 
-	private static __styleRootNodeRefCountPerTagName = new WeakMap<Node, Record<string, number>>()
+	static #styleRootNodeRefCountPerTagName = new WeakMap<Node, Record<string, number>>()
 	#styleRootNode: HTMLHeadElement | ShadowRoot | null = null
 
 	#defaultHostStyle = (hostSelector: string) => /*css*/ `${hostSelector} {
 		display: block;
 	}`
 
-	private static __elementId = 0
-	#id = LumeElement.__elementId++
+	static #elementId = 0
+	#id = LumeElement.#elementId++
 	#dynamicStyle: HTMLStyleElement | null = null
 
 	#setStyle() {
@@ -321,9 +362,9 @@ class LumeElement extends Effectful(HTMLElement) {
 
 			this.#styleRootNode = rootNode === document ? document.head : (rootNode as ShadowRoot)
 
-			let refCountPerTagName = LumeElement.__styleRootNodeRefCountPerTagName.get(this.#styleRootNode)
+			let refCountPerTagName = LumeElement.#styleRootNodeRefCountPerTagName.get(this.#styleRootNode)
 			if (!refCountPerTagName)
-				LumeElement.__styleRootNodeRefCountPerTagName.set(this.#styleRootNode, (refCountPerTagName = {}))
+				LumeElement.#styleRootNodeRefCountPerTagName.set(this.#styleRootNode, (refCountPerTagName = {}))
 			const refCount = refCountPerTagName[this.tagName] || 0
 			refCountPerTagName[this.tagName] = refCount + 1
 
@@ -374,7 +415,7 @@ class LumeElement extends Effectful(HTMLElement) {
 		do {
 			if (this.hasShadow) break
 
-			const refCountPerTagName = LumeElement.__styleRootNodeRefCountPerTagName.get(this.#styleRootNode!)
+			const refCountPerTagName = LumeElement.#styleRootNodeRefCountPerTagName.get(this.#styleRootNode!)
 
 			if (!refCountPerTagName) break
 
@@ -404,6 +445,8 @@ class LumeElement extends Effectful(HTMLElement) {
 
 // TODO rename the export to LumeElement in a breaking version bump.
 export {LumeElement as Element}
+
+export type AttributeHandlerMap = Record<string, AttributeHandler>
 
 // This is TypeScript-specific. Eventually Hegel would like to have better
 // support for JSX. We'd need to figure how to supports types for both systems.

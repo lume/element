@@ -6,7 +6,11 @@ import type {PropKey} from 'classy-solid/dist/decorators/types.js'
 
 export const __classFinishers: ((Class: ElementCtor) => void)[] = []
 
-type AttributeDecoratorContext = ClassFieldDecoratorContext | ClassGetterDecoratorContext | ClassSetterDecoratorContext
+/** The `@attribute` decorator currently works only on fields, getters, and setters. */
+type AttributeDecoratorContext<This = unknown, Value = unknown> =
+	| ClassFieldDecoratorContext<This, Value>
+	| ClassGetterDecoratorContext<This, Value>
+	| ClassSetterDecoratorContext<This, Value>
 
 /**
  * A decorator that when used on a property or accessor causes an HTML attribute
@@ -31,15 +35,15 @@ type AttributeDecoratorContext = ClassFieldDecoratorContext | ClassGetterDecorat
  * }
  * ```
  */
-export function attribute(handler?: AttributeHandler): (value: unknown, context: AttributeDecoratorContext) => any
 export function attribute(value: unknown, context: AttributeDecoratorContext): any
+export function attribute(handler?: AttributeHandler): (value: unknown, context: AttributeDecoratorContext) => any
 export function attribute(handlerOrValue: AttributeHandler | unknown, context?: AttributeDecoratorContext) {
 	// if used as a decorator directly with no options
 	if (arguments.length === 2) return handleAttributeDecoration(handlerOrValue, context!, undefined)
 
 	// otherwise used as a decorator factory, possibly being passed options, like `@attribute({...})`
 	const handler = handlerOrValue as AttributeHandler | undefined
-	return (value: unknown, context: AttributeDecoratorContext): any => handleAttributeDecoration(value, context, handler)
+	return <T>(value: T, context: AttributeDecoratorContext): any => handleAttributeDecoration(value, context, handler)
 
 	// TODO throw an error for cases when @element is not used on a class with @attribute decorations, similar to classy-solid @signal/@reactive.
 }
@@ -74,7 +78,7 @@ function handleAttributeDecoration(
 	if (kind === 'field') {
 		const signalInitializer = useSignal ? signal(value, context) : (v: unknown) => v
 
-		return function (this: object, initialValue: unknown) {
+		return function <T extends unknown>(this: object, initialValue: T): T {
 			initialValue = signalInitializer(initialValue)
 
 			// Typically the first initializer to run for a class field (on
@@ -136,14 +140,14 @@ export function __setUpAttribute(ctor: ElementCtor, propName: string, attributeH
 	mapAttributeToProp(ctor.prototype, attrName, propName, attributeHandler)
 }
 
-// TODO this stores attributes as an inheritance chain on the constructor. It'd
-// be more fool-proof (not publicly exposed) to store attribute-prop mappings in
-// WeakMaps, but then we'd need to implement our own inheritance
-// (prototype-like) lookup for the attributes.
+const hasAttributeChangedCallback = Symbol('hasAttributeChangedCallback')
+export const attributesToProps = Symbol('attributesToProps')
+
+// This stores attribute definitions as an inheritance chain on the constructor.
 function mapAttributeToProp(prototype: any, attr: string, prop: string, attributeHandler: AttributeHandler): void {
 	// Only define attributeChangedCallback once.
-	if (!prototype.__hasAttributeChangedCallback) {
-		prototype.__hasAttributeChangedCallback = true
+	if (!prototype[hasAttributeChangedCallback]) {
+		prototype[hasAttributeChangedCallback] = true
 
 		const originalAttrChanged = prototype.attributeChangedCallback
 
@@ -161,7 +165,7 @@ function mapAttributeToProp(prototype: any, attr: string, prop: string, attribut
 			}
 
 			// map from attribute to property
-			const prop = this.__attributesToProps && this.__attributesToProps[attr]
+			const prop = this[attributesToProps]?.[attr]
 
 			if (prop) {
 				const handler = prop.attributeHandler
@@ -179,22 +183,24 @@ function mapAttributeToProp(prototype: any, attr: string, prop: string, attribut
 		}
 	}
 
-	// Extend the current prototype's __attributesToProps object from the super
-	// prototype's __attributesToProps object.
+	// Extend the current prototype's attributesToProps object from the super
+	// prototype's attributesToProps object.
 	//
 	// We use inheritance here or else all classes would pile their
 	// attribute-prop definitions on a shared base class (they can clash,
 	// override each other willy nilly and seemingly randomly).
-	if (!prototype.hasOwnProperty('__attributesToProps')) {
+	if (!prototype.hasOwnProperty(attributesToProps)) {
 		// using defineProperty so that it is non-writable, non-enumerable, non-configurable
-		Object.defineProperty(prototype, '__attributesToProps', {
+		Object.defineProperty(prototype, attributesToProps, {
 			value: {
-				__proto__: prototype.__attributesToProps || Object.prototype,
+				__proto__: prototype[attributesToProps] || Object.prototype,
 			},
 		})
+
+		// Object.create(prototype[attributesToProps] || Object.prototype)
 	}
 
-	prototype.__attributesToProps![attr] = {name: prop, attributeHandler}
+	prototype[attributesToProps]![attr] = {name: prop, attributeHandler}
 }
 
 /**
@@ -233,7 +239,7 @@ type AttributeType<T> = () => AttributeHandler<T>
 const toString = (str: string) => str
 
 /**
- * An attribute type for use in the object form of `static observedAttributes`
+ * An attribute type for use in the `static observedAttributeHandlers` map
  * when not using decorators.
  *
  * Example usage without decorators:
@@ -241,7 +247,7 @@ const toString = (str: string) => str
  * ```js
  * element('my-el')(
  *   class MyEl extends LumeElement {
- *     static observedAttributes = {
+ *     static observedAttributeHandlers = {
  *       name: attribute.string()
  *     }
  *
@@ -298,7 +304,7 @@ export function stringAttribute(value: unknown, context: AttributeDecoratorConte
 const toNumber = (str: string) => +str
 
 /**
- * An attribute type for use in the object form of `static observedAttributes`
+ * An attribute type for use in the `static observedAttributeHandlers` map
  * when not using decorators.
  *
  * Example usage without decorators:
@@ -306,7 +312,7 @@ const toNumber = (str: string) => +str
  * ```js
  * element('my-el')(
  *   class MyEl extends LumeElement {
- *     static observedAttributes = {
+ *     static observedAttributeHandlers = {
  *       money: attribute.number()
  *     }
  *
@@ -362,7 +368,7 @@ export function numberAttribute(value: unknown, context: AttributeDecoratorConte
 const toBoolean = (str: string) => str !== 'false'
 
 /**
- * An attribute type for use in the object form of `static observedAttributes`
+ * An attribute type for use in the `static observedAttributeHandlers` map
  * when not using decorators.
  *
  * Example usage without decorators:
@@ -370,7 +376,7 @@ const toBoolean = (str: string) => str !== 'false'
  * ```js
  * element('my-el')(
  *   class MyEl extends LumeElement {
- *     static observedAttributes = {
+ *     static observedAttributeHandlers = {
  *       hasCash: attribute.boolean()
  *     }
  *

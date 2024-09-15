@@ -39,7 +39,7 @@
 		"@types/react": "^17.0.0",
 		"ncp": "^2.0.0",
 		"prettier": "3.0.3",
-		"typescript": "5.2.x"
+		"typescript": "^5.0.0"
 	},
 	"peerDependencies": {
 		"@types/react": "*"

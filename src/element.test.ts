@@ -1,5 +1,13 @@
 import {signal} from 'classy-solid'
-import {Element, element, attribute, numberAttribute, booleanAttribute, stringAttribute} from './index.js'
+import {
+	Element,
+	element,
+	attribute,
+	numberAttribute,
+	booleanAttribute,
+	stringAttribute,
+	type AttributeHandlerMap,
+} from './index.js'
 import {createEffect} from 'solid-js'
 
 describe('@element decorator', () => {
@@ -69,7 +77,7 @@ describe('@element decorator', () => {
 	it('ensures initial field values act as default attribute values when attributes removed, no decorator syntax, class fields', () => {
 		const DefaultValueTest = element('default-values-without-decorators')(
 			class extends Element {
-				static override observedAttributes: any = {
+				static observedAttributeHandlers: AttributeHandlerMap = {
 					foo: {},
 					bar: attribute.string(),
 					num: attribute.number(),
@@ -108,7 +116,7 @@ describe('@element decorator', () => {
 
 		element('default-values-without-decorators-subclass')(
 			class DefaultValueTestSubclass extends DefaultValueTest {
-				static override observedAttributes: any = {
+				static observedAttributeHandlers: AttributeHandlerMap = {
 					lorem: {},
 					ipsum: attribute.string(),
 					dolor: attribute.number(),
@@ -150,7 +158,7 @@ describe('@element decorator', () => {
 	it('ensures initial field values act as default attribute values when attributes removed, no decorator syntax, constructor properties', () => {
 		const DefaultValueTest = element('default-values-without-decorators-constructor-props')(
 			class extends Element {
-				static override observedAttributes: any = {
+				static observedAttributeHandlers: AttributeHandlerMap = {
 					foo: {},
 					bar: attribute.string(),
 					num: attribute.number(),
@@ -191,7 +199,7 @@ describe('@element decorator', () => {
 
 		element('default-values-without-decorators-constructor-props-subclass')(
 			class DefaultValueTestSubclass extends DefaultValueTest {
-				static override observedAttributes: any = {
+				static observedAttributeHandlers: AttributeHandlerMap = {
 					lorem: {},
 					ipsum: attribute.string(),
 					dolor: attribute.number(),
@@ -313,7 +321,7 @@ describe('@element decorator', () => {
 	it('automatically does not track reactivity in constructors when not using decorators', () => {
 		const Foo = element('untracked-ctor3')(
 			class Foo extends Element {
-				static observedAttributes: {} = {
+				static observedAttributeHandlers: AttributeHandlerMap = {
 					amount: attribute.number(),
 				}
 
@@ -325,8 +333,9 @@ describe('@element decorator', () => {
 
 		const Bar = element('untracked-ctor-sub3')(
 			class Bar extends Foo {
-				static observedAttributes: {} = {
-					// ...super.observedAttributes,
+				static observedAttributeHandlers: AttributeHandlerMap = {
+					// __proto__: super.observedAttributeHandlers,
+					// ...super.observedAttributeHandlers,
 					double: attribute.number(),
 				}
 

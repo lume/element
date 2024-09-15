@@ -1,8 +1,8 @@
 import {createEffect} from 'solid-js'
 import html from 'solid-js/html'
 import {reactive, signal, signalify} from 'classy-solid'
-import {Element, element} from './index.js'
-import {attribute, type AttributeHandler, numberAttribute} from './attribute.js'
+import {Element, element, type AttributeHandlerMap} from './index.js'
+import {attribute, numberAttribute} from './attribute.js'
 
 // TODO move type def to @lume/cli, map @types/jest's `expect` type into the
 // global env.
@@ -469,8 +469,8 @@ describe('LumeElement', () => {
 				// @ts-ignore, in case TS complains about overiding an accessor (valid JS)
 				root = this
 
-				// When not using decorators, we have to do the following.
-				static observedAttributes: Record<string, AttributeHandler> = {
+				// When not using decorators, we can define the reactive attributes like this instead.
+				static observedAttributeHandlers: AttributeHandlerMap = {
 					foo: attribute.string(),
 					baz: attribute.string(),
 					ping: attribute.string(),
