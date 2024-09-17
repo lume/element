@@ -1,6 +1,6 @@
 {
 	"name": "@lume/element",
-	"version": "0.12.3",
+	"version": "0.12.4",
 	"description": "Create Custom Elements with reactivity and automatic re-rendering.",
 	"author": "Joe Pea <joe@trusktr.io>",
 	"license": "MIT",
