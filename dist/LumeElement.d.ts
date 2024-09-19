@@ -38,7 +38,7 @@ declare class LumeElement extends LumeElement_base {
      * different subclass of the class this is called on if passing in a custom
      * `name`, otherwise returns the same class this is called on.
      */
-    static defineElement(name?: string, registry?: CustomElementRegistry): typeof LumeElement;
+    static defineElement(name?: string, registry?: CustomElementRegistry): CustomElementConstructor;
     /**
      * Non-decorator users can use this to specify a list of attributes, and the
      * attributes will automatically be mapped to reactive properties. All
