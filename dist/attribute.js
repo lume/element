@@ -9,7 +9,6 @@ export function attribute(handlerOrValue, context) {
     // otherwise used as a decorator factory, possibly being passed options, like `@attribute({...})`
     const handler = handlerOrValue;
     return (value, context) => handleAttributeDecoration(value, context, handler);
-    // TODO throw an error for cases when @element is not used on a class with @attribute decorations, similar to classy-solid @signal/@reactive.
 }
 /**
  * Place this decorator before `@element` to avoid the property from being

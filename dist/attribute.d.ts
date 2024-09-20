@@ -59,10 +59,17 @@ export type AttributeHandler<T = any> = {
      * The default value that the respective JS property should have when the
      * attribute is removed.
      *
+     * If this is not specified, and the respective class field is defined, it
+     * will default to the initial value of the class field.  If this is
+     * specified, it will take precedence over the respective field's initial
+     * value. This should generally be avoided, and the class field initial
+     * value should be relied on as the source of the default value.
+     *
      * When defined, an attribute's respective JS property will be set to this
      * value when the attribute is removed. If not defined, then the JS property
-     * will receive `null` when the attribute is removed, just like
-     * `attributeChangedCallback` does.
+     * will always receive the initial value of the respective JS class field or
+     * `undefined` if the field was not defined (that's the "initial value" of
+     * the field), when the attribute is removed.
      */
     default?: T;
 };

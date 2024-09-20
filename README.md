@@ -53,19 +53,6 @@ class ClickCounter extends Element {
 }
 ```
 
-> [!Note]
-> Once decorators land in browsers, the above example will work out of the box
-> as-is without compiling, but for now a compile step is needed for using decorators.
-> You can also use JSX for the `template`, but that will always require
-> compiling:
->
-> ```jsx
-> template = () => <button> Click! (count is: {this.count}) </button>
-> ```
->
-> Further examples below show how to define elements without decorators, which
-> works today without a compiler.
-
 Use the `<click-counter>` in a plain HTML file:
 
 ```html
@@ -83,6 +70,22 @@ Use the `<click-counter>` in a plain HTML file:
 	</script>
 </body>
 ```
+
+[Example on CodePen](https://codepen.io/trusktr/pen/zYeRqaR) (without decorators)
+
+> [!Note]
+> Once decorators land in browsers, the above example will work out of the box
+> as-is without compiling, but for now a compile step is needed for using decorators.
+>
+> You can also use JSX for the `template`, but that will always require
+> compiling:
+>
+> ```jsx
+> template = () => <button> Click! (count is: {this.count}) </button>
+> ```
+>
+> Further examples below show how to define elements without decorators or JSX, which
+> works today without a compiler.
 
 Use the `<click-counter>` in another element's `template`,
 
@@ -194,25 +197,19 @@ features:
 > familiar with common build tooling in the webdev/JS ecosystem. Contributions
 > very welcome!
 
-<details><summary><h3>CDN method (no compiler or command line knowledge needed)</h3></summary>
+<details><summary><h3>CDN method (easiest, no compiler or command line needed)</h3></summary>
 
 Follow the guide on [installing `lume` from
 CDN](https://docs.lume.io/guide/install/?id=cdn-easiest), but simply replace
 `lume` with `@lume/element`. The process is otherwise the same.
 
+The examples here in the README follow the CDN approach to keep things simple,
+[for example](https://codepen.io/trusktr/pen/zYeRqaR).
+
 > [!Note]
 > Decorator syntax and JSX syntax are both not supported with this install
-> method as it uses not build step. See more examples below for non-decorator
-> property definition examples and templates using an `html` template string tag, both of
-> which require no build step. In the near future, decorators will be out
-> natively in browsers (but not JSX).
-
-<!--
-TODO:
-Here's a live example on CodePen based on those instructions, that you can copy/paste into your own `.html` file:
-
-https://codepen.io/trusktr/pen/zYeRqaR/0b34a31aad0c7b794433724f12ae785d?editors=1010
- -->
+> method as it does not use a build step. In the near future, decorators will be
+> out natively in browsers and JS engines (but not JSX).
 
 </details>
 
@@ -308,17 +305,21 @@ The following is a custom element definition with a reactive property
 `firstName` that also accepts values from an attribute named `first-name` (the
 property name is converted to dash-case for the attribute name).
 
+> [!Note]
+> Deorators and JSX are not required. The non-decorator and non-JSX forms are shown further below.
+
 ```jsx
 import {
 	Element, // A base class for LUME custom elements
+	element, // A decorator for defining elements, required for reactive JS properties.
 	attribute, // A property decorator to map attributes to properties, and that makes properties reactive
 	css, // A no-op identity template tag function (useful to enable CSS syntax highlighting in various text editors)
 } from '@lume/element'
 
 @element('greeting-card') // defines the element tag name
 class GreetingCard extends Element {
-	// Make the firstName property a reactive variable, and also map any value
-	// from an attribute named 'first-name' back to this property (the attribute
+	// The firstName property will be a reactive variable, and any value
+	// from an attribute named 'first-name' will be mapped back to this property (the attribute
 	// name is the dash-case version of the property name).
 	@attribute firstName = 'Roger'
 
@@ -329,8 +330,8 @@ class GreetingCard extends Element {
 	// default, appended into the ShadowRoot of our custom element.
 	//
 	// To take advantage of reactivity in our template, simply interpolate
-	// properties that were decoratored with an attribute decorator into the
-	// template.
+	// properties that were decoratored with an attribute decorator or defined
+	// with `static observedAttributeHandlers` into the template.
 	//
 	// Here, any time the `.firstName` property's value changes, the DOM will be
 	// automatically updated.
@@ -350,7 +351,7 @@ class GreetingCard extends Element {
 	static css = css`
 		:host {
 			background: skyblue;
-		} /* Give greeting-card a background. */
+		}
 		div {
 			color: pink;
 		}
@@ -394,6 +395,8 @@ component:
 ```html
 <greeting-card first-name="Raynor"></greeting-card>
 ```
+
+[Example on CodePen](https://codepen.io/trusktr/pen/WNqVWaL?editors=1011) (without decorators, with `html` template tag instead of JSX)
 
 Inside an element's `template()` method we can assign bits and pieces of DOM to
 variables, and we can also use other custom elements and functional components.
@@ -471,6 +474,8 @@ el.setAttribute('foo', 'bar')
 document.body.append(el)
 ```
 
+[Example on CodePen](https://codepen.io/trusktr/pen/bGPXmEJ) (with Solid's `html` template tag instead of JSX)
+
 ### Create functional components
 
 Continuing with the same `count` variable from the previous example, here's how
@@ -517,20 +522,23 @@ const elem = Greeting()
 document.body.append(elem)
 ```
 
-Writing function components can sometimes be simpler, but without features that
+[Example on CodePen](https://codepen.io/trusktr/pen/eYwqPzz)
+
+Writing function components can sometimes be simpler, but functional components do not have features that
 custom elements have like style scoping (requires an additional a Solid.js
 library or compiler plugin).
 
 In contrast to custom elements, functional components only work within the
 context of other functional components made with Solid.js or custom elements
 made with `@lume/element`. Functional components will no longer be compatible
-with React, Vue, Angular, Svelte, or all the rest. For portability across
-applications and frameworks, it is preferable to create custom elements.
+with React, Vue, Angular, Svelte, or all the other web libraries and frameworks.
+For portability across applications and frameworks, this is where custom
+elements accel.
 
-<!-- TODO
-Custom elements are also debuggable in a browser's element inspector out of the
-box, while functional components are not. See Lume's Debugging guide for info.
--->
+Custom elements are also debuggable in a browser's element inspector _out of the
+box_, while functional components are not (functional components require
+devtools plugins for each browser, if they even exist). See Lume's [Debugging
+guide](https://docs.lume.io/guide/debugging) for an example.
 
 ### Use functional components inside custom elements
 
@@ -549,8 +557,10 @@ class CoolElement extends Element {
 	)
 }
 
-document.body.inserAdjacentHTML('beforeend', `<cool-element></cool-element>`)
+document.body.insertAdjacentHTML('beforeend', `<cool-element></cool-element>`)
 ```
+
+[Example on CodePen](https://codepen.io/trusktr/pen/bGPXmRX) (without decorators)
 
 ## TypeScript
 
@@ -737,8 +747,19 @@ declare module 'solid-js' {
 ```ts
 import type {ElementAttributes} from '@lume/element'
 
-// This definition is now shorter than before, and automatically maps the property names to dash-case.
+// This definition is now shorter than before, automatically maps the property
+// names to dash-case, and automatically picks up the property types from the
+// class.
 export type CoolElementAttributes = ElementAttributes<CoolElement, 'coolType' | 'coolFactor'>
+
+// The same as before:
+declare module 'solid-js' {
+	namespace JSX {
+		interface IntrinsicElements {
+			'cool-element': CoolElementAttributes
+		}
+	}
+}
 ```
 
 Now when you use `<cool-element>` in Solid JSX, it will be type checked:
@@ -754,7 +775,7 @@ return (
 
 ### With React JSX
 
-Define the types of custom elements similarly to above, but with some small differences for React JSX:
+Defining the types of custom elements for React JSX is similar as for Solid JSX above, but with some small differences for React JSX:
 
 ```ts
 import type {HTMLAttributes} from 'react'
@@ -795,13 +816,38 @@ import type {ReactElementAttributes} from '@lume/element/src/react'
 
 // This definition is now shorter than before, and automatically maps the property names to dash-case.
 export type CoolElementAttributes = ReactElementAttributes<CoolElement, 'coolType' | 'coolFactor'>
+
+// The same as before:
+declare global {
+	namespace JSX {
+		interface IntrinsicElements {
+			'cool-element': CoolElementAttributes
+		}
+	}
+}
 ```
+
+> [!Note]
+> You may want to define React JSX types for your elements in separate files, and
+> have only React users import those files if they need the types, and similar if you make
+> JSX types for Vue, Svelte, etc (we don't have helpers for those other fameworks
+> yet, but you can manually augment JSX as in the examples above on a
+> per-framework basis, contributions welcome!).
 
 ## API
 
 ### `Element`
 
-A base class for custom elements made with `@lume/element`. It provides:
+A base class for custom elements made with `@lume/element`.
+
+> [!Note]
+> The `Element` class from `@lume/element` extends from `HTMLElement`.
+>
+> Safari does not support customized built-ins, and neither does
+> `@lume/element`, so at the moment we do not support extending from other classes
+> such as `HTMLButtonElement`, etc.
+
+The `Element` class provides:
 
 #### `template`
 
@@ -820,24 +866,16 @@ import {createSignalFunction} from 'classy-solid' // a small wrapper around Soli
 class CoolElement extends Element {
 	count = createSignalFunction(100)
 
-	template() {
-		return (
-			<div>
-				<span>The count is: {this.count()}!</span>
-			</div>
-		)
-	}
+	template = () => (
+		<div>
+			<span>The count is: {this.count()}!</span>
+		</div>
+	)
 	// ...
 }
 
 customElements.define('cool-element', CoolElement)
 ```
-
-> [!Warning]
-> If using JSX, `template` has to be a method and not an arrow function due to a
-> current [bug with Solid.js JSX and arrow
-> functions](https://github.com/ryansolid/dom-expressions/issues/293). The `html`
-> template tag can be written as an arrow function:
 
 Another way to write a `template` is using Solid's `html` template string tag
 (which does not require a build step). Using the following `template`, the
@@ -854,60 +892,66 @@ template = () => html`
 // ...
 ```
 
+[Example on CodePen](https://codepen.io/trusktr/pen/xxovyQW) (with `html` template tag instead of JSX)
+
 > [!Note]
 > When `count` changes, the template updates automatically.
 
-We can also manually create DOM some other way, for example here we make and
+We can also manually create DOM any other way, for example here we make and
 return a DOM tree using DOM APIs, and using a Solid effect to update the element
 when `count` changes (but you could have used React or jQuery, or anything
-else):
+else!):
 
 ```js
-// ...
+// ...same...
+
 import {createEffect} from 'solid-js'
 
-// ...
+// ...same...
 
+// Replace the previous `template` with this one:
 template = () => {
 	const div = document.createElement('div')
 	const span = document.createElement('span')
+	div.append(span)
 
 	createEffect(() => {
 		// Automatically set the textContent whenever `count` changes (this is a
 		// conceptually-simplified example of what Solid JSX compiles to).
-		span.textContent = `The count is: ${this.count}!`
+		span.textContent = `The count is: ${this.count()}!`
 	})
 
 	return div
 }
 
-// ...
+// ...same...
 ```
+
+[Example on CodePen](https://codepen.io/trusktr/pen/ExBqdMQ)
 
 #### `static css`
 
 Use the _static_ `css` field to define a CSS string for styling all instances of
 the given class. A static property allows `@lume/element` to optimize by sharing
 a single `CSSStyleSheet` across all instances of the element, which could be
-beneficial for performance if you have thousands of instances.
+beneficial for performance if you have _many thousands_ of instances.
 
 ```js
 import {Element} from '@lume/element'
 
 class CoolElement extends Element {
-	template() {
-		return <span>This is some DOM!</span>
-	}
+	template = () => <span>This is some DOM!</span>
 
+	// Style is scoped to our element, this will only style the <span> inside our element.
 	static css = `
-    /* Style is scoped, this will only style the <span> inside our element. */
-    span { color: cornflowerblue; }
+    span { color: violet; }
   `
-	// ...
 }
 
 customElements.define('cool-element', CoolElement)
 ```
+
+[Example on CodePen](https://codepen.io/trusktr/pen/OJeKBKP) (with `html` template tag instead of JSX)
 
 The `static css` property can also be a function:
 
@@ -917,7 +961,7 @@ The `static css` property can also be a function:
 class CoolElement extends Element {
 	// ...
 	static css = () => {
-		const color = 'cornflowerblue'
+		const color = 'limegreen'
 
 		return `
       span { color: ${color}; }
@@ -927,9 +971,11 @@ class CoolElement extends Element {
 }
 ```
 
+[Example on CodePen](https://codepen.io/trusktr/pen/GRbVwzj) (with `html` template tag instead of JSX)
+
 > :bulb:**Tip:**
 >
-> Use the `css` identity template tag to enable syntax highlighting in some IDEs:
+> Use the `css` identity template tag to enable syntax highlighting and code formatting in some IDEs:
 
 ```js
 import {css} from '@lume/element'
@@ -950,32 +996,34 @@ class CoolElement extends Element {
 
 Use the _non-static_ `css` property to define styles that are applied _per
 instance_ of the given element. This is useful for style that should differ
-across instances. This will not be optimizeable as much as `static css` can be,
-but it might not matter at all (it won't for most use cases).
+across instances. This will not be as optimized as `static css` will be because
+it will create one stylesheet per element instance, but the performance
+difference will not matter for most use cases.
 
 ```js
-import {Element} from '@lume/element'
+import {Element, css} from '@lume/element'
 
 class CoolElement extends Element {
-	template() {
-		return <span>This is some DOM!</span>
-	}
+	template = () => <span>This is some DOM!</span>
 
-	// A random opacity per instance
-	opacity = Math.random()
+	// A random color per instance.
+	#color = `hsl(calc(${Math.random()} * 360) 50% 50%)`
 
-	css = `
-    /* Style is scoped, this will only style the <span> inside our element. */
-    span { opacity: ${this.opacity}; }
-  `
-	// ...
+	// Style is scoped to our element, this will only style the <span> inside our element.
+	css = css`
+		span {
+			color: ${this.#color};
+		}
+	`
 }
 ```
+
+[Example on CodePen](https://codepen.io/trusktr/pen/NWZQEJa) (with `html` template tag instead of JSX)
 
 #### `connectedCallback`
 
 Nothing new here, this is simply a part of the browser's [native Custom Elements
-API](https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_custom_elements#custom_element_lifecycle_callbacks).
+`connectedCallback` API](https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_custom_elements#custom_element_lifecycle_callbacks).
 It is triggered when the element is connected into the document. Use it to
 create things.
 
@@ -996,7 +1044,7 @@ class CoolElement extends Element {
 #### `disconnectedCallback`
 
 Nothing new here, this is simply a part of the browser's [native Custom Elements
-API](https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_custom_elements#custom_element_lifecycle_callbacks).
+`disconnectedCallback` API](https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_custom_elements#custom_element_lifecycle_callbacks).
 It is triggered when the element is disconnected from the document. Use it to
 clean things up.
 
@@ -1017,7 +1065,7 @@ class CoolElement extends Element {
 #### `adoptedCallback`
 
 Nothing new here, this is simply a part of the browser's [native Custom Elements
-API](https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_custom_elements#custom_element_lifecycle_callbacks).
+`adoptedCallback` API](https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_custom_elements#custom_element_lifecycle_callbacks).
 It is triggered when the element is adopted into a new document (f.e. in an iframe).
 
 ```js
@@ -1037,7 +1085,7 @@ class CoolElement extends Element {
 #### `attributeChangedCallback`
 
 Nothing new here, this is simply a part of the browser's [native Custom Elements
-API](https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_custom_elements#custom_element_lifecycle_callbacks).
+`attributeChangedCallback` API](https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_custom_elements#custom_element_lifecycle_callbacks).
 It is triggered when an _observed attribute_ of the element is added, modified,
 or removed.
 
@@ -1061,14 +1109,14 @@ class CoolElement extends Element {
 ```
 
 > [!Warning]
-> The `static observedAttributes` property is required, and specifies which
+> The `static observedAttributes` property is required for observing attributes, and specifies which
 > attributes will trigger `attributeChangedCallback`. `attributeChangedCallback`
-> will not be triggered for other attributes that are not listed.
+> will not be triggered for any attributes that are not listed in `static observedAttributes`!
 
 #### `static observedAttributes`
 
 Nothing new here, this is simply a part of the browser's [native Custom Elements
-API](https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_custom_elements#responding_to_attribute_changes).
+`static observedAttributes` API](https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_custom_elements#responding_to_attribute_changes).
 It defines which attributes will be observed. From the previous example:
 
 ```js
@@ -1081,73 +1129,11 @@ class CoolElement extends Element {
 #### `static observedAttributeHandlers`
 
 As an alternative to `static observedAttributes`, and mainly for non-decorator
-users (because not all JS engines support them yet at time of writing), observed
-attributes can be defined with `static observedAttributeHandlers` map of
+users (because not all JS engines support them yet at time of writing this), observed
+attributes can be defined with `static observedAttributeHandlers`, a map of
 attribute names to attribute handlers. This requires using the `@element`
 decorator (calling it as a plain function for non-decorator usage). This will
-map attributes to reactive JS properties.
-
-Here's an example of an element definition with no decorators, with
-HTML attributes mapped to same-name JS properties:
-
-```js
-import {Element, element} from '@lume/element'
-
-element('cool-element')(
-	class CoolElement extends Element {
-		static observedAttributeHandlers = {
-			foo: {from: Number},
-			bar: {from: Boolean},
-		}
-
-		// Due to the `observedAttributeHandlers` definition, any time the `"foo"` attribute
-		// on the element changes, the attribute string value will be converted into a
-		// `Number` and assigned to the JS `.foo` property.
-		// Not only does `.foo` have an initial value of `123`, but when the element's
-		// `"foo"` attribute is removed, `.foo` will be set back to the initial value
-		// of `123`.
-		foo = 123
-
-		// Due to the `observedAttributeHandlers` definition, any time the `"bar"` attribute
-		// on the element changes, the attribute string value will be converted into a
-		// `Boolean` and assigned to the JS `.bar` property.
-		// Not only does `.bar` have an initial value of `123`, but when the element's
-		// `"bar"` attribute is removed, `.bar` will be set back to the initial value
-		// of `false`.
-		bar = false
-
-		// ...
-	},
-)
-```
-
-`@lume/element` has a set of basic handlers available out of the box, each of
-which are alternatives to the default set of decorators:
-
-```js
-import {Element, element, attribute} from '@lume/element'
-
-element('cool-element')(
-	class CoolElement extends Element {
-		static observedAttributeHandlers = {
-			lorem: {}, // Effectively the same as attribute.string()
-			foo: attribute.string(), // Effectively an the same as `{}`, effectively the same as @stringAttribute decorator. Values get passed to the JS property as strings.
-			bar: attribute.number(), // Effectively the same as the @numberAttribute decorator. Values get passed to the JS property as numbers.
-			baz: attribute.boolean(), // Effectively the same as the @booleanAttribute decorator. Values get passed to the JS property as booleans.
-			bespoke: {from: value => JSON.Parse(value)}, // Custom mapping of the attribute value to the JS property, f.e. besoke='{"n": 123}' results in the JS property having the value `{n: 123}`
-		}
-
-		// The initial values of the JS properties also define the values that the JS properties get reset back to when the corresponding attribute is removed or the JS property is set to `null`.
-		lorem = 'hello'
-		foo = 'blah'
-		bar = 123
-		baz = false
-		bespoke = {n: 123}
-
-		// ...
-	},
-)
-```
+map attributes to JS properties and make the JS properties reactive.
 
 Each value in the `observedAttributeHandlers` object has the following shape:
 
@@ -1192,8 +1178,76 @@ export type AttributeHandler<T = any> = {
 }
 ```
 
-If you will have decorator support (either with a build, or natively in
-near-future JS engines), definine attributes is simple and concise:
+Here's an example of an element definition with no decorators, with
+HTML attributes mapped to same-name JS properties:
+
+```js
+import {Element, element} from '@lume/element'
+
+element('cool-element')(
+	class CoolElement extends Element {
+		static observedAttributeHandlers = {
+			foo: {from: Number},
+			bar: {from: Boolean},
+		}
+
+		// Due to the `observedAttributeHandlers` definition, any time the `"foo"` attribute
+		// on the element changes, the attribute string value will be converted into a
+		// `Number` and assigned to the JS `.foo` property.
+		// Not only does `.foo` have an initial value of `123`, but when the element's
+		// `"foo"` attribute is removed, `.foo` will be set back to the initial value
+		// of `123`.
+		foo = 123
+
+		// Due to the `observedAttributeHandlers` definition, any time the `"bar"` attribute
+		// on the element changes, the attribute string value will be converted into a
+		// `Boolean` and assigned to the JS `.bar` property.
+		// Not only does `.bar` have an initial value of `123`, but when the element's
+		// `"bar"` attribute is removed, `.bar` will be set back to the initial value
+		// of `false`.
+		bar = false
+
+		// ...
+	},
+)
+```
+
+[Example on CodePen](https://codepen.io/trusktr/pen/rNEXoOb?editors=1111)
+
+`@lume/element` comes with a set of basic handlers available out of the box, each of
+which are alternatives to a respective set of included decorators:
+
+```js
+import {Element, element, attribute} from '@lume/element'
+
+element('cool-element')(
+	class CoolElement extends Element {
+		static observedAttributeHandlers = {
+			lorem: {}, // Effectively the same as attribute.string()
+			foo: attribute.string(), // Effectively the same as the @stringAttribute decorator. Values get passed to the JS property as strings.
+			bar: attribute.number(), // Effectively the same as the @numberAttribute decorator. Values get passed to the JS property as numbers.
+			baz: attribute.boolean(), // Effectively the same as the @booleanAttribute decorator. Values get passed to the JS property as booleans.
+
+			// Here we define an attribute with custom handling of the string value, in this case making it accept a JSON string that maps it to a parsed object on the JS property.
+			bespoke: {from: value => JSON.parse(value)}, // f.e. besoke='{"b": true}' results in the JS property having the value `{b: true}`
+		}
+
+		// The initial values of the JS properties define the values that the JS properties get reset back to when the corresponding attributes are removed.
+		lorem = 'hello'
+		foo = 'world'
+		bar = 123
+		baz = false
+		bespoke = {n: 123}
+
+		// ...
+	},
+)
+```
+
+[Example on CodePen](https://codepen.io/trusktr/pen/rNEXbOR?editors=1011)
+
+If you have decorator support (either with a build, or natively in near-future
+JS engines), defining attributes with decorators is simpler and more concise:
 
 ```js
 import {Element, element, numberAttribute, booleanAttribute} from '@lume/element'
@@ -1224,7 +1278,9 @@ class CoolElement extends Element {
 > Not only do decorators make the definition more concise, but they avoid surface
 > area for human error: the non-decorator form requires defining the same-name
 > property in both the `observedAttributeHandlers` object and in the class fields, and if
-> you miss one or the other things might not work as expected.
+> you miss one or the other then things might not work as expected.
+
+Each of the available decorators are detailed further below.
 
 Decorators, and the `observedAttributeHandlers` object format, both work with
 getter/setter properties as well:
@@ -1262,27 +1318,190 @@ class CoolElement extends Element {
 }
 ```
 
+#### `createEffect`
+
+The `createEffect` method is a wrapper around Solid's `createEffect` with some differences for convenience:
+
+- `createRoot` is not required in order to dispose of effects created with `this.createEffect()`
+- Effects created with `this.createEffect()` will automatically be cleaned up when the element is disconnected.
+- Besides being useful for re-running logic on signals changes,
+  `this.createEffect()` is useful as an alternative to `disconnectedCallback` when
+  paired with Solid's `onCleanup`.
+
+```js
+import {Element} from '@lume/element'
+import {createSignal, onCleanup} from 'solid-js'
+
+const [count, setCount] = createSignal(0)
+
+setInterval(() => setCount(n => ++n), 1000)
+
+class CoolElement extends Element {
+	connectedCallback() {
+		super.connectedCallback()
+
+		// Log `count()` any time it changes.
+		this.createEffect(() => console.log(count()))
+
+		this.createEffect(() => {
+			const interval1 = setInterval(() => console.log('interval 1'), 1000)
+			onCleanup(() => clearInterval(interval1))
+
+			const interval2 = setInterval(() => console.log('interval 2'), 1000)
+			onCleanup(() => clearInterval(interval2))
+		})
+	}
+}
+
+customElements.define('cool-element', CoolElement)
+
+// After removing the element, onCleanup fires and cleans up the intervals created in connectedCallback (not the count interval outside the element)
+setTimeout(() => {
+	const el = document.querySelector('cool-element')
+	el.remove()
+}, 2000)
+```
+
+[Example on CodePen](https://codepen.io/trusktr/pen/MWNgaGQ?editors=1011)
+
+Compare that to using `disconnectedCallback`:
+
+```js
+import {Element} from '@lume/element'
+import {createSignal, onCleanup} from 'solid-js'
+
+const [count, setCount] = createSignal(0)
+
+setInterval(() => setCount(n => ++n), 1000)
+
+class CoolElement extends Element {
+	#interval1 = 0
+	#interval2 = 0
+
+	connectedCallback() {
+		super.connectedCallback()
+
+		// Log `count()` any time it changes.
+		this.createEffect(() => console.log(count()))
+
+		this.#interval1 = setInterval(() => console.log('interval 1'), 1000)
+		this.#interval2 = setInterval(() => console.log('interval 2'), 1000)
+	}
+
+	disconnectedCallback() {
+		super.disconnectedCallback()
+
+		clearInterval(this.#interval1)
+		clearInterval(this.#interval2)
+	}
+}
+
+customElements.define('cool-element', CoolElement)
+```
+
+> :bulb:**Tip:**
+>
+> Prefer `onCleanup` instead of `disconnectedCallback` because composition of
+> logic will be easier while also keeping it co-located and easier to read. That
+> example is simple, but when logic grows, having to clean things up in
+> `disconnectedCallback` can get more complicated, especially when each piece of
+> creation logic and cleanup logic is multiple lines long and interleaving
+> them would be harder to read. Plus, putting them in effects makes them
+> creatable+cleanable if signals in the effects change, not just if the element is
+> connected or disconnected. For example, the following element cleans up the
+> interval any time the signal changes, not only on disconnect:
+
+```js
+import {Element} from '@lume/element'
+import {createSignal, onCleanup} from 'solid-js'
+
+const [count, setCount] = createSignal(0)
+
+setInterval(() => setCount(n => ++n), 1000)
+
+class CoolElement extends Element {
+	connectedCallback() {
+		super.connectedCallback()
+
+		// Log `count()` any time it changes.
+		this.createEffect(() => console.log(count()))
+
+		this.createEffect(() => {
+			// Run the interval only during moments that count() is an even number.
+			// Whenever count() is odd, the running interval will be cleaned up and a new interval will not be created.
+			// Also, when the element is disconnected (while count() is even), the interval will be cleaned up.
+			if (count() % 2 !== 0) return
+			const interval = setInterval(() => console.log('interval'), 100)
+			onCleanup(() => clearInterval(interval))
+		})
+	}
+}
+
+customElements.define('cool-element', CoolElement)
+
+// After removing the element, onCleanup fires and cleans up any interval currently created in connectedCallback (not the count interval outside the element)
+setTimeout(() => {
+	const el = document.querySelector('cool-element')
+	el.remove()
+}, 2500)
+```
+
+[Example on CodePen](https://codepen.io/trusktr/pen/qBeWOLz?editors=1011)
+
+The beauty of this you can write logic based on signals, and not worry about
+`disconnectedCallback`, you'll rest assured things clean up properly.
+
 #### `static elementName`
 
 The default tag name of the elements this class instantiates. When using
 the `@element` decorator, this property will be set to the value defined
 by the decorator.
 
+```js
+@element
+class SomeEl extends LumeElement {
+	static elementName = 'some-el'
+}
+
+SomeEl.defineElement() // defines <some-el> with the SomeEl class
+```
+
+[Example on CodePen](https://codepen.io/trusktr/pen/ZEdgMZY)
+
 #### `static defineElement`
 
 Define this class for the given element `name`, or using its default name
-(`elementName`) if no `name` given. Defaults to using the global
-`customElements` registry unless another registry is provided (for
-example a ShadowRoot-scoped registry).
+(`TheClass.elementName`) if no was `name` given and the element was not already
+defined using the `@element` decorator. Defaults to using the global
+`customElements` registry unless another registry is provided (for example a
+ShadowRoot-scoped registry) as a second argument.
 
-If a `name` is given, then the class will be extended with an empty
-subclass so that a new class is used for each new name, because otherwise
-a CustomElementRegistry does not allow the same exact class to be used
-more than once regardless of the name.
+```js
+@element('some-el') // defines <some-el> with the decorated class
+class SomeEl extends LumeElement {}
 
-Returns the defined element class, which is only going to be a
-different subclass of the class this is called on if passing in a custom
-`name`, otherwise returns the same class this is called on.
+const OtherEl = SomeEl.defineElement('other-el') // defines <other-el> with an empty subclass of SomeEl
+console.log(OtherEl === SomeEl) // false
+
+@element // without a name, the decorator does not perform the element definition
+class AnotherEl extends LumeElement {}
+
+const El = AnotherEl.defineElement('another-el') // defines <another-el>
+console.log(El === AnotherEl) // true
+const El2 = AnotherEl.defineElement('yet-another-el') // defines <yet-another-el>
+console.log(El2 === AnotherEl) // false
+```
+
+If the class is already registered with another name, then the class will be
+extended with an empty subclass so that a new class is used for the new name,
+because a CustomElementRegistry does not allow the same class reference to be
+used more than once regardless of the name.
+
+Returns the defined element class, which may be a different subclass of the
+class this is called on if the class this is called on is already associated
+with another name, otherwise returns the same class this is called on.
+
+[Example on CodePen](https://codepen.io/trusktr/pen/JjQgaxb)
 
 #### `hasShadow`
 
@@ -1292,32 +1511,112 @@ the built-in `ShadowRoot` scoping mechanism, but by a much more simple
 shared style sheet placed at the nearest root node, with `:host`
 selectors converted to tag names.
 
+```js
+@element('some-el')
+class SomeEl extends Element {
+	hasShadow = false
+
+	template = () => html`<div>hello</div>`
+}
+```
+
+The `template` content will be appended to the SomeEl instance directly, with no `ShadowRoot`:
+
+```html
+<some-el id="el"></some-el>
+<script>
+	const el = document.getElementById('el')
+	console.log(el.shadowRoot) // null
+	console.log(el.children[0]) // <div>hello</div>
+</script>
+```
+
+[Example on CodePen](https://codepen.io/trusktr/pen/eYwqLPY)
+
+> [!Note]
+> Note that without a ShadowRoot, `<slot>` no longer works because it must be
+> inside a ShadowRoot, therefore going without a ShadowRoot is useful moreso for
+> elements that are leafs at the end of your DOM tree branches and elements that
+> will not slot accept any children and will only have `template` content as their
+> children.
+
 #### `get/set root`
 
-Subclasses can override this to provide an alternate Node to render into
-(f.e. a subclass can `return this` to render into itself instead of
-making a root) regardless of the value of `hasShadow`.
+Subclasses can override this to provide an alternate Node for `template` content
+to be placed into (f.e. a subclass can `return this` to have `template` content
+appended to itself regardless of the value of `hasShadow`).
+
+A primary use case for this is customizing the ShadowRoot:
+
+```js
+@element('some-el')
+class SomeEl extends Element {
+	// Create the element's ShadowRoot with custom options for example:
+	root = this.attachShadow({
+		mode: 'closed',
+	})
+
+	template = () => html`<div>hello</div>`
+}
+```
+
+[Example on CodePen](https://codepen.io/trusktr/pen/MWMNpbR)
 
 #### `get styleRoot`
 
-Define which `Node` to append style sheets to when `hasShadow` is `true`.
-Defaults to the `this.root`, which in turn defaults to the element's
-`ShadowRoot`. When `hasShadow` is `true`, an alternate `styleRoot` is
-sometimes needed for styles to be appended elsewhere than the root. For
-example, return some other `Node` within the root to append styles to.
-This is ignored if `hasShadow` is `false`.
+Similar to the previous `get root`, this defines which `Node` to append style
+sheets to when `hasShadow` is `true`. This is ignored if `hasShadow` is
+`false`. It defaults to `this.root`, which in turn defaults to the element's
+`ShadowRoot`.
 
-This can be useful for fixing issues where the default append of a style
-sheet into the `ShadowRoot` conflicts with how DOM is created in
+When `hasShadow` is `true`, an alternate `styleRoot` is sometimes desired so
+that styles will be appended elsewhere than the root. To customize this, override it in your class:
+
+```js
+@element('some-el')
+class SomeEl extends Element {
+	styleRoot = document.createElement('div')
+
+	template = () => html`
+		<div>
+			<div>${this.styleRoot}</div>
+
+			<span>hello</span>
+		</div>
+	`
+}
+```
+
+[Example on CodePen](https://codepen.io/trusktr/pen/yLdmxEW)
+
+This can be useful for fixing issues where the default append location of an
+element's style sheet into the `ShadowRoot` conflicts with how DOM is created in
 `template` (f.e. if the user's DOM creation in `template` clears the
-`ShadowRoot` content, or etc, then we want to place the stylesheet
+`ShadowRoot` content, or etc, then the user may want to place the stylesheet
 somewhere else).
 
-### `@element`
+### Decorators
 
-A decorator for defining a custom element.
+Using decorators (if available in your build, or natively in your JS engine)
+instead of `observedAttributeHandlers` is more concise and less error prone.
+Here's the list of included attribute decorators and the attribute handler equivalents:
 
-When passed a string, it will be the element name:
+- Use `@stringAttribute foo` in place of `foo: {}`
+- Use `@stringAttribute foo` in place of `foo: attribute.string()`
+- Use `@numberAttribute foo` in place of `foo: attribute.number()`
+- Use `@booleanAttribute foo` in place of `foo: attribute.boolean()`
+
+> [!Warning]
+> When using attribute decorators, the `@element` decorator is also required on
+> the class, or the attribute decorators won't work.
+
+Below are more details on each decorator:
+
+#### `@element`
+
+The star of the show, a decorator for defining a custom element.
+
+When passed a string, it will be the element's tag name:
 
 ```js
 import {Element, element} from '@lume/element'
@@ -1329,18 +1628,12 @@ class CoolElement extends Element {
 ```
 
 > [!Note]
-> Make sure you extend from the `Element` base class from `@lume/element`.
+> Make sure you extend from the `Element` base class from `@lume/element` when
+> using the `@element` decorator.
 
-> [!Note]
-> The `Element` class from `@lume/element` extends from `HTMLElement`.
->
-> Safari does not support customized built-ins, and neither does
-> `@lume/element`, so at the moment we do not support extending from other classes
-> such as `HTMLButtonElement`, etc.
-
-When not passed a string, the element will not be defined, and
-`customElements.define` should be used manually, which can be useful for
-upcoming scoped registries:
+When not passed a string, the element will not be defined (while reactivity
+features will still be applied), and `customElements.define` should be used
+manually, which can be useful for upcoming scoped registries:
 
 ```js
 import {Element, element} from '@lume/element'
@@ -1351,10 +1644,13 @@ class CoolElement extends Element {
 }
 
 customElements.define('cool-element', CoolElement)
+// or
+const myRegistry = new CustomElementRegistry()
+myRegistry.define('cool-element', CoolElement)
 ```
 
 Finally, even if passed a string for the element name, a second boolean option
-can disable automatic definition, and in this case the constructor's `.define()`
+can disable automatic definition, and in this case the constructor's `.defineElement()`
 method can be used to trigger the definition using the given name:
 
 ```js
@@ -1367,19 +1663,21 @@ class CoolElement extends Element {
 	// ...
 }
 
-CoolElement.define() // defines <cool-element>
+CoolElement.defineElement() // defines <cool-element>
 ```
 
-A custom name can be passed to `.define()` too:
+A custom name can be passed to `.defineElement()` too:
 
 ```js
-CoolElement.define('other-element') // defines <other-element> (even if `<cool-element>` is already defined)
+CoolElement.defineElement('other-element') // defines <other-element> (even if `<cool-element>` is already defined)
 ```
 
-### `@attribute`
+#### `@attribute`
 
 A decorator for defining a generic element attribute. The name of the property
 is mapped from camelCase to dash-case.
+
+The `@attribute` decorator is effectively the same as the `@stringAttribute` decorator.
 
 ```ts
 import {Element, element, attribute} from '@lume/element'
@@ -1406,13 +1704,13 @@ el.removeAttribute('first-name')
 console.log(el.firstName) // logs null
 ```
 
-Had we defined a different default value,
+Had we defined a different initial value,
 
 ```js
 	@attribute firstName = 'Batman'
 ```
 
-then removing the attribute will set the JS property back to the intitial value:
+then removing the attribute would have set the JS property back to that non-null value:
 
 ```js
 const el = document.querySelector('cool-element')
@@ -1425,11 +1723,12 @@ console.log(el.firstName) // logs "Batman"
 ```
 
 This is great because the intial values that you see in the class definition are
-always the expected values when the element has not attributes or when all
-attributes were removed, making the outcome predictable.
+always the expected values when the element has no attributes or when all
+attributes are removed, making the outcome predictable and consistent.
 
 For TypeScript, you'll want the property type to be at least `string | null` if
-the value starts `null`.
+the initial value is `null`, as removing the attribute will set the JS property
+back to `null`.
 
 ```ts
 import {Element, element, attribute} from '@lume/element'
@@ -1442,7 +1741,7 @@ class CoolElement extends Element {
 ```
 
 For TypeScript, if the initial value is a string, then no type annotation is
-needed because it will always receive a string (f.e. when the attribute is
+needed because it will always receive a string (f.e. even when the attribute is
 removed) and the type will be inferred from the initial value:
 
 ```ts
@@ -1455,7 +1754,7 @@ class CoolElement extends Element {
 }
 ```
 
-You can of course make a broader type that accepts string from the element
+You can of course make a broader type that accepts a string from the element
 attribute, but also other types via the JS property directly:
 
 ```ts
@@ -1463,7 +1762,7 @@ import {Element, element, attribute} from '@lume/element'
 
 @element('cool-element')
 class CoolElement extends Element {
-	@attribute firstName: string | number = 'Batman' // always a `string`
+	@attribute firstName: string | number = 'Batman'
 	// ...
 }
 ```
@@ -1474,7 +1773,16 @@ const el = document.querySelector('cool-element')
 el.firstName = 123 // ok
 ```
 
-### `@numberAttribute`
+> [!Note]
+> Assigning any other value will work because `@attribute` does not do any
+> coercion, it just accepts values as-is. But properties with specific attribute type decorators, f.e.
+> `@numberAttribute` below, will coerce values, and their type should be defined accordingly.
+
+#### `@stringAttribute`
+
+The `@stringAttribute` decorator is effectively the same as the `@attribute` decorator.
+
+#### `@numberAttribute`
 
 A decorator that defines an attribute that accepts a number. Any value the
 attribute receives will be converted into a number on the JS property.
@@ -1498,6 +1806,10 @@ console.log(typeof el.age) // logs "number"
 
 el.removeAttribute('age')
 console.log(el.age) // logs 10
+console.log(typeof el.age) // logs "number"
+
+el.age = '30' // assign a string
+console.log(el.age) // logs 30
 console.log(typeof el.age) // logs "number"
 ```
 
@@ -1527,7 +1839,7 @@ console.log(el.age) // logs "ten"
 console.log(typeof el.age) // logs "string"
 ```
 
-### `@booleanAttribute`
+#### `@booleanAttribute`
 
 A decorator that defines a boolean attribute. Any value the attribute receives
 will be converted into a boolean on the JS property.
@@ -1564,6 +1876,7 @@ el.removeAttribute('has-pizza')
 console.log(el.age) // logs false
 console.log(typeof el.age) // logs "boolean"
 
+// A literal "false" value is special and is treated as false.
 el.setAttribute('has-pizza', 'false')
 console.log(el.age) // logs false
 console.log(typeof el.age) // logs "boolean"
@@ -1578,6 +1891,9 @@ Here is the equivalent example in HTML describing the values of `has-pizza`:
 <!-- hasPizza == true -->
 <cool-element has-pizza="true"></cool-element>
 
+<!-- hasPizza == true -->
+<cool-element has-pizza="blah blah"></cool-element>
+
 <!-- hasPizza == false -->
 <cool-element></cool-element>
 
@@ -1587,7 +1903,7 @@ Here is the equivalent example in HTML describing the values of `has-pizza`:
 
 If you start with an initial value of `true`, then when the attribute is removed
 or never existed, the JS property will always be `true`, which again is useful
-for predictability od default state.
+for predictability of default state.
 
 ```ts
 import {Element, element, booleanAttribute} from '@lume/element'
@@ -1616,6 +1932,7 @@ el.removeAttribute('has-pizza')
 console.log(el.age) // logs true
 console.log(typeof el.age) // logs "boolean"
 
+// Only a literal value of "false" will cause the JS property to be false in this case.
 el.setAttribute('has-pizza', 'false')
 console.log(el.age) // logs false
 console.log(typeof el.age) // logs "boolean"
@@ -1631,6 +1948,9 @@ Equivalent HTML:
 <cool-element has-pizza="foo"></cool-element>
 
 <!-- hasPizza == true -->
+<cool-element has-pizza="blah blah"></cool-element>
+
+<!-- hasPizza == true -->
 <cool-element></cool-element>
 
 <!-- hasPizza == false -->
@@ -1639,17 +1959,17 @@ Equivalent HTML:
 
 > :bulb:**Tip:**
 >
-> Avoid attribute values like `has-pizza="foo"`, because they are not semantic.
+> Avoid attribute values like `has-pizza="blah blah"`, because they are not semantic.
 > Use the form `has-pizza` for true or no attribute for false when the
 > default/initial value is `false`. Use the form `has-pizza="true"` and
-> `has-pizza="false"` to be explicit, especially when the initial value is `true`.
+> `has-pizza="false"` to be explicit especially when the initial value is `true`.
 
-### `@signal`
+#### `@signal`
 
-This is from [`classy-solid`](https://github.com/lume/classy-solid), but because
-`@element` is composed with classy-solid's `@reactive` decorator, a
-non-attribute signal property can be defined without also having to use
-classy-solid's `@reactive` decorator:
+This is from [`classy-solid`](https://github.com/lume/classy-solid) for creating
+signal properties, but because `@element` is composed with classy-solid's
+`@reactive` decorator, a non-attribute signal property can be defined without
+also having to use classy-solid's `@reactive` decorator:
 
 ```ts
 import {Element, element, booleanAttribute} from '@lume/element'
@@ -1661,10 +1981,64 @@ class CoolElement extends Element {
 	// property, and the property can only be set via JS.
 	@signal hasPizza = false
 
-	// This property *does* get updated when a `has-drink` attributes is updated.
+	// This property *does* get updated when a `has-drink` attribute is updated, and is also reactive.
 	@booleanAttribute hasDrink = false
 
 	// ...
+}
+```
+
+#### `@noSignal`
+
+Once in a blue moon you might need to define an attribute property that is not
+reactive, for some reason. Avoid it if you can, but you can do it with `@noSignal`:
+
+```ts
+import {Element, element, booleanAttribute, noSignal} from '@lume/element'
+
+@element('cool-element')
+class CoolElement extends Element {
+	// This property gets updated when a `has-drink` attribute is updated, but it is not reactive.
+	@booleanAttribute @noSignal hasDrink = false
+}
+```
+
+This is more useful on a getter/setter where you may implement your own
+reactivity for the property:
+
+```ts
+import {Element, element, booleanAttribute, noSignal} from '@lume/element'
+
+@element('cool-element')
+class CoolElement extends Element {
+	#hasDrink = false
+
+	// This property gets updated when a `has-drink` attribute is updated, and
+	// it is not reactive due to the `@booleanAttribute` decorator but due to a
+	// custom implementation in the getter/setter (for example, maybe the
+	// getter/setter reads from and writes to a Solid signal.
+	@booleanAttribute
+	@noSignal
+	get hasDrink() {
+		// ...
+		return this.#hasDrink
+	}
+	set hasDrink(value) {
+		// ...
+		this.#hasDrink = value
+	}
+}
+```
+
+> [!Note]
+> Make sure the `@noSignal` decorator is listed _after_ the attribute decorator. This will not work:
+
+```js
+class CoolElement extends Element {
+	// This won't work because the attribute decorator will run before the
+	// noSignal decorator so the attribute decorator will miss the signal (pun
+	// intended!).
+	@noSignal @booleanAttribute hasDrink = false
 }
 ```
 
@@ -1674,17 +2048,19 @@ See https://solid.js.com, https://primitives.solidjs.community, and
 https://github.com/lume/classy-solid for APIs that are useful with
 `@lume/element`.
 
-Also see alternative Custom Element (i.e. Web Component) systems to
-`@lume/element` like
-[`solid-element`](https://github.com/solidjs/solid/tree/main/packages/solid-element),
-[Lit](https://lit.dev/), [Stencil](https://stenciljs.com),
-[Enhance](https://enhance.dev/), [Fast
-Elements](https://www.fast.design/docs/fast-element/getting-started), [Lightning
-Web Components](https://lwc.dev),
-[ReadyMade](https://readymade-ui.github.io/readymade), [GitHub
-Elements](https://github.com/github/github-elements),
-[Atomico](https://atomicojs.dev), and [more
-here](https://webcomponents.dev/new).
+Also see Custom Element (i.e. Web Component) systems that are alternative to
+`@lume/element`:
+
+- [`solid-element`](https://github.com/solidjs/solid/tree/main/packages/solid-element)
+- [Lit](https://lit.dev/)
+- [ReadyMade](https://readymade-ui.github.io/readymade)
+- [Stencil](https://stenciljs.com)
+- [Enhance](https://enhance.dev/)
+- [Fast Elements](https://www.fast.design/docs/fast-element/getting-started)
+- [Lightning](https://lwc.dev)
+- [GitHub Elements](https://github.com/github/github-elements)
+- [Atomico](https://atomicojs.dev)
+- [and more](https://webcomponents.dev/new)
 
 ## Status
 
