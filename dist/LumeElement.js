@@ -38,31 +38,22 @@ class LumeElement extends Effectful(HTMLElement) {
      * different subclass of the class this is called on if passing in a custom
      * `name`, otherwise returns the same class this is called on.
      */
-    static defineElement(name, registry = customElements) {
+    static defineElement(name = this.elementName, registry = customElements) {
         if (!name) {
-            name = this.elementName;
-            if (registry.get(name)) {
-                console.warn(`defineElement(): An element class was already defined for tag name ${name}.`);
-                return this;
-            }
-            registry.define(name, this);
+            console.warn(`defineElement(): Element name cannot be empty. This is a no-op.`);
             return this;
         }
-        else {
-            if (registry.get(name)) {
-                console.warn(`defineElement(): An element class was already defined for tag name ${name}.`);
-                return this;
-            }
-            else {
-                // Allow the same element to be defined more than once using
-                // alternative names.
-                const Class = class extends this {
-                };
-                Class.elementName = name;
-                registry.define(name, Class);
-                return Class;
-            }
+        if (registry.get(name)) {
+            console.warn(`defineElement(): An element class was already defined for tag name ${name}. This is a no-op.`);
+            return registry.get(name);
         }
+        // Allow the same element to be defined with multiple names.
+        const alreadyUsed = !!registry.getName(this);
+        const Class = alreadyUsed ? class extends this {
+        } : this;
+        Class.elementName = name;
+        registry.define(name, Class);
+        return Class;
     }
     /**
      * Non-decorator users can use this to specify a list of attributes, and the

@@ -715,7 +715,7 @@ describe('LumeElement', () => {
 		const el2 = document.createElement(name2)
 		document.body.append(el2)
 
-		const ManualEl2 = ManualEl.defineElement(name2)
+		const ManualEl2 = ManualEl.defineElement(name2) as typeof ManualEl
 		ManualEl.defineElement(name2) // no error
 		ManualEl2.defineElement(name2) // no error
 

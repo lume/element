@@ -44,8 +44,6 @@ export function attribute(handlerOrValue: AttributeHandler | unknown, context?: 
 	// otherwise used as a decorator factory, possibly being passed options, like `@attribute({...})`
 	const handler = handlerOrValue as AttributeHandler | undefined
 	return <T>(value: T, context: AttributeDecoratorContext): any => handleAttributeDecoration(value, context, handler)
-
-	// TODO throw an error for cases when @element is not used on a class with @attribute decorations, similar to classy-solid @signal/@reactive.
 }
 
 /**
@@ -210,7 +208,10 @@ function mapAttributeToProp(prototype: any, attr: string, prop: string, attribut
 export type AttributeHandler<T = any> = {
 	// TODO `to` handler currently does nothing. If it is present, then prop
 	// changes should reflect back to the attribute. This will add a performance
-	// hit.
+	// hit because every JS property value will be serialized into a string for
+	// the attribute, so it is better for props/attributes that change once in a
+	// while (f.e. toggle a checkbox on/off based on interaction) but not for
+	// props/attributes that are animated (f.e. a position or rotation).
 	to?: (propValue: T) => string | null
 
 	/**
@@ -226,10 +227,17 @@ export type AttributeHandler<T = any> = {
 	 * The default value that the respective JS property should have when the
 	 * attribute is removed.
 	 *
+	 * If this is not specified, and the respective class field is defined, it
+	 * will default to the initial value of the class field.  If this is
+	 * specified, it will take precedence over the respective field's initial
+	 * value. This should generally be avoided, and the class field initial
+	 * value should be relied on as the source of the default value.
+	 *
 	 * When defined, an attribute's respective JS property will be set to this
 	 * value when the attribute is removed. If not defined, then the JS property
-	 * will receive `null` when the attribute is removed, just like
-	 * `attributeChangedCallback` does.
+	 * will always receive the initial value of the respective JS class field or
+	 * `undefined` if the field was not defined (that's the "initial value" of
+	 * the field), when the attribute is removed.
 	 */
 	default?: T
 }
