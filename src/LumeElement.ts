@@ -482,8 +482,9 @@ type Template = TemplateContent | (() => TemplateContent)
  * }
  * ```
  *
- * The result is that TypeScript will properly type-check the following
- * JSX expression (notice lorem-ipsum is dash-case):
+ * The result is that TypeScript will properly type-check the following JSX
+ * expression (notice loremIpsum is camelCase in the class, but dash-cased
+ * lorem-ipsum is used in the JSX):
  *
  * ```jsx
  * let coolEl = <cool-element foo={'foo'} bar={null} lorem-ipsum={456}></cool-element>
@@ -497,6 +498,12 @@ export type ElementAttributes<
 	AdditionalProperties &
 	Omit<JSX.HTMLAttributes<ElementType>, SelectedProperties | keyof AdditionalProperties>
 
+/**
+ * Make all non-string properties union with |string because they can all
+ * receive string values from string attributes like opacity="0.5" (those values
+ * are converted to the types of values they should be, f.e. reading a
+ * `@numberAttribute` property always returns a `number`)
+ */
 type WithStringValues<Type extends object> = {
 	[Property in keyof Type]: NonNullable<Type[Property]> extends string ? Type[Property] : Type[Property] | string
 }
