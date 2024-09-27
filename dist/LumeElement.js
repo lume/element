@@ -193,7 +193,7 @@ class LumeElement extends Effectful(HTMLElement) {
      * (f.e. a subclass can `return this` to render into itself instead of
      * making a root) regardless of the value of `hasShadow`.
      */
-    get root() {
+    get templateRoot() {
         if (!this.hasShadow)
             return this;
         if (this[root])
@@ -203,13 +203,20 @@ class LumeElement extends Effectful(HTMLElement) {
         // TODO use `this.attachInternals()` (ElementInternals API) to get the root instead.
         return (this[root] = this.attachShadow({ mode: 'open', ...this.shadowOptions }));
     }
-    set root(v) {
+    set templateRoot(v) {
         if (!this.hasShadow)
             throw new Error('Can not set root, element.hasShadow is false.');
         // @prod-prune
         if (this[root] || this.shadowRoot)
             throw new Error('Element root can only be set once if there is no ShadowRoot.');
         this[root] = v;
+    }
+    /** @deprecated `root` is renamed to `templateRoot`, and `root` will be removed in a future breaking version. */
+    get root() {
+        return this.templateRoot;
+    }
+    set root(val) {
+        this.templateRoot = val;
     }
     /**
      * Define which `Node` to append style sheets to when `hasShadow` is `true`.
@@ -226,7 +233,7 @@ class LumeElement extends Effectful(HTMLElement) {
      * somewhere else).
      */
     get styleRoot() {
-        return this.root;
+        return this.templateRoot;
     }
     attachShadow(options) {
         if (this[root])
@@ -237,7 +244,7 @@ class LumeElement extends Effectful(HTMLElement) {
     connectedCallback() {
         const template = this.template;
         if (template)
-            this.#disposeTemplate = render(typeof template === 'function' ? template.bind(this) : () => template, this.root);
+            this.#disposeTemplate = render(typeof template === 'function' ? template.bind(this) : () => template, this.templateRoot);
         this.#setStyle();
     }
     disconnectedCallback() {

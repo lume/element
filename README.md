@@ -1540,11 +1540,15 @@ The `template` content will be appended to the SomeEl instance directly, with no
 > will not slot accept any children and will only have `template` content as their
 > children.
 
-#### `get/set root`
+#### `root`
 
-Subclasses can override this to provide an alternate Node for `template` content
-to be placed into (f.e. a subclass can `return this` to have `template` content
-appended to itself regardless of the value of `hasShadow`).
+Deprecated, renamed to `templateRoot`.
+
+#### `templateRoot`
+
+Subclasses can override the `templateRoot` property to provide an alternate Node for
+`template` content to be placed into (f.e. a subclass can set it to `this` to have
+`template` content appended to itself regardless of the value of `hasShadow`).
 
 A primary use case for this is customizing the ShadowRoot:
 
@@ -1552,7 +1556,7 @@ A primary use case for this is customizing the ShadowRoot:
 @element('some-el')
 class SomeEl extends Element {
 	// Create the element's ShadowRoot with custom options for example:
-	root = this.attachShadow({
+	templateRoot = this.attachShadow({
 		mode: 'closed',
 	})
 
@@ -1562,15 +1566,30 @@ class SomeEl extends Element {
 
 [Example on CodePen](https://codepen.io/trusktr/pen/MWMNpbR)
 
-#### `get styleRoot`
+#### `shadowOptions`
 
-Similar to the previous `get root`, this defines which `Node` to append style
+Define a `shadowOptions` property to specify any options for the element's
+ShadowRoot. These options are passed to `attachShadow()`. This is a simpler
+alternative to overriding `templateRoot` in the previous example.
+
+```js
+@element('some-el')
+class SomeEl extends Element {
+	shadowOptions = {mode: 'closed'}
+
+	template = () => html`<div>hello</div>`
+}
+```
+
+#### `styleRoot`
+
+Similar to the previous `templateRoot`, this defines which `Node` to append style
 sheets to when `hasShadow` is `true`. This is ignored if `hasShadow` is
-`false`. It defaults to `this.root`, which in turn defaults to the element's
+`false`. It defaults to `this.templateRoot`, which in turn defaults to the element's
 `ShadowRoot`.
 
 When `hasShadow` is `true`, an alternate `styleRoot` is sometimes desired so
-that styles will be appended elsewhere than the root. To customize this, override it in your class:
+that styles will be appended elsewhere than the `templateRoot`. To customize this, override it in your class:
 
 ```js
 @element('some-el')

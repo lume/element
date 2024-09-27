@@ -49,7 +49,7 @@ describe('LumeElement', () => {
 
 		@element('no-shadow')
 		class MyEl extends Element {
-			override get root() {
+			override get templateRoot() {
 				return this
 			}
 			override template = () => {
@@ -295,7 +295,7 @@ describe('LumeElement', () => {
 		@element('foo-element')
 		class FooElement extends Element {
 			// @ts-ignore, in case TS complains about overiding an accessor (valid JS)
-			root = this
+			templateRoot = this
 
 			// TODO static readonly hasShadow = false
 
@@ -348,7 +348,7 @@ describe('LumeElement', () => {
 		expect(fooEl.boop).toBe('boop')
 		expect(fooEl.getAttribute('boop')).toBe(null)
 
-		expect(fooEl.root).toBe(fooEl)
+		expect(fooEl.templateRoot).toBe(fooEl)
 
 		fooEl.setAttribute('foo', '456')
 		expect(fooEl.foo).toBe(456)
@@ -428,7 +428,7 @@ describe('LumeElement', () => {
 		// Regression fix: The initial prop handling process should not mess with the private
 		// variables defined in the LumeElement class, and thus this expectation
 		// should still hold after deferral.
-		expect(fooEl.root).toBe(fooEl)
+		expect(fooEl.templateRoot).toBe(fooEl)
 
 		// TODO also test that unshadowing of pre-upgrade properties works in
 		// subclasses of a direct subclass of LumeElement.
@@ -467,7 +467,7 @@ describe('LumeElement', () => {
 		const FooElemento = element('foo-elemento')(
 			class FooElemento extends Element {
 				// @ts-ignore, in case TS complains about overiding an accessor (valid JS)
-				root = this
+				templateRoot = this
 
 				// When not using decorators, we can define the reactive attributes like this instead.
 				static override observedAttributeHandlers: AttributeHandlerMap = {
@@ -539,7 +539,7 @@ describe('LumeElement', () => {
 		expect(fooEl.boop).toBe('boop', 'pre-upgrade values should be in place 13')
 		expect(fooEl.getAttribute('boop')).toBe(null, 'pre-upgrade values should be in place 14')
 
-		expect(fooEl.root).toBe(fooEl)
+		expect(fooEl.templateRoot).toBe(fooEl)
 
 		let count = 0
 		createEffect(() => {
@@ -602,7 +602,7 @@ describe('LumeElement', () => {
 		// Regression fix: The initial prop handling process should not mess with the private
 		// variables defined in the LumeElement class, and thus this expectation
 		// should still hold after deferral.
-		expect(fooEl.root).toBe(fooEl, 'LumeElement base class properties should be intact after upgrade')
+		expect(fooEl.templateRoot).toBe(fooEl, 'LumeElement base class properties should be intact after upgrade')
 	})
 
 	xit(
