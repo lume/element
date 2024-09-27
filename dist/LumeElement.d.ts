@@ -133,8 +133,11 @@ declare class LumeElement extends LumeElement_base {
      * (f.e. a subclass can `return this` to render into itself instead of
      * making a root) regardless of the value of `hasShadow`.
      */
-    protected get root(): Node;
-    protected set root(v: Node);
+    protected get templateRoot(): Node;
+    protected set templateRoot(v: Node);
+    /** @deprecated `root` is renamed to `templateRoot`, and `root` will be removed in a future breaking version. */
+    get root(): Node;
+    set root(val: Node);
     /**
      * Define which `Node` to append style sheets to when `hasShadow` is `true`.
      * Defaults to the `this.root`, which in turn defaults to the element's
