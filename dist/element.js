@@ -2,7 +2,8 @@ import './metadata-shim.js';
 import { untrack } from 'solid-js';
 import { reactive, signalify } from 'classy-solid';
 import { Element } from './LumeElement.js';
-import { __classFinishers, __setUpAttribute, attributesToProps } from './attribute.js';
+import { __classFinishers, __setUpAttribute, __attributesToProps } from './attribute.js';
+const isAttributeHandler = Symbol('isAttributeHandler');
 export function element(tagNameOrClass, autoDefineOrContext) {
     let tagName = '';
     let autoDefine = !!(autoDefineOrContext ?? true);
@@ -53,8 +54,7 @@ function applyElementDecoration(Class, context, tagName, autoDefine) {
         for (const prop in _attrs)
             __setUpAttribute(Ctor, prop, attrs[prop]);
     }
-    const handlers = Ctor.observedAttributeHandlers;
-    // if (handlers) for (const prop in handlers) __setUpAttribute(Ctor, prop, handlers[prop]!)
+    const handlers = Object.hasOwn(Ctor, 'observedAttributeHandlers') ? Ctor.observedAttributeHandlers : undefined;
     if (handlers)
         for (const prop of Object.keys(handlers))
             __setUpAttribute(Ctor, prop, handlers[prop]);
@@ -68,22 +68,15 @@ function applyElementDecoration(Class, context, tagName, autoDefine) {
             // objects (super() is already untracked by the reactive decorator).
             untrack(() => {
                 handlePreUpgradeValues(this);
-                const propsToSignalify = [];
-                const attrsToProps = ElementDecorator.prototype[attributesToProps] ?? {};
-                for (const propSpec of Object.values(attrsToProps)) {
-                    const prop = propSpec.name;
-                    const useSignal = !noSignal?.has(prop);
-                    if (useSignal)
-                        propsToSignalify.push(prop);
-                    const handler = propSpec.attributeHandler;
-                    // Default values for fields are handled in their initializer,
-                    // and this catches default values for getters/setters.
-                    if (handler && !('default' in handler))
-                        handler.default = this[prop];
-                }
+                const attrsToProps = ElementDecorator.prototype[__attributesToProps] ?? {};
+                // We're using Object.values here for *own* properties so
+                // we handle properties of the current decorated class (not
+                // of the super classes).
+                const propSpecs = Object.values(attrsToProps);
                 // This is signalifying any attribute props that may have been
-                // defined in `static observedAttribute` rather than with @attribute
-                // decorator (which composes @signal), so that we also cover
+                // defined in `static observedAttributes` or `static
+                // observedAttributeHandlers` rather than with an attribute
+                // decorator (which composes `@signal`), so that we also cover
                 // non-decorator usage until native decorators are out.
                 //
                 // Note, `signalify()` returns early if a property was already
@@ -99,8 +92,99 @@ function applyElementDecoration(Class, context, tagName, autoDefine) {
                 // Having to duplicate keys in observedAttributes as well as class
                 // fields is more room for human error, so it'll be nice to remove
                 // non-decorator usage.
-                if (propsToSignalify.length)
-                    signalify(this, ...propsToSignalify);
+                for (const propSpec of propSpecs) {
+                    const prop = propSpec.name;
+                    const useSignal = !noSignal?.has(prop);
+                    if (!useSignal)
+                        continue;
+                    let isField = false;
+                    const fieldDesc = Object.getOwnPropertyDescriptor(this, prop);
+                    const protoDesc = Object.getOwnPropertyDescriptor(Class.prototype, prop);
+                    // The decorated property is either on the instance (field), or the decorated class's prototype (getter/setter).
+                    let descriptor = fieldDesc;
+                    if (descriptor)
+                        isField = true; // not on prototype
+                    if (!descriptor)
+                        descriptor = protoDesc;
+                    if (!descriptor)
+                        descriptorError(prop);
+                    const { get, set } = descriptor;
+                    const isAccessor = !!(descriptor && (get || set));
+                    const initialValue = isAccessor && get ? get.call(this) : this[prop];
+                    signalify(isField ? this : Class.prototype, [
+                        prop,
+                        initialValue,
+                    ]);
+                }
+                // Intercept JS values to run attribute handlers.
+                for (const propSpec of propSpecs) {
+                    const prop = propSpec.name;
+                    const handler = propSpec.attributeHandler;
+                    if (!handler)
+                        continue;
+                    // Default values for fields are handled in their initializer,
+                    // and this catches default values for getters/setters.
+                    if (!('default' in handler))
+                        handler.default = this[prop];
+                    let isField = false;
+                    const fieldDesc = Object.getOwnPropertyDescriptor(this, prop);
+                    const protoDesc = Object.getOwnPropertyDescriptor(Class.prototype, prop);
+                    // The decorated property is either on the instance (field), or the decorated class's prototype (getter/setter).
+                    let descriptor = fieldDesc;
+                    if (descriptor)
+                        isField = true; // not on prototype
+                    if (!descriptor)
+                        descriptor = protoDesc;
+                    if (!descriptor)
+                        descriptorError(prop);
+                    const { get, set, writable } = descriptor;
+                    const isAccessor = !!(get || set);
+                    if (!isAccessor && !isField)
+                        throw new Error(`Cannot map attribute to prototype value property "${String(prop)}". Only prototype getters/setters are supported. Either make the property a class field, or make two separate properties: one for the attribute as a class field, one for the prototype value property.`);
+                    if ((isAccessor && !set) || (!isAccessor && !writable))
+                        throw new Error(`An attribute decorator cannot be used on readonly property "${String(prop)}".`);
+                    let storage;
+                    // We check if we have an accessor, because sometimes we
+                    // don't if the property is not signalified (f.e. if
+                    // `@attribute @noSignal` was used, then we have a regular
+                    // field.)
+                    if (isAccessor) {
+                        if (set?.[isAttributeHandler])
+                            continue;
+                    }
+                    else {
+                        // We must be patching a field
+                        storage = Symbol('attributeHandlerStorage:' + String(prop));
+                        // @ts-expect-error indexed access with symbol
+                        this[storage] = this[prop];
+                    }
+                    const location = isField ? this : Class.prototype;
+                    const newGetter = isAccessor
+                        ? get
+                        : // @ts-expect-error indexed access with symbol
+                            (() => this[storage]);
+                    const newSetter = isAccessor
+                        ? // function because it will be on the prototype, needs dynamic `this`
+                            function (value) {
+                                if (typeof value === 'string' || value === null)
+                                    value = __handleAttributeValue(value, handler);
+                                set.call(this, value);
+                            }
+                        : ((value) => {
+                            if (typeof value === 'string' || value === null)
+                                value = __handleAttributeValue(value, handler);
+                            // @ts-expect-error indexed access with symbol
+                            this[storage] = value;
+                        });
+                    newGetter && (newGetter[isAttributeHandler] = true);
+                    newSetter[isAttributeHandler] = true;
+                    Object.defineProperty(location, prop, {
+                        enumerable: descriptor.enumerable,
+                        configurable: descriptor.configurable,
+                        get: newGetter,
+                        set: newSetter,
+                    });
+                }
             });
         }
     }
@@ -153,9 +237,24 @@ function handlePreUpgradeValues(self) {
             delete self[key];
         }
         // Set the pre-upgrade value (allowing any inherited
-        // accessor to operate on it).
+        // or own accessor to operate on it).
         // @ts-expect-error dynamic decorator stuff, has no impact on user types.
         self[key] = value;
     }
+}
+function __handleAttributeValue(value, handler) {
+    // prettier-ignore
+    return !handler
+        ? value
+        : value === null // attribute removed
+            ? 'default' in handler
+                ? handler.default
+                : null
+            : handler.from
+                ? handler.from(value)
+                : value;
+}
+function descriptorError(prop) {
+    throw new TypeError(`Missing descriptor for property "${String(prop)}" while mapping attributes to properties. Make sure the @element decorator is the first decorator on your element class, and if you're using 'static observedAttributes' or 'static observedAttributeHandlers' make sure you also define the respective class fields for the initial values. If a pre-existing class is already decoratored with other decorators, extend from it, then use @element directly on the subclass.`);
 }
 //# sourceMappingURL=element.js.map

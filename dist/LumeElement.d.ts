@@ -1,5 +1,5 @@
-import type { AttributeHandler, attributesToProps } from './attribute';
-import type { DashCasedProps } from './_utils';
+import type { AttributeHandler, __attributesToProps } from './attribute';
+import type { DashCasedProps } from './utils';
 declare const root: unique symbol;
 declare const LumeElement_base: (new (...a: any[]) => {
     "__#1@#effects": Set<import("classy-solid").Effect>;
@@ -80,7 +80,7 @@ declare class LumeElement extends LumeElement_base {
      */
     static observedAttributeHandlers?: AttributeHandlerMap;
     /** Note, this is internal and used by the @attribute decorator, see attribute.ts. */
-    [attributesToProps]?: Record<string, {
+    [__attributesToProps]?: Record<string, {
         name: string;
         attributeHandler?: AttributeHandler;
     }>;
@@ -125,6 +125,8 @@ declare class LumeElement extends LumeElement_base {
      * selectors converted to tag names.
      */
     readonly hasShadow: boolean;
+    /** Options used for the ShadowRoot, passed to `attachShadow()`. */
+    shadowOptions?: ShadowRootInit;
     [root]: Node | null;
     /**
      * Subclasses can override this to provide an alternate Node to render into

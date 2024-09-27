@@ -46,6 +46,7 @@ export function defineProp(obj: any, prop: string, value: any) {
 
 // TYPES
 
+/** Splits a string type by the separator and makes it camelCase. F.e. "foo-bar" becomes "fooBar" if the separator is "-". */
 // https://github.com/type-challenges/type-challenges/issues/9116
 // More solutions at https://github.com/type-challenges/type-challenges/tree/main/questions/00114-hard-camelcase
 //
@@ -67,12 +68,12 @@ export type JoinToCamelCase<
 	Sep extends string = '-',
 	UPPER extends boolean = false,
 	Res extends string = '',
-> = S extends `${infer L}${infer R}`
-	? L extends Sep
-		? JoinToCamelCase<R, Sep, true, Res>
+> = S extends `${infer Left}${infer Right}`
+	? Left extends Sep
+		? JoinToCamelCase<Right, Sep, true, Res>
 		: UPPER extends true
-		? JoinToCamelCase<R, Sep, false, `${Res}${Uppercase<L>}`>
-		: JoinToCamelCase<R, Sep, false, `${Res}${Lowercase<L>}`>
+		? JoinToCamelCase<Right, Sep, false, `${Res}${Uppercase<Left>}`>
+		: JoinToCamelCase<Right, Sep, false, `${Res}${Lowercase<Left>}`>
 	: Res
 
 // https://github.com/type-challenges/type-challenges/issues/9098
@@ -115,7 +116,7 @@ export type JoinToCamelCase<
 //
 // prettier-ignore
 type KebabMap = { A: "a", B: "b", C: "c", D: "d", E: "e", F: "f", G: "g", H: "h", I: "i", J: "j", K: "k", L: "l", M: "m", N: "n", O: "o", P: "p", Q: "q", R: "r", S: "s", T: "t", U: "u", V: "v", W: "w", X: "x", Y: "y", Z: "z", }
-type SplitCamelCase<
+export type SplitCamelCase<
 	S extends string,
 	Sep extends string = '-',
 	U extends string = '',
@@ -134,30 +135,3 @@ export type CamelCasedProps<T> = {
 export type DashCasedProps<T> = {
 	[K in keyof T as SplitCamelCase<Extract<K, string>, '-'>]: T[K]
 }
-
-// EXAMPLES
-// type foo0 = JoinToCamelCase<'fooBarBaz'> // Becomes "foobabaz"
-// type foo3 = JoinToCamelCase<'foo-bar-baz'> // Becomes "fooBarBaz"
-// type foo5 = JoinToCamelCase<'foo bar baz', ' '> // Becomes "fooBarBaz"
-// type foo6 = JoinToCamelCase<'foo_bar_baz', '_'> // Becomes "fooBarBaz"
-// type foo14 = JoinToCamelCase<'foo:bar:baz', ':'> // Becomes "fooBarBaz"
-// type foo4 = JoinToCamelCase<'foobarbaz'> // the same
-// type foo7 = SplitCamelCase<'fooBar'> // Becomes "foo-bar"
-// type foo12 = SplitCamelCase<'fooBar', '_'> // Becomes "foo_bar"
-// type foo13 = SplitCamelCase<'fooBar', ' '> // Becomes "foo bar"
-// type foo11 = SplitCamelCase<'foo-bar'> // the same
-// type foo8 = SplitCamelCase<'foo bar'> // the same
-// type foo9 = SplitCamelCase<'foo_bar'> // the same
-// type foo10 = SplitCamelCase<'foobar'> // the same
-// type t = Join<['foo', 'bar'], ':'> // Becomes "foo:bar"
-//
-// interface KebabCased {
-//     "foo-bar": string;
-//     foo: number;
-// }
-// type CamelCased = CamelCasedProps<KebabCased>;
-// Becomes
-// {
-//    fooBar: string;
-//    foo: number;
-// }

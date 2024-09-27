@@ -1785,7 +1785,10 @@ The `@stringAttribute` decorator is effectively the same as the `@attribute` dec
 #### `@numberAttribute`
 
 A decorator that defines an attribute that accepts a number. Any value the
-attribute receives will be converted into a number on the JS property.
+attribute receives will be passed to the JS property. The JS property will
+convert a `null` value (attribute removed) to the default value defined by the
+initial property value, and will convert any string into a number (it will be
+`NaN` if the string is invalid).
 
 ```ts
 import {Element, element, numberAttribute} from '@lume/element'
@@ -1842,11 +1845,15 @@ console.log(typeof el.age) // logs "string"
 #### `@booleanAttribute`
 
 A decorator that defines a boolean attribute. Any value the attribute receives
-will be converted into a boolean on the JS property.
+will be passed to the JS property. The JS property will convert a `null` value
+(attribute removed) to the default value defined by the initial property value,
+and will convert any string into boolean. All string values except `"false"`
+result in `true`, and the string `"false"` results in `false`. Additionally, a
+`null` value (attribute removed) results in `false`.
 
 To mimick the same behavior as boolean attributes on built-in elements where the
 presence of the attribute is true, and absence of the attribute is false, start
-with an initial value of `false`.
+with an initial value of `false`:
 
 ```ts
 import {Element, element, booleanAttribute} from '@lume/element'

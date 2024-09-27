@@ -8,7 +8,7 @@ export {
 	dashCaseToCamelCase,
 	type CamelCasedProps,
 	type DashCasedProps,
-} from './_utils.js'
+} from './utils.js'
 export type {JSX} from './jsx-runtime.js'
 
 export const version = '0.12.4'

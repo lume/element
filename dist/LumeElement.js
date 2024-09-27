@@ -7,7 +7,6 @@ import { render } from 'solid-js/web';
 import { Effectful, __isPropSetAtLeastOnce } from 'classy-solid';
 // TODO `templateMode: 'append' | 'replace'`, which allows a subclass to specify
 // if template content replaces the content of `root`, or is appended to `root`.
-let ctor;
 const HTMLElement = globalThis.HTMLElement ??
     class HTMLElement {
         constructor() {
@@ -186,6 +185,8 @@ class LumeElement extends Effectful(HTMLElement) {
      * selectors converted to tag names.
      */
     hasShadow = true;
+    /** Options used for the ShadowRoot, passed to `attachShadow()`. */
+    shadowOptions;
     [root] = null;
     /**
      * Subclasses can override this to provide an alternate Node to render into
@@ -200,7 +201,7 @@ class LumeElement extends Effectful(HTMLElement) {
         if (this.shadowRoot)
             return (this[root] = this.shadowRoot);
         // TODO use `this.attachInternals()` (ElementInternals API) to get the root instead.
-        return (this[root] = this.attachShadow({ mode: 'open' }));
+        return (this[root] = this.attachShadow({ mode: 'open', ...this.shadowOptions }));
     }
     set root(v) {
         if (!this.hasShadow)
@@ -253,7 +254,7 @@ class LumeElement extends Effectful(HTMLElement) {
     #id = _a.#elementId++;
     #dynamicStyle = null;
     #setStyle() {
-        ctor = this.constructor;
+        const ctor = this.constructor;
         const staticCSS = typeof ctor.css === 'function' ? (ctor.css = ctor.css()) : ctor.css || '';
         const instanceCSS = typeof this.css === 'function' ? this.css() : this.css || '';
         if (this.hasShadow) {

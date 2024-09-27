@@ -40,7 +40,7 @@ export declare namespace attribute {
  */
 export declare const noSignal: (_value: unknown, context: AttributeDecoratorContext) => void;
 export declare function __setUpAttribute(ctor: ElementCtor, propName: string, attributeHandler: AttributeHandler): any;
-export declare const attributesToProps: unique symbol;
+export declare const __attributesToProps: unique symbol;
 /**
  * Defines how values are mapped from an attribute to a JS property on a custom
  * element class.

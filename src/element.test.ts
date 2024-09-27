@@ -20,7 +20,8 @@ describe('@element decorator', () => {
 			@booleanAttribute bool = false
 			@booleanAttribute bool2 = true
 
-			// @ts-expect-error undefined initial value
+			// undefined initial value
+			// @ts-expect-error
 			@stringAttribute baz
 			@stringAttribute baz2: string | null = null
 
@@ -29,6 +30,7 @@ describe('@element decorator', () => {
 			get accessor() {
 				return this.num
 			}
+			@numberAttribute
 			set accessor(v) {
 				this.num = v
 			}
@@ -49,7 +51,8 @@ describe('@element decorator', () => {
 			@booleanAttribute set = false
 			@booleanAttribute amit = true
 
-			// @ts-expect-error undefined initial value
+			// undefined initial value
+			// @ts-expect-error
 			@stringAttribute yes
 			@stringAttribute yes2: string | null = null
 
@@ -58,6 +61,7 @@ describe('@element decorator', () => {
 			get accessor2() {
 				return this.dolor
 			}
+			@numberAttribute
 			set accessor2(v) {
 				this.dolor = v
 			}
@@ -77,7 +81,7 @@ describe('@element decorator', () => {
 	it('ensures initial field values act as default attribute values when attributes removed, no decorator syntax, class fields', () => {
 		const DefaultValueTest = element('default-values-without-decorators')(
 			class extends Element {
-				static observedAttributeHandlers: AttributeHandlerMap = {
+				static override observedAttributeHandlers: AttributeHandlerMap = {
 					foo: {},
 					bar: attribute.string(),
 					num: attribute.number(),
@@ -94,7 +98,8 @@ describe('@element decorator', () => {
 				bool = false
 				bool2 = true
 
-				// @ts-expect-error undefined initial value
+				// undefined initial value
+				// @ts-expect-error
 				baz
 				baz2: string | null = null
 
@@ -116,7 +121,7 @@ describe('@element decorator', () => {
 
 		element('default-values-without-decorators-subclass')(
 			class DefaultValueTestSubclass extends DefaultValueTest {
-				static observedAttributeHandlers: AttributeHandlerMap = {
+				static override observedAttributeHandlers: AttributeHandlerMap = {
 					lorem: {},
 					ipsum: attribute.string(),
 					dolor: attribute.number(),
@@ -133,7 +138,8 @@ describe('@element decorator', () => {
 				set = false
 				amit = true
 
-				// @ts-expect-error undefined initial value
+				// undefined initial value
+				// @ts-expect-error
 				yes
 				yes2: string | null = null
 
@@ -158,7 +164,7 @@ describe('@element decorator', () => {
 	it('ensures initial field values act as default attribute values when attributes removed, no decorator syntax, constructor properties', () => {
 		const DefaultValueTest = element('default-values-without-decorators-constructor-props')(
 			class extends Element {
-				static observedAttributeHandlers: AttributeHandlerMap = {
+				static override observedAttributeHandlers: AttributeHandlerMap = {
 					foo: {},
 					bar: attribute.string(),
 					num: attribute.number(),
@@ -182,8 +188,9 @@ describe('@element decorator', () => {
 					// @ts-expect-error
 					this.bool2 = true
 
-					// @ts-expect-error undefined initial value
-					this.baz
+					// undefined initial value
+					// @ts-expect-error
+					this.baz = undefined
 					// @ts-expect-error
 					this.baz2 = null
 				}
@@ -199,7 +206,7 @@ describe('@element decorator', () => {
 
 		element('default-values-without-decorators-constructor-props-subclass')(
 			class DefaultValueTestSubclass extends DefaultValueTest {
-				static observedAttributeHandlers: AttributeHandlerMap = {
+				static override observedAttributeHandlers: AttributeHandlerMap = {
 					lorem: {},
 					ipsum: attribute.string(),
 					dolor: attribute.number(),
@@ -223,8 +230,9 @@ describe('@element decorator', () => {
 					// @ts-expect-error
 					this.amit = true
 
-					// @ts-expect-error undefined initial value
-					this.yes
+					// undefined initial value
+					// @ts-expect-error
+					this.yes = undefined
 					// @ts-expect-error
 					this.yes2 = null
 				}
@@ -259,21 +267,21 @@ describe('@element decorator', () => {
 		let b: Bar
 		let count = 0
 
-		function noLoop() {
+		function noInfiniteReactivityLoop() {
 			createEffect(() => {
 				b = new Bar() // this should not track
 				count++
 			})
 		}
 
-		expect(noLoop).not.toThrow()
+		expect(noInfiniteReactivityLoop).not.toThrow()
 
 		const b2 = b!
 
 		b!.amount = 4 // hence this should not trigger
 		b!.double = 8 // hence this should not trigger
 
-		// If the effect ran only once initially, not when setting b.colors,
+		// If the effect ran only once initially because it did not track,
 		// then both variables should reference the same instance
 		expect(count).toBe(1)
 		expect(b!).toBe(b2)
@@ -298,21 +306,21 @@ describe('@element decorator', () => {
 		let b: Bar
 		let count = 0
 
-		function noLoop() {
+		function noInfiniteReactivityLoop() {
 			createEffect(() => {
 				b = new Bar() // this should not track
 				count++
 			})
 		}
 
-		expect(noLoop).not.toThrow()
+		expect(noInfiniteReactivityLoop).not.toThrow()
 
 		const b2 = b!
 
 		b!.amount = 4 // hence this should not trigger
 		b!.double = 8 // hence this should not trigger
 
-		// If the effect ran only once initially, not when setting b.colors,
+		// If the effect ran only once initially because it did not track,
 		// then both variables should reference the same instance
 		expect(count).toBe(1)
 		expect(b!).toBe(b2)
@@ -321,7 +329,7 @@ describe('@element decorator', () => {
 	it('automatically does not track reactivity in constructors when not using decorators', () => {
 		const Foo = element('untracked-ctor3')(
 			class Foo extends Element {
-				static observedAttributeHandlers: AttributeHandlerMap = {
+				static override observedAttributeHandlers: AttributeHandlerMap = {
 					amount: attribute.number(),
 				}
 
@@ -333,7 +341,7 @@ describe('@element decorator', () => {
 
 		const Bar = element('untracked-ctor-sub3')(
 			class Bar extends Foo {
-				static observedAttributeHandlers: AttributeHandlerMap = {
+				static override observedAttributeHandlers: AttributeHandlerMap = {
 					// __proto__: super.observedAttributeHandlers,
 					// ...super.observedAttributeHandlers,
 					double: attribute.number(),
@@ -353,21 +361,21 @@ describe('@element decorator', () => {
 		let b: Bar
 		let count = 0
 
-		function noLoop() {
+		function noInfiniteReactivityLoop() {
 			createEffect(() => {
 				b = new Bar() // this should not track
 				count++
 			})
 		}
 
-		expect(noLoop).not.toThrow()
+		expect(noInfiniteReactivityLoop).not.toThrow()
 
 		const b2 = b!
 
 		b!.amount = 4 // hence this should not trigger
 		b!.double = 8 // hence this should not trigger
 
-		// If the effect ran only once initially, not when setting b.colors,
+		// If the effect ran only once initially because it did not track,
 		// then both variables should reference the same instance
 		expect(count).toBe(1)
 		expect(b!).toBe(b2)

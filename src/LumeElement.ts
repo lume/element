@@ -5,13 +5,11 @@ import {render} from 'solid-js/web'
 // element preupgrade value.
 import {Effectful, __isPropSetAtLeastOnce} from 'classy-solid'
 
-import type {AttributeHandler, attributesToProps} from './attribute'
-import type {DashCasedProps} from './_utils'
+import type {AttributeHandler, __attributesToProps} from './attribute'
+import type {DashCasedProps} from './utils'
 
 // TODO `templateMode: 'append' | 'replace'`, which allows a subclass to specify
 // if template content replaces the content of `root`, or is appended to `root`.
-
-let ctor: typeof LumeElement
 
 const HTMLElement =
 	globalThis.HTMLElement ??
@@ -113,7 +111,7 @@ class LumeElement extends Effectful(HTMLElement) {
 	static observedAttributeHandlers?: AttributeHandlerMap;
 
 	/** Note, this is internal and used by the @attribute decorator, see attribute.ts. */
-	declare [attributesToProps]?: Record<string, {name: string; attributeHandler?: AttributeHandler}>
+	declare [__attributesToProps]?: Record<string, {name: string; attributeHandler?: AttributeHandler}>
 
 	/**
 	 * This can be used by a subclass, or other frameworks handling elements, to
@@ -248,7 +246,10 @@ class LumeElement extends Effectful(HTMLElement) {
 	 * shared style sheet placed at the nearest root node, with `:host`
 	 * selectors converted to tag names.
 	 */
-	readonly hasShadow: boolean = true;
+	readonly hasShadow: boolean = true
+
+	/** Options used for the ShadowRoot, passed to `attachShadow()`. */
+	shadowOptions?: ShadowRootInit;
 
 	[root]: Node | null = null
 
@@ -262,7 +263,7 @@ class LumeElement extends Effectful(HTMLElement) {
 		if (this[root]) return this[root]
 		if (this.shadowRoot) return (this[root] = this.shadowRoot)
 		// TODO use `this.attachInternals()` (ElementInternals API) to get the root instead.
-		return (this[root] = this.attachShadow({mode: 'open'}))
+		return (this[root] = this.attachShadow({mode: 'open', ...this.shadowOptions}))
 	}
 	protected set root(v: Node) {
 		if (!this.hasShadow) throw new Error('Can not set root, element.hasShadow is false.')
@@ -289,7 +290,7 @@ class LumeElement extends Effectful(HTMLElement) {
 		return this.root
 	}
 
-	attachShadow(options: ShadowRootInit) {
+	override attachShadow(options: ShadowRootInit) {
 		if (this[root]) console.warn('Element already has a root defined.')
 		return (this[root] = super.attachShadow(options))
 	}
@@ -325,7 +326,7 @@ class LumeElement extends Effectful(HTMLElement) {
 	#dynamicStyle: HTMLStyleElement | null = null
 
 	#setStyle() {
-		ctor = this.constructor as typeof LumeElement
+		const ctor = this.constructor as typeof LumeElement
 		const staticCSS = typeof ctor.css === 'function' ? (ctor.css = ctor.css()) : ctor.css || ''
 		const instanceCSS = typeof this.css === 'function' ? this.css() : this.css || ''
 
