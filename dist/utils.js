@@ -38,30 +38,4 @@ export function defineProp(obj, prop, value) {
         enumerable: true,
     });
 }
-// EXAMPLES
-// type foo0 = JoinToCamelCase<'fooBarBaz'> // Becomes "foobabaz"
-// type foo3 = JoinToCamelCase<'foo-bar-baz'> // Becomes "fooBarBaz"
-// type foo5 = JoinToCamelCase<'foo bar baz', ' '> // Becomes "fooBarBaz"
-// type foo6 = JoinToCamelCase<'foo_bar_baz', '_'> // Becomes "fooBarBaz"
-// type foo14 = JoinToCamelCase<'foo:bar:baz', ':'> // Becomes "fooBarBaz"
-// type foo4 = JoinToCamelCase<'foobarbaz'> // the same
-// type foo7 = SplitCamelCase<'fooBar'> // Becomes "foo-bar"
-// type foo12 = SplitCamelCase<'fooBar', '_'> // Becomes "foo_bar"
-// type foo13 = SplitCamelCase<'fooBar', ' '> // Becomes "foo bar"
-// type foo11 = SplitCamelCase<'foo-bar'> // the same
-// type foo8 = SplitCamelCase<'foo bar'> // the same
-// type foo9 = SplitCamelCase<'foo_bar'> // the same
-// type foo10 = SplitCamelCase<'foobar'> // the same
-// type t = Join<['foo', 'bar'], ':'> // Becomes "foo:bar"
-//
-// interface KebabCased {
-//     "foo-bar": string;
-//     foo: number;
-// }
-// type CamelCased = CamelCasedProps<KebabCased>;
-// Becomes
-// {
-//    fooBar: string;
-//    foo: number;
-// }
-//# sourceMappingURL=_utils.js.map
+//# sourceMappingURL=utils.js.map

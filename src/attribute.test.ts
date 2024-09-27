@@ -1,6 +1,15 @@
 import {createEffect} from 'solid-js'
 import {signal} from 'classy-solid'
-import {Element, element, attribute, numberAttribute, booleanAttribute, noSignal} from './index.js'
+import {
+	Element,
+	element,
+	attribute,
+	numberAttribute,
+	booleanAttribute,
+	noSignal,
+	stringAttribute,
+	type AttributeHandlerMap,
+} from './index.js'
 
 describe('classy-solid @signal properties with lume/element @element decorators on plain HTMLElements', () => {
 	it('reacts to updates using createEffect', () => {
@@ -174,6 +183,7 @@ describe('@attribute tests', () => {
 			get purpose() {
 				return this.__purpose
 			}
+			@attribute
 			set purpose(v) {
 				this.__purpose = v
 			}
@@ -206,7 +216,7 @@ describe('@attribute tests', () => {
 		expect(f.getAttribute('purpose')).toBe('Born to create!')
 	})
 
-	it('skip composing with @signal if @noSignal is used before it', async () => {
+	it('skip composing with @signal if @noSignal is used before it, class field', async () => {
 		@element('no-signal')
 		class NoSignal extends Element {
 			@attribute @noSignal foo = '123'
@@ -245,8 +255,8 @@ describe('@attribute tests', () => {
 
 		@element('no-signal2')
 		class NoSignal2 extends NoSignal {
-			@attribute foo = '123'
-			@attribute @noSignal bar = '123'
+			@attribute override foo = '123'
+			@attribute @noSignal override bar = '123'
 		}
 
 		const el2 = document.createElement('no-signal2') as NoSignal2
@@ -275,6 +285,323 @@ describe('@attribute tests', () => {
 		expect(el2.foo).toBe('456')
 		expect(el2.bar).toBe('456')
 		expect(count2).toBe(2) // still 2, bar is not reactive
+	})
+
+	it('skip composing with @signal if @noSignal is used before it, class getter/setter', async () => {
+		@element('no-signal3')
+		class NoSignal3 extends Element {
+			#val1 = '123'
+
+			@attribute
+			@noSignal
+			get value1() {
+				return this.#val1
+			}
+			@attribute
+			@noSignal
+			set value1(v) {
+				this.#val1 = v
+			}
+
+			#val2 = '123'
+
+			@attribute
+			get value2() {
+				return this.#val2
+			}
+			@attribute
+			set value2(v) {
+				this.#val2 = v
+			}
+		}
+
+		const el = document.createElement('no-signal3') as NoSignal3
+		document.body.append(el)
+
+		let count = 0
+
+		createEffect(() => {
+			el.value1
+			el.value2
+			count++
+		})
+
+		expect(el.value1).toBe('123')
+		expect(el.value2).toBe('123')
+		expect(count).toBe(1)
+
+		el.setAttribute('value1', '456')
+
+		expect(el.value1).toBe('456')
+		expect(el.value2).toBe('123')
+		expect(count).toBe(1) // still 1, el.value1 is not reactive
+
+		el.setAttribute('value2', '456')
+
+		expect(el.value1).toBe('456')
+		expect(el.value2).toBe('456')
+		expect(count).toBe(2) // 2, el.value2 is reactive
+
+		////////////////////////////////////
+		// Ensure overriding getters/setters works
+
+		@element('no-signal4')
+		class NoSignal4 extends NoSignal3 {
+			#val1 = '123'
+
+			@attribute
+			override get value1() {
+				return this.#val1
+			}
+			@attribute
+			override set value1(v) {
+				this.#val1 = v
+			}
+
+			#val2 = '123'
+
+			@attribute
+			@noSignal
+			override get value2() {
+				return this.#val2
+			}
+			@attribute
+			@noSignal
+			override set value2(v) {
+				this.#val2 = v
+			}
+		}
+
+		const el2 = document.createElement('no-signal4') as NoSignal4
+		document.body.append(el2)
+
+		let count2 = 0
+
+		createEffect(() => {
+			el2.value1
+			el2.value2
+			count2++
+		})
+
+		expect(el2.value1).toBe('123')
+		expect(el2.value2).toBe('123')
+		expect(count2).toBe(1)
+
+		el2.setAttribute('value1', '456')
+
+		expect(el2.value1).toBe('456')
+		expect(el2.value2).toBe('123')
+		expect(count2).toBe(2) // 1, el2.value1 is reactive
+
+		el2.setAttribute('value2', '456')
+
+		expect(el2.value1).toBe('456')
+		expect(el2.value2).toBe('456')
+		expect(count2).toBe(2) // still 2, el2.value2 is not reactive
+	})
+
+	@element('override-base')
+	class OverrideBase extends Element {
+		@numberAttribute foo = 123
+
+		#bar = '123'
+
+		@stringAttribute
+		get bar() {
+			return this.#bar
+		}
+		@stringAttribute
+		set bar(v) {
+			this.#bar = v
+		}
+
+		@booleanAttribute baz = false
+	}
+
+	@element('override-subclass')
+	class OverrideSubclass extends OverrideBase {
+		// @ts-expect-error overriding with an incompatible type is fine in plain JS
+		@stringAttribute override foo = '123'
+
+		#bar = 123
+
+		@numberAttribute
+		// @ts-expect-error overriding with an incompatible type is fine in plain JS
+		override get bar() {
+			return this.#bar
+		}
+		@numberAttribute
+		// @ts-expect-error overriding with an incompatible type is fine in plain JS
+		override set bar(v) {
+			this.#bar = v
+		}
+
+		// @ts-expect-error overriding with an incompatible type is fine in plain JS
+		@stringAttribute baz = false // not recommended: initial/default value not matching with decorator type
+	}
+
+	it('allows overriding fields/getters/setters in subclasses, using decorators', () => {
+		let el: Element = new OverrideBase()
+		document.body.append(el)
+
+		testAttribute(el, 'foo', '456', 456, 123)
+		testAttribute(el, 'bar', '456', '456', '123')
+		testAttribute(el, 'baz', 'true', true, false)
+
+		el.remove()
+
+		el = new OverrideSubclass()
+		document.body.append(el)
+
+		testAttribute(el, 'foo', '456', '456', '123')
+		testAttribute(el, 'bar', '456', 456, 123)
+		testAttribute(el, 'baz', 'true', 'true', false)
+
+		el.remove()
+	})
+
+	it('handles property values the same as attributes, using decorators', () => {
+		let el: Element = new OverrideBase()
+		document.body.append(el)
+
+		testProp(el, 'foo', '456', 456, 456, 123, 'number')
+		testProp(el, 'foo', 'asdf', NaN, NaN, 123, 'number') // no error (should handlers throw if the value can't be properly deserialized?)
+		testProp(el, 'bar', '456', '456', '456', '123', 'string')
+		testProp(el, 'baz', 'true', true, true, false, 'boolean')
+
+		el.remove()
+
+		el = new OverrideSubclass()
+		document.body.append(el)
+
+		testProp(el, 'foo', '456', '456', '456', '123', 'string')
+		testProp(el, 'bar', '456', 456, 456, 123, 'number')
+		testProp(el, 'baz', 'true', 'true', 'true', false, 'string')
+
+		el.remove()
+	})
+
+	const OverrideBase2 = element('override-base2')(
+		class extends Element {
+			static override observedAttributeHandlers: AttributeHandlerMap = {
+				foo: attribute.number(),
+				bar: attribute.string(),
+				baz: attribute.boolean(),
+			}
+
+			foo = 123
+
+			#bar = '123'
+
+			get bar() {
+				return this.#bar
+			}
+			set bar(v) {
+				this.#bar = v
+			}
+
+			baz = false
+		},
+	)
+
+	const OverrideSubclass2 = element('override-subclass2')(
+		class extends OverrideBase2 {
+			static override observedAttributeHandlers: AttributeHandlerMap = {
+				foo: attribute.string(),
+				bar: attribute.number(),
+				baz: attribute.string(),
+			}
+
+			// @ts-expect-error overriding with an incompatible type is fine in plain JS
+			override foo = '123'
+
+			#bar = 123
+
+			// @ts-expect-error overriding with an incompatible type is fine in plain JS
+			override get bar() {
+				return this.#bar
+			}
+			// @ts-expect-error overriding with an incompatible type is fine in plain JS
+			override set bar(v) {
+				this.#bar = v
+			}
+
+			// @ts-expect-error overriding with an incompatible type is fine in plain JS
+			baz = false
+		},
+	)
+
+	it('allows overriding fields/getters/setters in subclasses, without decorators', () => {
+		let el: Element = new OverrideBase2()
+		document.body.append(el)
+
+		testAttribute(el, 'foo', '456', 456, 123)
+		testAttribute(el, 'bar', '456', '456', '123')
+		testAttribute(el, 'baz', 'true', true, false)
+
+		el.remove()
+
+		el = new OverrideSubclass2()
+		document.body.append(el)
+
+		testAttribute(el, 'foo', '456', '456', '123')
+		testAttribute(el, 'bar', '456', 456, 123)
+		testAttribute(el, 'baz', 'true', 'true', false)
+
+		el.remove()
+	})
+
+	it('handles property values the same as attributes, without decorators', () => {
+		let el: Element = new OverrideBase2()
+		document.body.append(el)
+
+		testProp(el, 'foo', '456', 456, 456, 123, 'number')
+		testProp(el, 'foo', 'asdf', NaN, NaN, 123, 'number') // no error (should handlers throw if the value can't be properly deserialized?)
+		testProp(el, 'bar', '456', '456', '456', '123', 'string')
+		testProp(el, 'baz', 'true', true, true, false, 'boolean')
+
+		el.remove()
+
+		el = new OverrideSubclass2()
+		document.body.append(el)
+
+		testProp(el, 'foo', '456', '456', '456', '123', 'string')
+		testProp(el, 'bar', '456', 456, 456, 123, 'number')
+		testProp(el, 'baz', 'true', 'true', 'true', false, 'string')
+
+		el.remove()
+	})
+
+	it('works with write-only non-signal setter', () => {
+		@element('non-signal-write-only')
+		class NonSignalWriteOnly extends Element {
+			#value = true
+
+			@booleanAttribute
+			@noSignal
+			set value(v: boolean) {
+				this.#value = v
+			}
+
+			test() {
+				return this.#value
+			}
+		}
+
+		const el = new NonSignalWriteOnly()
+		document.body.append(el)
+
+		expect(el.test()).toBe(true)
+		el.setAttribute('value', 'false')
+		expect(el.test()).toBe(false)
+
+		// With a setter-only property, the initial value cannot be known, so
+		// attribute removal results in undefined.
+		// Auto-accessor fields would allow knowing the initial value (TODO).
+		el.removeAttribute('value')
+		expect(String(el.test())).toBe('undefined')
+
+		el.remove()
 	})
 })
 
@@ -412,3 +739,39 @@ describe('various types of attributes', () => {
 		expect(p.hasDog).toBe(true)
 	})
 })
+
+function testAttribute(el: Element, prop: string, attrValue: any, handledValue: any, defaultValue: any) {
+	el.setAttribute(prop, attrValue)
+	// @ts-expect-error no indexed signature
+	expect(el[prop]).toBe(handledValue)
+	el.removeAttribute(prop)
+	// @ts-expect-error no indexed signature
+	expect(el[prop]).toBe(defaultValue)
+}
+
+function testProp(
+	el: Element,
+	prop: string,
+	attrValue: string,
+	jsValue: any,
+	handledValue: any,
+	defaultValue: any,
+	valueType: string,
+) {
+	// @ts-expect-error no indexed signature
+	el[prop] = jsValue
+	// @ts-expect-error no indexed signature
+	expect(el[prop]).toBe(handledValue)
+	// @ts-expect-error no indexed signature
+	expect(typeof el[prop]).toBe(valueType)
+	// @ts-expect-error no indexed signature
+	el[prop] = attrValue // same as setting the attribute (string)
+	// @ts-expect-error no indexed signature
+	expect(el[prop]).toBe(handledValue)
+	// @ts-expect-error no indexed signature
+	expect(typeof el[prop]).toBe(valueType)
+	// @ts-expect-error no indexed signature
+	el[prop] = null // same as removing the attribute
+	// @ts-expect-error no indexed signature
+	expect(el[prop]).toBe(defaultValue)
+}

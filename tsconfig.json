@@ -1,7 +1,8 @@
 {
 	"extends": "./node_modules/@lume/cli/config/ts.config.json",
 	"compilerOptions": {
-		"noUncheckedIndexedAccess": true,
+		"noUncheckedIndexedAccess": true, // TODO move to lume/cli
+		"noImplicitOverride": true, // TODO move to lume/cli
 		"types": ["mocha"]
 	}
 }

@@ -1,6 +1,6 @@
 import './metadata-shim.js' // TODO remove this shim once decorators land natively.
 import {signal} from 'classy-solid'
-import {camelCaseToDash, defineProp} from './_utils.js'
+import {camelCaseToDash, defineProp} from './utils.js'
 import type {ElementCtor} from './element.js'
 import type {PropKey} from 'classy-solid/dist/decorators/types.js'
 
@@ -139,7 +139,7 @@ export function __setUpAttribute(ctor: ElementCtor, propName: string, attributeH
 }
 
 const hasAttributeChangedCallback = Symbol('hasAttributeChangedCallback')
-export const attributesToProps = Symbol('attributesToProps')
+export const __attributesToProps = Symbol('attributesToProps')
 
 // This stores attribute definitions as an inheritance chain on the constructor.
 function mapAttributeToProp(prototype: any, attr: string, prop: string, attributeHandler: AttributeHandler): void {
@@ -163,21 +163,9 @@ function mapAttributeToProp(prototype: any, attr: string, prop: string, attribut
 			}
 
 			// map from attribute to property
-			const prop = this[attributesToProps]?.[attr]
+			const prop = this[__attributesToProps]?.[attr]
 
-			if (prop) {
-				const handler = prop.attributeHandler
-				// prettier-ignore
-				this[prop.name] = !handler
-					? newVal
-					: newVal === null // attribute removed
-						? 'default' in handler
-							? handler.default
-							: null
-						: handler.from
-							? handler.from(newVal)
-							: newVal
-			}
+			this[prop.name] = newVal
 		}
 	}
 
@@ -187,18 +175,11 @@ function mapAttributeToProp(prototype: any, attr: string, prop: string, attribut
 	// We use inheritance here or else all classes would pile their
 	// attribute-prop definitions on a shared base class (they can clash,
 	// override each other willy nilly and seemingly randomly).
-	if (!prototype.hasOwnProperty(attributesToProps)) {
-		// using defineProperty so that it is non-writable, non-enumerable, non-configurable
-		Object.defineProperty(prototype, attributesToProps, {
-			value: {
-				__proto__: prototype[attributesToProps] || Object.prototype,
-			},
-		})
-
-		// Object.create(prototype[attributesToProps] || Object.prototype)
+	if (!Object.hasOwn(prototype, __attributesToProps)) {
+		prototype[__attributesToProps] = {__proto__: prototype[__attributesToProps] || Object.prototype}
 	}
 
-	prototype[attributesToProps]![attr] = {name: prop, attributeHandler}
+	prototype[__attributesToProps]![attr] = {name: prop, attributeHandler}
 }
 
 /**

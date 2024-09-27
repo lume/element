@@ -1,6 +1,6 @@
 import './metadata-shim.js'; // TODO remove this shim once decorators land natively.
 import { signal } from 'classy-solid';
-import { camelCaseToDash, defineProp } from './_utils.js';
+import { camelCaseToDash, defineProp } from './utils.js';
 export const __classFinishers = [];
 export function attribute(handlerOrValue, context) {
     // if used as a decorator directly with no options
@@ -84,7 +84,7 @@ export function __setUpAttribute(ctor, propName, attributeHandler) {
     mapAttributeToProp(ctor.prototype, attrName, propName, attributeHandler);
 }
 const hasAttributeChangedCallback = Symbol('hasAttributeChangedCallback');
-export const attributesToProps = Symbol('attributesToProps');
+export const __attributesToProps = Symbol('attributesToProps');
 // This stores attribute definitions as an inheritance chain on the constructor.
 function mapAttributeToProp(prototype, attr, prop, attributeHandler) {
     // Only define attributeChangedCallback once.
@@ -104,20 +104,8 @@ function mapAttributeToProp(prototype, attr, prop, attributeHandler) {
                 prototype.__proto__?.attributeChangedCallback?.call(this, attr, oldVal, newVal);
             }
             // map from attribute to property
-            const prop = this[attributesToProps]?.[attr];
-            if (prop) {
-                const handler = prop.attributeHandler;
-                // prettier-ignore
-                this[prop.name] = !handler
-                    ? newVal
-                    : newVal === null // attribute removed
-                        ? 'default' in handler
-                            ? handler.default
-                            : null
-                        : handler.from
-                            ? handler.from(newVal)
-                            : newVal;
-            }
+            const prop = this[__attributesToProps]?.[attr];
+            this[prop.name] = newVal;
         };
     }
     // Extend the current prototype's attributesToProps object from the super
@@ -126,16 +114,10 @@ function mapAttributeToProp(prototype, attr, prop, attributeHandler) {
     // We use inheritance here or else all classes would pile their
     // attribute-prop definitions on a shared base class (they can clash,
     // override each other willy nilly and seemingly randomly).
-    if (!prototype.hasOwnProperty(attributesToProps)) {
-        // using defineProperty so that it is non-writable, non-enumerable, non-configurable
-        Object.defineProperty(prototype, attributesToProps, {
-            value: {
-                __proto__: prototype[attributesToProps] || Object.prototype,
-            },
-        });
-        // Object.create(prototype[attributesToProps] || Object.prototype)
+    if (!Object.hasOwn(prototype, __attributesToProps)) {
+        prototype[__attributesToProps] = { __proto__: prototype[__attributesToProps] || Object.prototype };
     }
-    prototype[attributesToProps][attr] = { name: prop, attributeHandler };
+    prototype[__attributesToProps][attr] = { name: prop, attributeHandler };
 }
 const toString = (str) => str;
 /**

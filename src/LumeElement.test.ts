@@ -16,7 +16,7 @@ describe('LumeElement', () => {
 
 		@element('my-el')
 		class MyEl extends Element {
-			connectedCallback() {
+			override connectedCallback() {
 				super.connectedCallback()
 				count++
 			}
@@ -49,10 +49,10 @@ describe('LumeElement', () => {
 
 		@element('no-shadow')
 		class MyEl extends Element {
-			get root() {
+			override get root() {
 				return this
 			}
-			template = () => {
+			override template = () => {
 				div = document.createElement('div')
 				div.id = 'div'
 				return div
@@ -70,7 +70,7 @@ describe('LumeElement', () => {
 	it('it appends anything returned from template() to a ShadowRoot by default', () => {
 		@element('append-template')
 		class MyEl extends Element {
-			template = () => {
+			override template = () => {
 				const div = document.createElement('div')
 				div.innerText = 'hello'
 				return div
@@ -122,7 +122,7 @@ describe('LumeElement', () => {
 		class MyEl extends Element {
 			@signal message = 'hello'
 			@signal count = 0
-			template = () => html`<div count=${() => this.count}>${() => this.message}</div>`
+			override template = () => html`<div count=${() => this.count}>${() => this.message}</div>`
 			// TODO test prop:theCount once `html` supports the prop: namespace prefix.
 			// html`<div count=${() => this.count} prop:theCount=${() => this.count}>${() => this.message}</div>`
 		}
@@ -169,7 +169,7 @@ describe('LumeElement', () => {
 		class MyEl extends Element {
 			@signal message = 'hello'
 			@signal count = 0
-			template = () => html`<div count=${() => this.count}>${() => this.message}</div>`
+			override template = () => html`<div count=${() => this.count}>${() => this.message}</div>`
 		}
 
 		customElements.define('html-template2', MyEl)
@@ -197,7 +197,7 @@ describe('LumeElement', () => {
 				super()
 				signalify(this, 'message', 'count')
 			}
-			template = () => html`<div count=${() => this.count}>${() => this.message}</div>`
+			override template = () => html`<div count=${() => this.count}>${() => this.message}</div>`
 		}
 
 		customElements.define('html-template2.5', MyEl)
@@ -222,7 +222,7 @@ describe('LumeElement', () => {
 		class MyEl extends Element {
 			@signal message = 'hello'
 			@signal count = 0
-			template = () => html`<div count=${() => this.count}>${() => this.message}</div>`
+			override template = () => html`<div count=${() => this.count}>${() => this.message}</div>`
 		}
 
 		customElements.define('html-template3', MyEl)
@@ -313,7 +313,7 @@ describe('LumeElement', () => {
 			@signal boop = 'boop'
 			@signal bop = 'bop'
 
-			attributeChangedCallback(a: string, o: string | null, n: string | null) {
+			override attributeChangedCallback(a: string, o: string | null, n: string | null) {
 				attributeChangedCalled = true
 				super.attributeChangedCallback?.(a, o, n)
 			}
@@ -470,7 +470,7 @@ describe('LumeElement', () => {
 				root = this
 
 				// When not using decorators, we can define the reactive attributes like this instead.
-				static observedAttributeHandlers: AttributeHandlerMap = {
+				static override observedAttributeHandlers: AttributeHandlerMap = {
 					foo: attribute.string(),
 					baz: attribute.string(),
 					ping: attribute.string(),
@@ -496,7 +496,7 @@ describe('LumeElement', () => {
 					signalify(this, 'bar', 'lorem', 'boop', 'bop')
 				}
 
-				attributeChangedCallback(attr: string, oldVal: string | null, newVal: string | null) {
+				override attributeChangedCallback(attr: string, oldVal: string | null, newVal: string | null) {
 					super.attributeChangedCallback?.(attr, oldVal, newVal)
 					attributeChangedCalled = true
 				}
@@ -727,5 +727,47 @@ describe('LumeElement', () => {
 
 		// TODO test scoped registries once those are out in browsers.
 		// const registry = new CustomElementRegistry()
+	})
+
+	it('allows options to be passed to attachShadow() via .shadowOptions', () => {
+		let count = 0
+
+		@element('shadow-options')
+		class ShadowOptions extends Element {
+			override shadowOptions = {
+				get mode() {
+					count++
+					return 'open' as ShadowRootMode
+				},
+			}
+		}
+
+		const el = new ShadowOptions()
+
+		document.body.append(el)
+
+		expect(count).toBe(1)
+		expect(String(el.shadowRoot)).not.toBe('null')
+
+		el.remove()
+
+		@element('shadow-options2')
+		class ShadowOptions2 extends Element {
+			override shadowOptions = {
+				get mode() {
+					count++
+					return 'closed' as ShadowRootMode
+				},
+			}
+		}
+
+		const el2 = new ShadowOptions2()
+
+		document.body.append(el2)
+
+		expect(count).toBe(2)
+		expect(String(el2.shadowRoot)).toBe('null')
+
+		el2.remove()
 	})
 })

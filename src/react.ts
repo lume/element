@@ -1,5 +1,5 @@
 import type {HTMLAttributes as ReactHTMLAttributes, DetailedHTMLProps as ReactDetailedHTMLProps} from 'react'
-import type {DashCasedProps} from './_utils'
+import type {DashCasedProps} from './utils'
 
 /**
  *  Similar to ElementAttributes, but for defining element attribute types for

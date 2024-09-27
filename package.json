@@ -30,7 +30,7 @@
 	},
 	"dependencies": {
 		"babel-preset-solid": "^1.0.0",
-		"classy-solid": "^0.3.0",
+		"classy-solid": "^0.4.0",
 		"lowclass": "^8.0.0",
 		"solid-js": "^1.0.0"
 	},
