@@ -36,13 +36,18 @@
 	},
 	"devDependencies": {
 		"@lume/cli": "^0.14.0",
-		"@types/react": "^17.0.0",
+		"@types/react": "npm:types-react@rc",
+		"@types/react-dom": "npm:types-react-dom@rc",
 		"ncp": "^2.0.0",
 		"prettier": "3.0.3",
 		"typescript": "^5.0.0"
 	},
 	"peerDependencies": {
 		"@types/react": "*"
+	},
+	"overrides": {
+		"@types/react": "npm:types-react@rc",
+		"@types/react-dom": "npm:types-react-dom@rc"
 	},
 	"repository": {
 		"type": "git",

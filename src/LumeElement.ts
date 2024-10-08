@@ -456,13 +456,12 @@ export {LumeElement as Element}
 
 export type AttributeHandlerMap = Record<string, AttributeHandler>
 
-// This is TypeScript-specific. Eventually Hegel would like to have better
-// support for JSX. We'd need to figure how to supports types for both systems.
 import type {JSX} from './jsx-runtime'
 type JSXOrDOM = JSX.Element | globalThis.Element
 type TemplateContent = JSXOrDOM | JSXOrDOM[]
 type Template = TemplateContent | (() => TemplateContent)
 
+// prettier-ignore
 /**
  * A helper for defining the JSX types of an element's attributes.
  *
@@ -503,12 +502,30 @@ type Template = TemplateContent | (() => TemplateContent)
  * ```
  */
 export type ElementAttributes<
-	ElementType,
-	SelectedProperties extends keyof ElementType,
+	ElementType extends HTMLElement,
+	SelectedProperties extends keyof RemovePrefixes<RemoveAccessors<ElementType>, SetterTypePrefix>,
 	AdditionalProperties extends object = {},
-> = WithStringValues<DashCasedProps<Partial<Pick<ElementType, SelectedProperties>>>> &
-	AdditionalProperties &
-	Omit<JSX.HTMLAttributes<ElementType>, SelectedProperties | keyof AdditionalProperties>
+> = Omit<
+	JSX.HTMLAttributes<ElementType>,
+	SelectedProperties | keyof AdditionalProperties | 'onerror'
+>
+	& {
+		// Fixes the onerror JSX prop type (https://github.com/microsoft/TypeScript-DOM-lib-generator/issues/1821)
+		onerror?: ((error: ErrorEvent) => void) | null
+	}
+
+	& Partial<
+		DashCasedProps<
+			WithStringValues<
+				Pick<
+					RemovePrefixes<RemoveAccessors<ElementType>, SetterTypePrefix>,
+					SelectedProperties
+				>
+			>
+		>
+	>
+
+	& AdditionalProperties
 
 /**
  * Make all non-string properties union with |string because they can all
@@ -516,6 +533,34 @@ export type ElementAttributes<
  * are converted to the types of values they should be, f.e. reading a
  * `@numberAttribute` property always returns a `number`)
  */
-type WithStringValues<Type extends object> = {
-	[Property in keyof Type]: NonNullable<Type[Property]> extends string ? Type[Property] : Type[Property] | string
+export type WithStringValues<Type extends object> = {
+	// [Property in keyof Type]: NonNullable<Type[Property]> extends string ? Type[Property] : Type[Property] | string
+	[Property in keyof Type]: PickFromUnion<Type[Property], string> extends never
+		? // if the type does not include a type assignable to string
+		  Type[Property] | string
+		: // otherwise it does
+		  Type[Property]
 }
+
+type StringKeysOnly<T extends PropertyKey> = OmitFromUnion<T, number | symbol>
+
+type OmitFromUnion<T, TypeToOmit> = T extends TypeToOmit ? never : T
+type PickFromUnion<T, TypeToPick> = T extends TypeToPick ? T : never
+
+export type RemovePrefixes<T, Prefix extends string> = {
+	[K in keyof T as K extends string ? RemovePrefix<K, Prefix> : K]: T[K]
+}
+
+type RemovePrefix<T extends string, Prefix extends string> = T extends `${Prefix}${infer Rest}` ? Rest : T
+
+export type RemoveAccessors<T> = {
+	[K in keyof T as K extends RemovePrefix<StringKeysOnly<SetterTypeKeysFor<T>>, SetterTypePrefix> ? never : K]: T[K]
+}
+
+type SetterTypeKeysFor<T> = keyof PrefixPick<T, SetterTypePrefix>
+
+type PrefixPick<T, Prefix extends string> = {
+	[K in keyof T as K extends `${Prefix}${string}` ? K : never]: T[K]
+}
+
+export type SetterTypePrefix = '__set__'
