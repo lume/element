@@ -204,14 +204,32 @@ type Template = TemplateContent | (() => TemplateContent);
  * let coolEl = <cool-element foo={'foo'} bar={null} lorem-ipsum={456}></cool-element>
  * ```
  */
-export type ElementAttributes<ElementType, SelectedProperties extends keyof ElementType, AdditionalProperties extends object = {}> = WithStringValues<DashCasedProps<Partial<Pick<ElementType, SelectedProperties>>>> & AdditionalProperties & Omit<JSX.HTMLAttributes<ElementType>, SelectedProperties | keyof AdditionalProperties>;
+export type ElementAttributes<ElementType extends HTMLElement, SelectedProperties extends keyof RemovePrefixes<RemoveAccessors<ElementType>, SetterTypePrefix>, AdditionalProperties extends object = {}> = Omit<JSX.HTMLAttributes<ElementType>, SelectedProperties | keyof AdditionalProperties | 'onerror'> & {
+    onerror?: ((error: ErrorEvent) => void) | null;
+} & Partial<DashCasedProps<WithStringValues<Pick<RemovePrefixes<RemoveAccessors<ElementType>, SetterTypePrefix>, SelectedProperties>>>> & AdditionalProperties;
 /**
  * Make all non-string properties union with |string because they can all
  * receive string values from string attributes like opacity="0.5" (those values
  * are converted to the types of values they should be, f.e. reading a
  * `@numberAttribute` property always returns a `number`)
  */
-type WithStringValues<Type extends object> = {
-    [Property in keyof Type]: NonNullable<Type[Property]> extends string ? Type[Property] : Type[Property] | string;
+export type WithStringValues<Type extends object> = {
+    [Property in keyof Type]: PickFromUnion<Type[Property], string> extends never ? // if the type does not include a type assignable to string
+    Type[Property] | string : Type[Property];
 };
+type StringKeysOnly<T extends PropertyKey> = OmitFromUnion<T, number | symbol>;
+type OmitFromUnion<T, TypeToOmit> = T extends TypeToOmit ? never : T;
+type PickFromUnion<T, TypeToPick> = T extends TypeToPick ? T : never;
+export type RemovePrefixes<T, Prefix extends string> = {
+    [K in keyof T as K extends string ? RemovePrefix<K, Prefix> : K]: T[K];
+};
+type RemovePrefix<T extends string, Prefix extends string> = T extends `${Prefix}${infer Rest}` ? Rest : T;
+export type RemoveAccessors<T> = {
+    [K in keyof T as K extends RemovePrefix<StringKeysOnly<SetterTypeKeysFor<T>>, SetterTypePrefix> ? never : K]: T[K];
+};
+type SetterTypeKeysFor<T> = keyof PrefixPick<T, SetterTypePrefix>;
+type PrefixPick<T, Prefix extends string> = {
+    [K in keyof T as K extends `${Prefix}${string}` ? K : never]: T[K];
+};
+export type SetterTypePrefix = '__set__';
 //# sourceMappingURL=LumeElement.d.ts.map

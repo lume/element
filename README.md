@@ -237,7 +237,7 @@ npm install --save-dev @babel/cli @babel/core @babel/plugin-proposal-decorators
 
 If using TypeScript, set `allowJs` in `tsconfig.json` to allow compiling JS files, f.e.:
 
-```json
+```js
 {
 	"compilerOptions": {
 		"allowJs": true,
@@ -247,7 +247,8 @@ If using TypeScript, set `allowJs` in `tsconfig.json` to allow compiling JS file
 }
 ```
 
-and running `npx tsc`.
+and running `npx tsc`. See the [TypeScript](#typescript) section below for configuring JSX
+types for various frameworks (Solid, React, Preact, etc).
 
 If using Babel, add the decorators plugin to `.babelrc`, f.e.
 
@@ -581,9 +582,13 @@ Load the required JSX types in one of two ways:
     project, but if you have files with different types of JSX, you'll want to
     use option 1 instead).
 
-    ```json
+    ```js
     {
     	"compilerOptions": {
+    		/* Solid.js Config */
+    		// Note, you need to use an additional tool such as Babel, Vite, etc, to
+    		// compile Solid JSX. `npm create solid` will scaffold things for you.
+    		"jsx": "preserve",
     		"jsxImportSource": "solid-js"
     	}
     }
@@ -687,8 +692,10 @@ const el2 = (<menu>...</menu>) as any as HTMLDivElement
 
 #### Type definitions for custom elements
 
+### With Solid JSX
+
 To give your Custom Elements type checking for use with DOM APIs, and type
-checking in JSX, use the following template.
+checking in Solid JSX, we can add the element type definition to `JSX.IntrinsicElements`:
 
 ```tsx
 /* @jsxImportSource solid-js */
@@ -697,11 +704,9 @@ checking in JSX, use the following template.
 // anywhere in non-JSX parts of the code, you also need to import it from
 // solid-js:
 import {Element, element, stringAttribute, numberAttribute, /*...,*/ JSX} from 'solid-js'
-//                                                                   ^ We imported JSX so that...
 
 // Define the attributes that your element accepts
 export interface CoolElementAttributes extends JSX.HTMLAttributes<CoolElement> {
-	//                                           ^ ...we can use it in this non-JSX code.
 	'cool-type'?: 'beans' | 'hair'
 	'cool-factor'?: number
 	// ^ NOTE: These should be dash-case versions of your class's attribute properties.
@@ -777,14 +782,27 @@ return (
 
 Defining the types of custom elements for React JSX is similar as for Solid JSX above, but with some small differences for React JSX:
 
+```js
+// tsconfig.json
+{
+  "compilerOptions": {
+		/* React Config */
+    "jsx": "react-jsx",
+    "jsxImportSource": "react" // React >=19 (Omit for React <=18)
+  }
+}
+```
+
 ```ts
 import type {HTMLAttributes} from 'react'
 
 // Define the attributes that your element accepts, almost the same as before:
 export interface CoolElementAttributes extends HTMLAttributes<CoolElement> {
-	'cool-type'?: 'beans' | 'hair'
-	'cool-factor'?: number
-	// ^ NOTE: These should be dash-case versions of your class's attribute properties.
+	coolType?: 'beans' | 'hair'
+	coolFactor?: number
+	// ^ NOTE: These are the names of the class's properties verbatim, not
+	// dash-cased as with Solid. React works differently than Solid's: it will
+	// map the exact prop name to the JS property.
 }
 
 // Add your element to the list of known HTML elements, like before.
@@ -812,7 +830,7 @@ declare global {
 > attribute types:
 
 ```ts
-import type {ReactElementAttributes} from '@lume/element/src/react'
+import type {ReactElementAttributes} from '@lume/element/dist/react'
 
 // This definition is now shorter than before, and automatically maps the property names to dash-case.
 export type CoolElementAttributes = ReactElementAttributes<CoolElement, 'coolType' | 'coolFactor'>
@@ -827,12 +845,44 @@ declare global {
 }
 ```
 
+Now when you use `<cool-element>` in React JSX, it will be type checked:
+
+```jsx
+return (
+	<cool-element
+		coolType={123} // Type error: number is not assignable to 'beans' | 'hair'
+		coolFactor={'foo'} // Type error: string is not assignable to number
+	></cool-element>
+)
+```
+
 > [!Note]
 > You may want to define React JSX types for your elements in separate files, and
 > have only React users import those files if they need the types, and similar if you make
 > JSX types for Vue, Svelte, etc (we don't have helpers for those other fameworks
 > yet, but you can manually augment JSX as in the examples above on a
 > per-framework basis, contributions welcome!).
+
+### With Preact JSX
+
+It works the same as the previous section for React JSX. Define the element
+types with the same `ReactElementAttributes` helper as described above. In your
+TypeScript `compilerOptions` make sure you link to the React compatibility
+layer:
+
+```json
+{
+	"compilerOptions": {
+		/* Preact Config */
+		"jsx": "react-jsx",
+		"jsxImportSource": "preact",
+		"paths": {
+			"react": ["./node_modules/preact/compat/"],
+			"react-dom": ["./node_modules/preact/compat/"]
+		}
+	}
+}
+```
 
 ## API
 
