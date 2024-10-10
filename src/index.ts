@@ -11,4 +11,4 @@ export {
 } from './utils.js'
 export type {JSX} from './jsx-runtime.js'
 
-export const version = '0.13.1'
+export const version = '0.14.0'
