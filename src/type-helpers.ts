@@ -1,42 +1,87 @@
-import type {JSX} from './jsx-runtime'
-
-/* eslint-disable typescript/explicit-function-return-type */
+import type {JSX} from './jsx-runtime.js'
 
 // These are for use in TypeScript to cast JSX to certain DOM types. They are
 // not needed in plain JavaScript.
-export const div = (e: JSX.Element) => e as any as HTMLDivElement
-export const h1 = (e: JSX.Element) => e as any as HTMLHeadingElement
-export const h2 = (e: JSX.Element) => e as any as HTMLHeadingElement
-export const h3 = (e: JSX.Element) => e as any as HTMLHeadingElement
-export const h4 = (e: JSX.Element) => e as any as HTMLHeadingElement
-export const h5 = (e: JSX.Element) => e as any as HTMLHeadingElement
-export const h6 = (e: JSX.Element) => e as any as HTMLHeadingElement
-export const p = (e: JSX.Element) => e as any as HTMLParagraphElement
-export const span = (e: JSX.Element) => e as any as HTMLSpanElement
-export const br = (e: JSX.Element) => e as any as HTMLBRElement
-export const pre = (e: JSX.Element) => e as any as HTMLPreElement
-export const code = (e: JSX.Element) => e as any as HTMLElement
-export const canvas = (e: JSX.Element) => e as any as HTMLCanvasElement
-export const img = (e: JSX.Element) => e as any as HTMLImageElement
-export const video = (e: JSX.Element) => e as any as HTMLVideoElement
-export const object = (e: JSX.Element) => e as any as HTMLVideoElement
-export const select = (e: JSX.Element) => e as any as HTMLSelectElement
-export const option = (e: JSX.Element) => e as any as HTMLOptionElement
-export const ul = (e: JSX.Element) => e as any as HTMLUListElement
-export const ol = (e: JSX.Element) => e as any as HTMLOListElement
-export const li = (e: JSX.Element) => e as any as HTMLLIElement
-export const iframe = (e: JSX.Element) => e as any as HTMLIFrameElement
-export const button = (e: JSX.Element) => e as any as HTMLButtonElement
-export const form = (e: JSX.Element) => e as any as HTMLFormElement
-export const input = (e: JSX.Element) => e as any as HTMLInputElement
-export const a = (e: JSX.Element) => e as any as HTMLAnchorElement
-export const link = (e: JSX.Element) => e as any as HTMLLinkElement
-export const script = (e: JSX.Element) => e as any as HTMLScriptElement
-export const section = (e: JSX.Element) => e as any as HTMLElement
-export const menu = (e: JSX.Element) => e as any as HTMLMenuElement
-export const svg = (e: JSX.Element) => e as any as SVGSVGElement
-export const q = (e: JSX.Element) => e as any as HTMLQuoteElement
-export const blockquote = (e: JSX.Element) => e as any as HTMLQuoteElement
+
+export const element = (e: JSX.Element) => elm<Element>(e)
+
+// HTML
+export const htmlElement = (e: JSX.Element) => elm<HTMLElement>(e)
+export const a = (e: JSX.Element) => elm<HTMLAnchorElement>(e)
+export const address = (e: JSX.Element) => elm<HTMLElement>(e)
+export const area = (e: JSX.Element) => elm<HTMLAreaElement>(e)
+export const audio = (e: JSX.Element) => elm<HTMLAudioElement>(e)
+export const bdi = (e: JSX.Element) => elm<HTMLElement>(e)
+export const bdo = (e: JSX.Element) => elm<HTMLElement>(e)
+export const blockquote = (e: JSX.Element) => elm<HTMLQuoteElement>(e)
+export const br = (e: JSX.Element) => elm<HTMLBRElement>(e)
+export const button = (e: JSX.Element) => elm<HTMLButtonElement>(e)
+export const canvas = (e: JSX.Element) => elm<HTMLCanvasElement>(e)
+export const caption = (e: JSX.Element) => elm<HTMLTableCaptionElement>(e)
+export const code = (e: JSX.Element) => elm<HTMLElement>(e)
+export const col = (e: JSX.Element) => elm<HTMLTableColElement>(e)
+export const colgroup = (e: JSX.Element) => elm<HTMLTableColElement>(e)
+export const details = (e: JSX.Element) => elm<HTMLDetailsElement>(e)
+export const dialog = (e: JSX.Element) => elm<HTMLDialogElement>(e)
+export const div = (e: JSX.Element) => elm<HTMLDivElement>(e)
+export const fieldset = (e: JSX.Element) => elm<HTMLFieldSetElement>(e)
+export const form = (e: JSX.Element) => elm<HTMLFormElement>(e)
+export const h1 = (e: JSX.Element) => elm<HTMLHeadingElement>(e)
+export const h2 = (e: JSX.Element) => elm<HTMLHeadingElement>(e)
+export const h3 = (e: JSX.Element) => elm<HTMLHeadingElement>(e)
+export const h4 = (e: JSX.Element) => elm<HTMLHeadingElement>(e)
+export const h5 = (e: JSX.Element) => elm<HTMLHeadingElement>(e)
+export const h6 = (e: JSX.Element) => elm<HTMLHeadingElement>(e)
+export const iframe = (e: JSX.Element) => elm<HTMLIFrameElement>(e)
+export const img = (e: JSX.Element) => elm<HTMLImageElement>(e)
+export const input = (e: JSX.Element) => elm<HTMLInputElement>(e)
+export const label = (e: JSX.Element) => elm<HTMLLabelElement>(e)
+export const legend = (e: JSX.Element) => elm<HTMLLegendElement>(e)
+export const li = (e: JSX.Element) => elm<HTMLLIElement>(e)
+export const link = (e: JSX.Element) => elm<HTMLLinkElement>(e)
+export const map = (e: JSX.Element) => elm<HTMLMapElement>(e)
+export const mark = (e: JSX.Element) => elm<HTMLElement>(e)
+export const menu = (e: JSX.Element) => elm<HTMLMenuElement>(e)
+export const meter = (e: JSX.Element) => elm<HTMLMeterElement>(e)
+export const object = (e: JSX.Element) => elm<HTMLVideoElement>(e)
+export const ol = (e: JSX.Element) => elm<HTMLOListElement>(e)
+export const option = (e: JSX.Element) => elm<HTMLOptionElement>(e)
+export const p = (e: JSX.Element) => elm<HTMLParagraphElement>(e)
+export const pre = (e: JSX.Element) => elm<HTMLPreElement>(e)
+export const progress = (e: JSX.Element) => elm<HTMLProgressElement>(e)
+export const q = (e: JSX.Element) => elm<HTMLQuoteElement>(e)
+export const script = (e: JSX.Element) => elm<HTMLScriptElement>(e)
+export const section = (e: JSX.Element) => elm<HTMLElement>(e)
+export const select = (e: JSX.Element) => elm<HTMLSelectElement>(e)
+export const slot = (e: JSX.Element) => elm<HTMLSlotElement>(e)
+export const span = (e: JSX.Element) => elm<HTMLSpanElement>(e)
+export const style = (e: JSX.Element) => elm<HTMLStyleElement>(e)
+export const summary = (e: JSX.Element) => elm<HTMLElement>(e)
+export const table = (e: JSX.Element) => elm<HTMLTableElement>(e)
+export const tbody = (e: JSX.Element) => elm<HTMLTableSectionElement>(e)
+export const td = (e: JSX.Element) => elm<HTMLTableCellElement>(e)
+export const template = (e: JSX.Element) => elm<HTMLTemplateElement>(e)
+export const tfoot = (e: JSX.Element) => elm<HTMLTableSectionElement>(e)
+export const th = (e: JSX.Element) => elm<HTMLTableCellElement>(e)
+export const thead = (e: JSX.Element) => elm<HTMLTableSectionElement>(e)
+export const time = (e: JSX.Element) => elm<HTMLElement>(e)
+export const tr = (e: JSX.Element) => elm<HTMLTableRowElement>(e)
+export const ul = (e: JSX.Element) => elm<HTMLUListElement>(e)
+export const video = (e: JSX.Element) => elm<HTMLVideoElement>(e)
+
+// SVG
+export const svgElement = (e: JSX.Element) => elm<SVGElement>(e)
+export const circle = (e: JSX.Element) => elm<SVGCircleElement>(e)
+export const defs = (e: JSX.Element) => elm<SVGDefsElement>(e)
+export const g = (e: JSX.Element) => elm<SVGGElement>(e)
+export const path = (e: JSX.Element) => elm<SVGPathElement>(e)
+export const rect = (e: JSX.Element) => elm<SVGRectElement>(e)
+export const svg = (e: JSX.Element) => elm<SVGSVGElement>(e)
+export const symbol = (e: JSX.Element) => elm<SVGSymbolElement>(e)
+export const text = (e: JSX.Element) => elm<SVGTextElement>(e)
+export const title = (e: JSX.Element) => elm<SVGTitleElement>(e)
+export const use = (e: JSX.Element) => elm<SVGUseElement>(e)
+export const view = (e: JSX.Element) => elm<SVGViewElement>(e)
 
 export function elm<T>(e: JSX.Element) {
 	return e as any as T

@@ -1,0 +1,19 @@
+{
+	"compilerOptions": {
+		"strict": true,
+		"noUncheckedIndexedAccess": true,
+		"noUnusedLocals": true,
+
+		// "jsxImportSource": "react", // jsxImportSource is not supported in React 17
+		"jsx": "react", // tell TS to compile JSX in React-compatible output
+
+		"outDir": "dist",
+		"target": "ES2023",
+		"module": "ESNext",
+		"moduleResolution": "Node",
+
+		"skipLibCheck": true,
+		"skipDefaultLibCheck": true
+	},
+	"include": ["./src/**/*"]
+}

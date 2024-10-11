@@ -72,8 +72,8 @@ export type JoinToCamelCase<
 	? Left extends Sep
 		? JoinToCamelCase<Right, Sep, true, Res>
 		: UPPER extends true
-		? JoinToCamelCase<Right, Sep, false, `${Res}${Uppercase<Left>}`>
-		: JoinToCamelCase<Right, Sep, false, `${Res}${Lowercase<Left>}`>
+			? JoinToCamelCase<Right, Sep, false, `${Res}${Uppercase<Left>}`>
+			: JoinToCamelCase<Right, Sep, false, `${Res}${Lowercase<Left>}`>
 	: Res
 
 // https://github.com/type-challenges/type-challenges/issues/9098

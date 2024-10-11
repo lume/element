@@ -1,6 +1,6 @@
 {
 	"extends": "./node_modules/@lume/cli/config/ts.config.json",
 	"compilerOptions": {
-		"types": ["mocha"]
+		"types": ["mocha"] // TODO move to lume cli
 	}
 }

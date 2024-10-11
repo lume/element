@@ -1,0 +1,10 @@
+html,
+body {
+	font-family: sans-serif;
+	margin: 0;
+	height: 100%;
+}
+kitchen-sink:first-of-type {
+	user-select: none;
+	cursor: pointer;
+}
