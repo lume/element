@@ -1,5 +1,19 @@
 import type {HTMLAttributes as ReactHTMLAttributes, DetailedHTMLProps as ReactDetailedHTMLProps} from 'react'
-import type {RemoveAccessors, RemovePrefixes, SetterTypePrefix, WithStringValues} from './LumeElement.js'
+import type {
+	BooleanProps,
+	EventProps,
+	FunctionsOnly,
+	NonBooleanProps,
+	NonEventProps,
+	NonNumberProps,
+	NumberProps,
+	RemoveAccessors,
+	RemoveSetterPrefixes,
+	SetterTypePrefix,
+	WithBooleanStringValues,
+	WithNumberStringValues,
+	WithStringValues,
+} from './LumeElement.js'
 
 // prettier-ignore
 /**
@@ -9,11 +23,12 @@ import type {RemoveAccessors, RemovePrefixes, SetterTypePrefix, WithStringValues
  *  details.
  */
 export type ReactElementAttributes<
-	ElementType extends HTMLElement,
-	SelectedProperties extends keyof RemovePrefixes<RemoveAccessors<ElementType>, SetterTypePrefix>,
+	El,
+	SelectedProperties extends keyof RemoveSetterPrefixes<RemoveAccessors<El>, SetterTypePrefix>,
 	AdditionalProperties extends object = {},
-> = Omit<
-		ReactDetailedHTMLProps<ReactHTMLAttributes<ElementType>, ElementType>,
+> =
+	& Omit<
+		ReactDetailedHTMLProps<ReactHTMLAttributes<El>, El>,
 		SelectedProperties | keyof AdditionalProperties
 	>
 
@@ -22,6 +37,13 @@ export type ReactElementAttributes<
 		has?: string
 	}
 
-	& Partial<WithStringValues<Pick<RemovePrefixes<RemoveAccessors<ElementType>, SetterTypePrefix>, SelectedProperties>>>
+	& Partial<WithStringValues<NonNumberProps<NonBooleanProps<NonEventProps<El, SelectedProperties>>>>>
+
+	// Pick the `onfoo` event handler types from the element type, without string values
+	& Partial<FunctionsOnly<EventProps<El, SelectedProperties>>>
+
+	& Partial<WithBooleanStringValues<BooleanProps<NonEventProps<El, SelectedProperties>>>>
+
+	& Partial<WithNumberStringValues<NumberProps<NonEventProps<El, SelectedProperties>>>>
 
 	& AdditionalProperties

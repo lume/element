@@ -6,11 +6,11 @@ import type {PropKey} from 'classy-solid/dist/decorators/types.js'
 
 export const __classFinishers: ((Class: ElementCtor) => void)[] = []
 
-/** The `@attribute` decorator currently works only on fields, getters, and setters. */
 type AttributeDecoratorContext<This = unknown, Value = unknown> =
 	| ClassFieldDecoratorContext<This, Value>
 	| ClassGetterDecoratorContext<This, Value>
 	| ClassSetterDecoratorContext<This, Value>
+	| ClassAccessorDecoratorContext<This, Value>
 
 /**
  * A decorator that when used on a property or accessor causes an HTML attribute
@@ -18,11 +18,14 @@ type AttributeDecoratorContext<This = unknown, Value = unknown> =
  * decorated property. For example, if the `@attribute` decorator is used on a
  * property called `firstName`, then an attribute called `first-name` will be
  * mapped to the property. Any time that the attribute value changes (f.e. with
- * `el.setAttribute`), the attribute value will propgate to the property a
- * trigger an update.
+ * `el.setAttribute`), the attribute value will propgate to the property which
+ * triggers reactivity.
  *
  * The decorated property is backed by a Solid.js signal, thus useful in effects
  * or templates.
+ *
+ * The `@attribute` decorator is only for public fields, getters, setters, and
+ * auto accessors.
  *
  * Example:
  *
@@ -70,7 +73,6 @@ function handleAttributeDecoration(
 	if (isPrivate) throw new Error('@attribute is not supported on private fields yet.')
 	if (isStatic) throw new Error('@attribute is not supported on static fields.')
 
-	// TODO decorate on prototype? Or decorate on instance?
 	__classFinishers.push((Class: ElementCtor) => __setUpAttribute(Class, name, attributeHandler))
 
 	if (kind === 'field') {
@@ -90,11 +92,15 @@ function handleAttributeDecoration(
 			return initialValue
 		}
 	} else if (kind === 'getter' || kind === 'setter') {
-		if (useSignal) signal(value, context)
+		if (useSignal) return signal(value, context)
+	} else if (kind === 'accessor') {
+		context.addInitializer(function (this: any) {
+			if (!('default' in attributeHandler)) attributeHandler.default = this[name]
+		})
+
+		if (useSignal) return signal(value, context)
 	} else {
-		throw new Error(
-			'@attribute is only for use on fields, getters, and setters. Auto accessor support is coming next if there is demand for it.',
-		)
+		throw new Error('@attribute is only for use on fields, getters/setters, and auto accessors.')
 	}
 
 	return undefined // shush TS

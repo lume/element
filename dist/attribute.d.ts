@@ -1,19 +1,21 @@
 import './metadata-shim.js';
 import type { ElementCtor } from './element.js';
 export declare const __classFinishers: ((Class: ElementCtor) => void)[];
-/** The `@attribute` decorator currently works only on fields, getters, and setters. */
-type AttributeDecoratorContext<This = unknown, Value = unknown> = ClassFieldDecoratorContext<This, Value> | ClassGetterDecoratorContext<This, Value> | ClassSetterDecoratorContext<This, Value>;
+type AttributeDecoratorContext<This = unknown, Value = unknown> = ClassFieldDecoratorContext<This, Value> | ClassGetterDecoratorContext<This, Value> | ClassSetterDecoratorContext<This, Value> | ClassAccessorDecoratorContext<This, Value>;
 /**
  * A decorator that when used on a property or accessor causes an HTML attribute
  * with the same name (but dash-cased instead of camelCased) to be mapped to the
  * decorated property. For example, if the `@attribute` decorator is used on a
  * property called `firstName`, then an attribute called `first-name` will be
  * mapped to the property. Any time that the attribute value changes (f.e. with
- * `el.setAttribute`), the attribute value will propgate to the property a
- * trigger an update.
+ * `el.setAttribute`), the attribute value will propgate to the property which
+ * triggers reactivity.
  *
  * The decorated property is backed by a Solid.js signal, thus useful in effects
  * or templates.
+ *
+ * The `@attribute` decorator is only for public fields, getters, setters, and
+ * auto accessors.
  *
  * Example:
  *

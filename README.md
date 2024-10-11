@@ -604,9 +604,6 @@ Modifying the very first example from above for TypeScript, it would look
 like the following.
 
 ```tsx
-/* @jsxImportSource solid-js */
-// ^ Alternatively, configure this in tsconfig.json instead of per-file.
-
 import {createSignal} from 'solid-js'
 import {div} from '@lume/element/dist/type-helpers.js'
 
@@ -643,7 +640,6 @@ The main differences from plain JS are
 > `<menu>` element then we need to use the `menu()` helper like follows.
 
 ```tsx
-/* @jsxImportSource solid-js */
 import {createSignal} from 'solid-js'
 import {menu} from '@lume/element/dist/type-helpers.js'
 
@@ -663,7 +659,6 @@ type `HTMLDivElement` despite the fact that at runtime we will be have an
 `HTMLMenuElement` instance.
 
 ```tsx
-/* @jsxImportSource solid-js */
 import {div, button} from '@lume/element/dist/type-helpers.js'
 
 // GOOD.
@@ -680,8 +675,6 @@ following to have the proper types, but note that the following is also not type
 safe:
 
 ```tsx
-/* @jsxImportSource solid-js */
-
 // GOOD.
 const el = (<menu>...</menu>) as any as HTMLMenuElement
 
@@ -695,33 +688,41 @@ const el2 = (<menu>...</menu>) as any as HTMLDivElement
 ### With Solid JSX
 
 To give your Custom Elements type checking for use with DOM APIs, and type
-checking in Solid JSX, we can add the element type definition to `JSX.IntrinsicElements`:
+checking in Solid JSX, we can add the element type definition to
+`JSX.IntrinsicElements`. We can use the `ElementAttributes` helper to specify
+which attributes/properties should be exposed in the JSX type:
 
 ```tsx
-/* @jsxImportSource solid-js */
+import type {ElementAttributes} from '@lume/element'
+import {Element, element, stringAttribute, numberAttribute} from '@lume/element'
 
-// We already use @jsxImportSource above, but if you need to reference JSX
-// anywhere in non-JSX parts of the code, you also need to import it from
-// solid-js:
-import {Element, element, stringAttribute, numberAttribute, /*...,*/ JSX} from 'solid-js'
-
-// Define the attributes that your element accepts
-export interface CoolElementAttributes extends JSX.HTMLAttributes<CoolElement> {
-	'cool-type'?: 'beans' | 'hair'
-	'cool-factor'?: number
-	// ^ NOTE: These should be dash-case versions of your class's attribute properties.
-}
+// List the properties that should be picked from the class type for JSX props.
+// Note! Make sure that the properties listed are either decorated with
+// attribute decorators, or that they are on* event properties.
+export type CoolElementAttributes = 'coolType' | 'coolFactor' | 'oncoolness'
 
 @element('cool-element')
-class CoolElement extends Element {
+export class CoolElement extends Element {
 	@stringAttribute coolType: 'beans' | 'hair' = 'beans'
 	@numberAttribute coolFactor = 100
 	// ^ NOTE: These are the camelCase equivalents of the attributes defined above.
 
+  // Define the event prop by defining a method with the event name prefixed with 'on'.
+  oncoolness: ((event: SomeEvent) => void) | null = null
+
+  // This property will not appear in the JSX types because it is not listed in
+  // the CoolElementAttributes that are passed to ElementAttributes below.
+  notJsxProp = 123
+
 	// ... Define your class as described above. ...
 }
 
-export {CoolElement}
+/** This an event that our element emits. */
+class SomeEvent extends Event {
+  constructor() {
+    super('someevent', {...})
+  }
+}
 
 // Add your element to the list of known HTML elements. This makes it possible
 // for browser APIs to have the expected return type. For example, the return
@@ -732,36 +733,14 @@ declare global {
 	}
 }
 
-// Also register the element name in the JSX types for TypeScript to recognize
-// the element as a valid JSX tag.
-declare module 'solid-js' {
-	namespace JSX {
-		interface IntrinsicElements {
-			'cool-element': CoolElementAttributes
-		}
-	}
-}
-```
-
-> :bulb:**TIP:**
->
-> To make code less redundant, use the `ElementAttributes` helper to
-> pluck the types of properties directly from your custom element class for the
-> attribute types:
-
-```ts
-import type {ElementAttributes} from '@lume/element'
-
-// This definition is now shorter than before, automatically maps the property
-// names to dash-case, and automatically picks up the property types from the
-// class.
-export type CoolElementAttributes = ElementAttributes<CoolElement, 'coolType' | 'coolFactor'>
-
 // The same as before:
 declare module 'solid-js' {
 	namespace JSX {
 		interface IntrinsicElements {
-			'cool-element': CoolElementAttributes
+      // This automatically maps the property names from camelCase to dash-case,
+      // automatically picks up the property types from the class, and also
+      // defines additional types for attr:, prop:, and bool: prefixed props.
+			'cool-element': ElementAttributes<CoolElement, CoolElementAttributes>
 		}
 	}
 }
@@ -772,8 +751,11 @@ Now when you use `<cool-element>` in Solid JSX, it will be type checked:
 ```jsx
 return (
 	<cool-element
-		cool-type={123} // Type error: number is not assignable to 'beans' | 'hair'
-		cool-factor={'foo'} // Type error: string is not assignable to number
+		// cool-type={123} // Type error: number is not assignable to 'beans' | 'hair'
+		// cool-factor={'foo'} // Type error: string is not assignable to number
+    cool-type="hair" // ok
+    cool-factor="200" // ok
+    oncoolness={() = console.log('someevent')} // ok
 	></cool-element>
 )
 ```
@@ -794,16 +776,7 @@ Defining the types of custom elements for React JSX is similar as for Solid JSX 
 ```
 
 ```ts
-import type {HTMLAttributes} from 'react'
-
-// Define the attributes that your element accepts, almost the same as before:
-export interface CoolElementAttributes extends HTMLAttributes<CoolElement> {
-	coolType?: 'beans' | 'hair'
-	coolFactor?: number
-	// ^ NOTE: These are the names of the class's properties verbatim, not
-	// dash-cased as with Solid. React works differently than Solid's: it will
-	// map the exact prop name to the JS property.
-}
+import type {ReactElementAttributes} from '@lume/element/dist/react.js'
 
 // Add your element to the list of known HTML elements, like before.
 declare global {
@@ -832,14 +805,15 @@ declare global {
 ```ts
 import type {ReactElementAttributes} from '@lume/element/dist/react'
 
-// This definition is now shorter than before, and automatically maps the property names to dash-case.
-export type CoolElementAttributes = ReactElementAttributes<CoolElement, 'coolType' | 'coolFactor'>
+// ... same as before ...
 
-// The same as before:
-declare global {
+declare module 'react' {
 	namespace JSX {
 		interface IntrinsicElements {
-			'cool-element': CoolElementAttributes
+			// Similar as before, with ReactElementAttributes instead of
+			// ElementAttributes, and props will remain camelCase, not mapped to
+			// dash-case:
+			'cool-element': ReactElementAttributes<CoolElement, CoolElementAttributes>
 		}
 	}
 }
@@ -850,8 +824,11 @@ Now when you use `<cool-element>` in React JSX, it will be type checked:
 ```jsx
 return (
 	<cool-element
-		coolType={123} // Type error: number is not assignable to 'beans' | 'hair'
-		coolFactor={'foo'} // Type error: string is not assignable to number
+		// coolType={123} // Type error: number is not assignable to 'beans' | 'hair'
+		// coolFactor={'foo'} // Type error: string is not assignable to number
+    coolType="hair" // ok
+    coolFactor="200" // ok
+    oncoolness={() = console.log('someevent')} // ok
 	></cool-element>
 )
 ```
@@ -860,8 +837,7 @@ return (
 > You may want to define React JSX types for your elements in separate files, and
 > have only React users import those files if they need the types, and similar if you make
 > JSX types for Vue, Svelte, etc (we don't have helpers for those other fameworks
-> yet, but you can manually augment JSX as in the examples above on a
-> per-framework basis, contributions welcome!).
+> yet, but you can manually augment JSX in that case, contributions welcome!).
 
 ### With Preact JSX
 
@@ -883,6 +859,8 @@ layer:
 	}
 }
 ```
+
+The rest is the same.
 
 ## API
 
@@ -1663,6 +1641,34 @@ element's style sheet into the `ShadowRoot` conflicts with how DOM is created in
 `template` (f.e. if the user's DOM creation in `template` clears the
 `ShadowRoot` content, or etc, then the user may want to place the stylesheet
 somewhere else).
+
+#### `dispatchEventWithCall(event)`
+
+This is similar to `dispatchEvent()`, but useful for dispatching a non-builtin
+event and causing any `on*` method for that event to also be called if it
+exists.
+
+With builtin events, for example, when the builtin `click` event is dispatched,
+the element's `.onclick()` method is called automatically if it exists. Now we
+can achieve the same behavior with custom events, so that for example
+`dispatchEventWithCall(new Event('myevent'))` will also cause `.onmyevent()`
+to be called if it exists.
+
+Note, avoid calling this method with an event that is not a custom event, or
+you'll trigger the respective builtin `on*` method twice.
+
+```ts
+import {element, Element} from '@lume/element'
+
+@element('my-el')
+class MyEl extends Element {
+	onfoo: ((event: Event) => void) | null = null
+}
+
+const el = new MyEl()
+el.onfoo = () => console.log('foo')
+el.dispatchEventWithCall(new Event('foo')) // logs "foo"
+```
 
 ### Decorators
 

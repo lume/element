@@ -2,6 +2,7 @@ export * from './LumeElement.js'
 export * from './attribute.js'
 export * from './element.js'
 export * from './css.js'
+export * from './event.js'
 export {
 	identityTemplateTag,
 	camelCaseToDash,

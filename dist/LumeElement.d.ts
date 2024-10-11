@@ -204,23 +204,70 @@ type Template = TemplateContent | (() => TemplateContent);
  * let coolEl = <cool-element foo={'foo'} bar={null} lorem-ipsum={456}></cool-element>
  * ```
  */
-export type ElementAttributes<ElementType extends HTMLElement, SelectedProperties extends keyof RemovePrefixes<RemoveAccessors<ElementType>, SetterTypePrefix>, AdditionalProperties extends object = {}> = Omit<JSX.HTMLAttributes<ElementType>, SelectedProperties | keyof AdditionalProperties | 'onerror'> & {
+export type ElementAttributes<El, SelectedProperties extends keyof RemoveSetterPrefixes<RemoveAccessors<El>, SetterTypePrefix>, AdditionalProperties extends object = {}> = Omit<JSX.HTMLAttributes<El>, SelectedProperties | keyof AdditionalProperties | 'onerror'> & {
     onerror?: ((error: ErrorEvent) => void) | null;
-} & Partial<DashCasedProps<WithStringValues<Pick<RemovePrefixes<RemoveAccessors<ElementType>, SetterTypePrefix>, SelectedProperties>>>> & AdditionalProperties;
+} & Partial<DashCasedProps<WithStringValues<NonNumberProps<NonBooleanProps<NonOnProps<El, SelectedProperties>>>>>> & Partial<AsValues<NonFunctionsOnly<EventProps<El, SelectedProperties>>, never>> & Partial<PrefixProps<'prop:', WithStringValues<NonNumberProps<NonBooleanProps<NonEventProps<El, SelectedProperties>>>>>> & Partial<PrefixProps<'attr:', DashCasedProps<AsStringValues<NonNumberProps<NonBooleanProps<NonEventProps<El, SelectedProperties>>>>>>> & Partial<DashCasedProps<WithBooleanStringValues<BooleanProps<Pick<RemapSetters<El>, SelectedProperties>>>> & PrefixProps<'bool:', DashCasedProps<AsBooleanValues<BooleanProps<Pick<RemapSetters<El>, SelectedProperties>>>>> & PrefixProps<'prop:', WithBooleanStringValues<BooleanProps<Pick<RemapSetters<El>, SelectedProperties>>>> & PrefixProps<'attr:', DashCasedProps<AsBooleanStringValues<BooleanProps<Pick<RemapSetters<El>, SelectedProperties>>>>>> & Partial<DashCasedProps<WithNumberStringValues<NumberProps<Pick<RemapSetters<El>, SelectedProperties>>>> & PrefixProps<'prop:', WithNumberStringValues<NumberProps<Pick<RemapSetters<El>, SelectedProperties>>>> & PrefixProps<'attr:', DashCasedProps<AsNumberStringValues<NumberProps<Pick<RemapSetters<El>, SelectedProperties>>>>>> & Partial<FunctionsOnly<EventProps<El, SelectedProperties>>> & Partial<AddDelimitersToEventKeys<FunctionsOnly<EventProps<El, SelectedProperties>>>> & AdditionalProperties;
+type RemapSetters<El> = RemoveSetterPrefixes<RemoveAccessors<El>, SetterTypePrefix>;
+type NonOnProps<El, K extends keyof RemapSetters<El>> = Pick<RemapSetters<El>, OmitFromUnion<K, EventKeys<K>>>;
+export type NonEventProps<El, K extends keyof RemoveSetterPrefixes<RemoveAccessors<El>, SetterTypePrefix>> = NonOnProps<El, K> & NonFunctionsOnly<EventProps<El, K>>;
+export type EventProps<T, Keys extends keyof T> = Pick<T, EventKeys<OmitFromUnion<Keys, symbol | number>>>;
+export type NonBooleanProps<T> = Omit<T, keyof BooleanProps<T>>;
+export type BooleanProps<T> = {
+    [K in keyof T as T[K] extends boolean | 'true' | 'false' ? K : never]: T[K];
+};
+export type NonNumberProps<T> = Omit<T, keyof NumberProps<T>>;
+export type NumberProps<T> = {
+    [K in keyof T as T[K] extends number ? K : never]: T[K];
+};
+export type FunctionsOnly<T> = {
+    [K in keyof T as NonNullable<T[K]> extends (...args: any[]) => any ? K : never]: T[K];
+};
+export type NonFunctionsOnly<T> = {
+    [K in keyof T as ((...args: any[]) => any) extends NonNullable<T[K]> ? never : K]: T[K];
+};
 /**
  * Make all non-string properties union with |string because they can all
  * receive string values from string attributes like opacity="0.5" (those values
  * are converted to the types of values they should be, f.e. reading a
  * `@numberAttribute` property always returns a `number`)
  */
-export type WithStringValues<Type extends object> = {
-    [Property in keyof Type]: PickFromUnion<Type[Property], string> extends never ? // if the type does not include a type assignable to string
-    Type[Property] | string : Type[Property];
+export type WithStringValues<T extends object> = {
+    [K in keyof T]: PickFromUnion<T[K], string> extends never ? // if the type does not include a type assignable to string
+    T[K] | string : T[K];
+};
+export type WithBooleanStringValues<T extends object> = {
+    [K in keyof T]: T[K] | 'true' | 'false';
+};
+export type AsBooleanStringValues<T extends object> = {
+    [K in keyof T]: 'true' | 'false';
+};
+export type AsBooleanValues<T extends object> = {
+    [K in keyof T]: boolean;
+};
+export type WithNumberStringValues<T extends object> = {
+    [K in keyof T]: T[K] | `${number}`;
+};
+export type AsNumberStringValues<T extends object> = {
+    [K in keyof T]: `${number}`;
+};
+export type AsValues<T extends object, V> = {
+    [K in keyof T]: V;
+};
+type AsStringValues<T extends object> = {
+    [K in keyof T]: PickFromUnion<T[K], string> extends never ? string : T[K];
 };
 type StringKeysOnly<T extends PropertyKey> = OmitFromUnion<T, number | symbol>;
-type OmitFromUnion<T, TypeToOmit> = T extends TypeToOmit ? never : T;
+export type OmitFromUnion<T, TypeToOmit> = T extends TypeToOmit ? never : T;
 type PickFromUnion<T, TypeToPick> = T extends TypeToPick ? T : never;
-export type RemovePrefixes<T, Prefix extends string> = {
+export type EventKeys<T extends string> = T extends `on${infer _}` ? T : never;
+type AddDelimitersToEventKeys<T extends object> = {
+    [K in keyof T as K extends string ? AddDelimiters<K, ':'> : never]: T[K];
+};
+type AddDelimiters<T extends string, Delimiter extends string> = T extends `${'on'}${infer Right}` ? `${'on'}${Delimiter}${Right}` : T;
+type PrefixProps<Prefix extends string, T> = {
+    [K in keyof T as K extends string ? `${Prefix}${K}` : K]: T[K];
+};
+export type RemoveSetterPrefixes<T, Prefix extends string> = {
     [K in keyof T as K extends string ? RemovePrefix<K, Prefix> : K]: T[K];
 };
 type RemovePrefix<T extends string, Prefix extends string> = T extends `${Prefix}${infer Rest}` ? Rest : T;

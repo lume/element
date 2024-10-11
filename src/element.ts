@@ -5,6 +5,7 @@ import {Element, type AttributeHandlerMap} from './LumeElement.js'
 import {__classFinishers, __setUpAttribute, __attributesToProps, type AttributeHandler} from './attribute.js'
 import type {AnyConstructor} from 'lowclass/dist/Constructor.js'
 import type {DecoratedValue, PropKey} from 'classy-solid/dist/decorators/types.js'
+import {__eventSetter, eventFields, type EventMetadata} from './event.js'
 
 type PossibleStatics = {
 	observedAttributes?: string[]
@@ -309,6 +310,33 @@ function applyElementDecoration(
 						get: newGetter,
 						set: newSetter,
 					})
+				}
+
+				const meta = metadata as EventMetadata
+
+				// Set up event fields (accessors and getters/setters are handled in the @event decorator directly).
+				if (Object.hasOwn(meta, eventFields)) {
+					for (const name of meta[eventFields]) {
+						const eventName = name.replace(/^on/, '')
+
+						const desc = Object.getOwnPropertyDescriptor(this, name)!
+
+						if (desc.get || desc.set)
+							throw new Error(
+								'@event is not supported on properties with getters/setters yet. Use the @event decorator on a field that is not converted to a getter/setter by anything else.',
+							)
+
+						let value = desc.value as EventListener | null
+						const get = () => value
+						const set = (v: EventListener | null) => (value = v)
+
+						Object.defineProperty(this, name, {
+							enumerable: true,
+							configurable: true,
+							get,
+							set: __eventSetter(name, eventName, get, set),
+						})
+					}
 				}
 			})
 		}

@@ -3,6 +3,7 @@ import { untrack } from 'solid-js';
 import { reactive, signalify } from 'classy-solid';
 import { Element } from './LumeElement.js';
 import { __classFinishers, __setUpAttribute, __attributesToProps } from './attribute.js';
+import { __eventSetter, eventFields } from './event.js';
 const isAttributeHandler = Symbol('isAttributeHandler');
 export function element(tagNameOrClass, autoDefineOrContext) {
     let tagName = '';
@@ -184,6 +185,25 @@ function applyElementDecoration(Class, context, tagName, autoDefine) {
                         get: newGetter,
                         set: newSetter,
                     });
+                }
+                const meta = metadata;
+                // Set up event fields (accessors and getters/setters are handled in the @event decorator directly).
+                if (Object.hasOwn(meta, eventFields)) {
+                    for (const name of meta[eventFields]) {
+                        const eventName = name.replace(/^on/, '');
+                        const desc = Object.getOwnPropertyDescriptor(this, name);
+                        if (desc.get || desc.set)
+                            throw new Error('@event is not supported on properties with getters/setters yet. Use the @event decorator on a field that is not converted to a getter/setter by anything else.');
+                        let value = desc.value;
+                        const get = () => value;
+                        const set = (v) => (value = v);
+                        Object.defineProperty(this, name, {
+                            enumerable: true,
+                            configurable: true,
+                            get,
+                            set: __eventSetter(name, eventName, get, set),
+                        });
+                    }
                 }
             });
         }

@@ -31,7 +31,6 @@ function handleAttributeDecoration(value, context, attributeHandler = {}) {
         throw new Error('@attribute is not supported on private fields yet.');
     if (isStatic)
         throw new Error('@attribute is not supported on static fields.');
-    // TODO decorate on prototype? Or decorate on instance?
     __classFinishers.push((Class) => __setUpAttribute(Class, name, attributeHandler));
     if (kind === 'field') {
         const signalInitializer = useSignal ? signal(value, context) : (v) => v;
@@ -50,10 +49,18 @@ function handleAttributeDecoration(value, context, attributeHandler = {}) {
     }
     else if (kind === 'getter' || kind === 'setter') {
         if (useSignal)
-            signal(value, context);
+            return signal(value, context);
+    }
+    else if (kind === 'accessor') {
+        context.addInitializer(function () {
+            if (!('default' in attributeHandler))
+                attributeHandler.default = this[name];
+        });
+        if (useSignal)
+            return signal(value, context);
     }
     else {
-        throw new Error('@attribute is only for use on fields, getters, and setters. Auto accessor support is coming next if there is demand for it.');
+        throw new Error('@attribute is only for use on fields, getters/setters, and auto accessors.');
     }
     return undefined; // shush TS
 }
