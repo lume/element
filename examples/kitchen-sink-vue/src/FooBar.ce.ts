@@ -1,5 +1,5 @@
 import _FooBar from './FooBar.vue'
-import {defineCustomElement /*, type HTMLAttributes*/, type Component} from 'vue'
+import {defineCustomElement, type HTMLAttributes, type Component} from 'vue'
 
 export const FooBar = defineCustomElement(_FooBar)
 

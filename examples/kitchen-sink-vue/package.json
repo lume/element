@@ -11,7 +11,6 @@
 		"type-check": "vue-tsc --build --force"
 	},
 	"dependencies": {
-		"@lume/element": "../..",
 		"vue": "^3.5.12"
 	},
 	"devDependencies": {
