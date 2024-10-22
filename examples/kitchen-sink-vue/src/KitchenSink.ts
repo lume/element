@@ -11,8 +11,4 @@ declare module 'vue' {
 		'kitchen-sink': typeof KitchenSink // not working (except ref works)
 		// 'kitchen-sink': Component<{foo: number}> // works (except ref not working)
 	}
-
-	interface IntrinsicElementAttributes {
-		'kitchen-sink': {foo: number}
-	}
 }
