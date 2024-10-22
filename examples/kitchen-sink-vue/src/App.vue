@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import './KitchenSink.js'
-import {FooBar} from './FooBar.ce.js'
+// import {FooBar} from './FooBar.ce.js'
+import './FooBar.ce.js'
 </script>
 
 <template>
 	<!-- not working (expected type error): -->
-	<FooBar :foo="true" />
-	<!-- <foo-bar :foo="true" /> -->
+	<!-- <FooBar :foo="true" /> -->
+	<foo-bar :foo="true" />
 	<!-- <fooBar :foo="true" /> -->
 
 	<!-- <kitchen-sink :count="123" :foo="true"></kitchen-sink> -->
