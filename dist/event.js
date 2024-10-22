@@ -19,10 +19,8 @@ export const eventFields = Symbol('eventFields');
 export function event(value, context) {
     const { name, kind, private: isPrivate } = context;
     const metadata = context.metadata;
-    if (typeof name === 'symbol')
-        throw new Error('Cannot currently use symbols as event names.');
-    if (isPrivate)
-        throw new Error('Cannot use private field names as event names.');
+    if (typeof name === 'symbol' || isPrivate)
+        throw new InvalidEventDecorationError();
     const eventName = name.replace(/^on/, '');
     if (kind === 'field') {
         if (!Object.hasOwn(metadata, eventFields))
@@ -66,7 +64,7 @@ export function event(value, context) {
         };
     }
     else
-        throw new Error('Use @event on a field, getter/setter, or accessor.');
+        throw new InvalidEventDecorationError();
 }
 export function __eventSetter(name, eventName, get, set) {
     return function (handler) {
@@ -79,5 +77,10 @@ export function __eventSetter(name, eventName, get, set) {
             this.addEventListener(eventName, handler);
         set.call(this, handler);
     };
+}
+class InvalidEventDecorationError extends Error {
+    constructor() {
+        super('Use @event on a public non-symbol field, getter/setter, or accessor with its name starting with "on".');
+    }
 }
 //# sourceMappingURL=event.js.map

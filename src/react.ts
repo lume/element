@@ -41,6 +41,7 @@ export type ReactElementAttributes<
 
 	// Pick the `onfoo` event handler types from the element type, without string values
 	& Partial<FunctionsOnly<EventProps<El, SelectedProperties>>>
+	// TODO check that it maps to synthetic event in React JSX
 
 	& Partial<WithBooleanStringValues<BooleanProps<NonEventProps<El, SelectedProperties>>>>
 

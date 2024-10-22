@@ -29,8 +29,7 @@ export function event<T>(value: T, context: EventDecoratorContext): any {
 	const {name, kind, private: isPrivate} = context
 	const metadata = context.metadata as EventMetadata
 
-	if (typeof name === 'symbol') throw new Error('Cannot currently use symbols as event names.')
-	if (isPrivate) throw new Error('Cannot use private field names as event names.')
+	if (typeof name === 'symbol' || isPrivate) throw new InvalidEventDecorationError()
 
 	const eventName = name.replace(/^on/, '')
 
@@ -76,7 +75,7 @@ export function event<T>(value: T, context: EventDecoratorContext): any {
 			get,
 			set: __eventSetter(name, eventName, get, set),
 		}
-	} else throw new Error('Use @event on a field, getter/setter, or accessor.')
+	} else throw new InvalidEventDecorationError()
 }
 
 export function __eventSetter(
@@ -94,5 +93,11 @@ export function __eventSetter(
 		if (handler) this.addEventListener(eventName, handler)
 
 		set.call(this, handler)
+	}
+}
+
+class InvalidEventDecorationError extends Error {
+	constructor() {
+		super('Use @event on a public non-symbol field, getter/setter, or accessor with its name starting with "on".')
 	}
 }

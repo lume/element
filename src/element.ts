@@ -11,6 +11,7 @@ type PossibleStatics = {
 	observedAttributes?: string[]
 	observedAttributeHandlers?: AttributeHandlerMap
 	elementName?: string
+	events?: string[]
 	__proto__: PossibleStatics // used in attribute.ts
 }
 export type ElementCtor = typeof Element & PossibleStatics
@@ -316,17 +317,28 @@ function applyElementDecoration(
 
 				// Set up event fields (accessors and getters/setters are handled in the @event decorator directly).
 				if (Object.hasOwn(meta, eventFields)) {
-					for (const name of meta[eventFields]) {
+					for (let name of meta[eventFields]) {
+						if (!name.startsWith('on')) throw new Error('Event fields must start with "on".')
+						handleEventProp.call(this, name)
+					}
+
+					for (let name of Ctor.events ?? []) {
+						name = 'on' + name
+						handleEventProp.call(this, name)
+					}
+
+					function handleEventProp(this: Element, name: string) {
 						const eventName = name.replace(/^on/, '')
 
-						const desc = Object.getOwnPropertyDescriptor(this, name)!
+						const desc = Object.getOwnPropertyDescriptor(this, name)
 
-						if (desc.get || desc.set)
+						if (desc && (desc.get || desc.set)) {
 							throw new Error(
-								'@event is not supported on properties with getters/setters yet. Use the @event decorator on a field that is not converted to a getter/setter by anything else.',
+								'@event is not supported on fields converted to getters/setters yet. When using the @event decorator on a class field, ensure the field is not converted to a getter/setter by anything else (f.e. another decorator also used on the same property).',
 							)
+						}
 
-						let value = desc.value as EventListener | null
+						let value = (desc?.value ?? null) as EventListener | null
 						const get = () => value
 						const set = (v: EventListener | null) => (value = v)
 

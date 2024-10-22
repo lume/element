@@ -1,17 +1,17 @@
-/** @jsxImportSource solid-js */
-// @ts-check
 import {
 	element,
 	numberAttribute,
 	stringAttribute,
 	booleanAttribute,
 	Element,
+	event,
 	type ElementAttributes,
 } from '@lume/element'
 import {onCleanup} from 'solid-js'
 
-type KitchenSinkAttributes = 'count' | 'name' | 'color' | 'doingSomething'
+type KitchenSinkAttributes = 'count' | 'name' | 'color' | 'doingSomething' | 'onawesomeness'
 
+export
 @element('kitchen-sink')
 class KitchenSink extends Element {
 	@numberAttribute count = 0
@@ -22,8 +22,15 @@ class KitchenSink extends Element {
 	// same-name but dashed-cased attribute "doing-something".
 	@booleanAttribute doingSomething = false
 
+	@event onawesomeness: EventListener | null = null
+
 	connectedCallback() {
 		super.connectedCallback()
+
+		// Dispatch an 'awesomeness' event after 1 second.
+		setTimeout(() => {
+			this.dispatchEvent(new Event('awesomeness'))
+		}, 1000)
 
 		this.createEffect(() => {
 			// Re-runs any time any of the attributes/properties change.
@@ -100,8 +107,6 @@ class KitchenSink extends Element {
 		}
 	`
 }
-
-export {KitchenSink}
 
 declare module 'solid-js' {
 	namespace JSX {

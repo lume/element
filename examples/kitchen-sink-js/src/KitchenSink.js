@@ -1,5 +1,5 @@
 // @ts-check
-import {element, numberAttribute, stringAttribute, booleanAttribute, Element} from '@lume/element'
+import {element, numberAttribute, stringAttribute, booleanAttribute, Element, event} from '@lume/element'
 import {onCleanup} from 'solid-js'
 import html from 'solid-js/html'
 
@@ -15,8 +15,16 @@ class KitchenSink extends Element {
 	// same-name but dashed-cased attribute "doing-something".
 	@booleanAttribute doingSomething = false
 
+	/** @type {EventListener | null} */
+	@event onawesomeness = null
+
 	connectedCallback() {
 		super.connectedCallback()
+
+		// Dispatch an 'awesomeness' event after 1 second.
+		setTimeout(() => {
+			this.dispatchEvent(new Event('awesomeness'))
+		}, 1000)
 
 		this.createEffect(() => {
 			// Re-runs any time any of the attributes/properties change.

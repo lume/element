@@ -1,0 +1,19 @@
+{
+	"compilerOptions": {
+		"strict": true,
+		"noUncheckedIndexedAccess": true,
+		"noUnusedLocals": true,
+
+		"jsxImportSource": "react", // specify source for JSX type definitions
+		"jsx": "react-jsx", // tell TS to compile JSX in React-compatible output
+
+		"outDir": "dist",
+		"target": "ES2023",
+		"module": "ESNext",
+		"moduleResolution": "Node",
+
+		"skipLibCheck": true,
+		"skipDefaultLibCheck": true
+	},
+	"include": ["./src/**/*"]
+}

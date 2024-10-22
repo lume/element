@@ -108,7 +108,31 @@ class LumeElement extends Effectful(HTMLElement) {
 	 * )
 	 * ```
 	 */
-	static observedAttributeHandlers?: AttributeHandlerMap;
+	static observedAttributeHandlers?: AttributeHandlerMap
+
+	/**
+	 * A list of events that the element can dispatch.
+	 * This is useful for non-decorator users. This list will define handling of `on*` properties on the element.
+	 * Decorator users can use the `@event` decorator on `on*` properties instead.
+	 * Non-decorator users should still define the `on*` properties as well when types for JSX `on*` props are needed.
+	 *
+	 * Example:
+	 *
+	 * ```js
+	 * element('my-el')(
+	 *   class MyEl extends LumeElement {
+	 *     static events = ['jump']
+	 *   }
+	 * )
+	 *
+	 * const el = document.createElement('my-el')
+	 *
+	 * el.onjump = () => console.log('jump!')
+	 *
+	 * el.dispatchEvent(new Event('jump')) // logs 'jump!'
+	 * ```
+	 */
+	static events?: string[];
 
 	/** Note, this is internal and used by the @attribute decorator, see attribute.ts. */
 	declare [__attributesToProps]?: Record<string, {name: string; attributeHandler?: AttributeHandler}>

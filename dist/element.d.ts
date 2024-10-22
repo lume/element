@@ -5,6 +5,7 @@ type PossibleStatics = {
     observedAttributes?: string[];
     observedAttributeHandlers?: AttributeHandlerMap;
     elementName?: string;
+    events?: string[];
     __proto__: PossibleStatics;
 };
 export type ElementCtor = typeof Element & PossibleStatics;
