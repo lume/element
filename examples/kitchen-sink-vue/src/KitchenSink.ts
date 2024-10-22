@@ -7,8 +7,9 @@ import type {Component} from 'vue'
 
 declare module 'vue' {
 	interface GlobalComponents {
-		// 'kitchen-sink': typeof KitchenSink // not working
-		'kitchen-sink': Component<{foo: number}> // works
+		// Try toggling between these two lines
+		'kitchen-sink': typeof KitchenSink // not working (except ref works)
+		// 'kitchen-sink': Component<{foo: number}> // works (except ref not working)
 	}
 
 	interface IntrinsicElementAttributes {

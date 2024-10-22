@@ -1,21 +1,14 @@
 <script setup lang="ts">
 import './KitchenSink.js'
-// import {FooBar} from './FooBar.ce.js'
-import './FooBar.ce.js'
+import {useTemplateRef} from 'vue'
+
+const sink = useTemplateRef('sink')
+sink.value!.foo
 </script>
 
 <template>
-	<!-- not working (expected type error): -->
-	<!-- <FooBar :foo="true" /> -->
-	<foo-bar :foo="true" />
-	<!-- <fooBar :foo="true" /> -->
-
-	<!-- <kitchen-sink :count="123" :foo="true"></kitchen-sink> -->
-
-	<!-- This works (expect error) -->
-	<kitchen-sink :foo="true"></kitchen-sink>
-	<!-- This works (expect no error) -->
-	<kitchen-sink :foo="123"></kitchen-sink>
+	<!-- There should be a type error here: -->
+	<kitchen-sink ref="sink" :foo="true"></kitchen-sink>
 </template>
 
 <style scoped>
