@@ -39,6 +39,11 @@ sink.value!.$emit
 
 	<!-- @vue-expect-error built-in attributes are type checked -->
 	<kitchen-sink spellcheck="123"></kitchen-sink>
+
+	<!-- @vue-expect-error technically .attr should accept strings because it is
+	setting an attribute, but the types are limited in this regard: the type is
+	the same regardless if .attr or .prop is used. -->
+	<kitchen-sink :foo.attr="'123'"></kitchen-sink>
 </template>
 
 <style scoped></style>
