@@ -1,8 +1,8 @@
 {
 	"type": "module",
 	"scripts": {
-		"build": "npm run clean && tsc && babel .tmp -d dist",
 		"dev": "npm run clean && tsc && (tsc --watch & babel .tmp -d dist --watch)",
+		"build": "npm run clean && tsc && babel .tmp -d dist",
 		"clean": "rimraf .tmp/ dist/",
 		"serve": "five-server ."
 	},

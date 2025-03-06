@@ -1,0 +1,18 @@
+<!-- Start with an initial value of 5 -->
+<kitchen-sink
+	#sink
+	id="sink"
+	[attr.count]="'5'"
+	[name]="'Mo'"
+	doing-something
+	(click)="clickSink1($event)"
+	(awesomeness)="onSink1Awesomeness($event)"
+	onawesomeness="console.log('this works too!', event.type)"
+></kitchen-sink>
+
+<kitchen-sink #sink2 id="sink2" count="1" name="Po" doing-something="false" color="blue">
+	<p>child from light DOM, no slot specified</p>
+	<p slot="foo">child from light DOM, slotted to the foo slot</p>
+</kitchen-sink>
+
+<router-outlet />

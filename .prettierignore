@@ -1,4 +1,10 @@
+.vscode/
 node_modules/
 dist/
 
 jsx-runtime.*
+
+# examples/ stuff
+.angular
+.svelte-kit
+.tmp

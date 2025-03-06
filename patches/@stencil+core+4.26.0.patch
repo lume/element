@@ -1,0 +1,28 @@
+diff --git a/node_modules/@stencil/core/internal/stencil-public-runtime.d.ts b/node_modules/@stencil/core/internal/stencil-public-runtime.d.ts
+index f8d600d..757b78c 100644
+--- a/node_modules/@stencil/core/internal/stencil-public-runtime.d.ts
++++ b/node_modules/@stencil/core/internal/stencil-public-runtime.d.ts
+@@ -581,7 +581,7 @@ export interface VNodeData {
+ declare namespace LocalJSX {
+     interface Element {
+     }
+-    interface IntrinsicElements {
++    interface IntrinsicElements extends JSXBase.IntrinsicElements {
+     }
+ }
+ export { LocalJSX as JSX };
+diff --git a/node_modules/@stencil/core/jsx-runtime.d.ts b/node_modules/@stencil/core/jsx-runtime.d.ts
+new file mode 100644
+index 0000000..aaa3332
+--- /dev/null
++++ b/node_modules/@stencil/core/jsx-runtime.d.ts
+@@ -0,0 +1 @@
++export type * from "./internal/index.js";
+diff --git a/node_modules/@stencil/core/jsx-runtime.js b/node_modules/@stencil/core/jsx-runtime.js
+new file mode 100644
+index 0000000..afc2712
+--- /dev/null
++++ b/node_modules/@stencil/core/jsx-runtime.js
+@@ -0,0 +1,2 @@
++// No JSX runtime to export here, but jsx-runtime.d.ts exports JSX types.
++export {}

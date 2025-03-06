@@ -2,7 +2,7 @@ import {createEffect} from 'solid-js'
 import html from 'solid-js/html'
 import {reactive, signal, signalify} from 'classy-solid'
 import {Element, element, type AttributeHandlerMap} from './index.js'
-import {attribute, numberAttribute} from './attribute.js'
+import {attribute, numberAttribute} from './decorators/attribute.js'
 
 // TODO move type def to @lume/cli, map @types/jest's `expect` type into the
 // global env.
@@ -11,6 +11,13 @@ declare global {
 }
 
 describe('LumeElement', () => {
+	let els: HTMLElement[] = []
+
+	afterEach(() => {
+		for (const el of els) el.remove()
+		els.length = 0
+	})
+
 	it('can be extended by custom element classes', () => {
 		let count = 0
 
@@ -22,7 +29,10 @@ describe('LumeElement', () => {
 			}
 		}
 
-		document.body.append(new MyEl())
+		const el = new MyEl()
+		els.push(el)
+
+		document.body.append(el)
 		expect(count).toBe(1)
 	})
 
@@ -31,12 +41,34 @@ describe('LumeElement', () => {
 		class MyEl extends Element {}
 
 		const el = new MyEl()
+		els.push(el)
 		expect(el.shadowRoot).toBe(null)
 		document.body.append(el)
 		expect(el.shadowRoot).toBeInstanceOf(ShadowRoot)
 	})
 
-	it("allows opting out of a shadow root by defining the 'root' property", () => {
+	it('it appends anything returned from template() to a ShadowRoot by default', () => {
+		@element('append-template')
+		class MyEl extends Element {
+			override template = () => {
+				const div = document.createElement('div')
+				div.innerText = 'hello'
+				return div
+			}
+		}
+
+		const el = new MyEl() as any
+		els.push(el)
+		document.body.append(el)
+
+		expect(el.root.children.length).toBe(2)
+		// The DOM element returned from template()
+		expect(el.root.firstElementChild.outerHTML).toBe('<div>hello</div>')
+		// The style element that LumeElement creates
+		expect(el.root.lastElementChild.tagName.toLowerCase()).toBe('style')
+	})
+
+	it("allows opting out of a shadow root by defining the 'templateRoot' property", () => {
 		const attachShadow = Element.prototype.attachShadow
 		let calls = 0
 
@@ -60,31 +92,99 @@ describe('LumeElement', () => {
 		}
 
 		const el = new MyEl()
+		els.push(el)
 		document.body.append(el)
 		expect(el.shadowRoot).toBe(null)
 		expect(calls).toBe(0)
 		// @ts-ignore
 		expect(el.querySelector('#div')).toBe(div)
+
+		Element.prototype.attachShadow = attachShadow
 	})
 
-	it('it appends anything returned from template() to a ShadowRoot by default', () => {
-		@element('append-template')
-		class MyEl extends Element {
+	it('supports disabling the use of a ShadowRoot via hasShadow=false', () => {
+		let div
+
+		// opt out with hasShadow = false
+		@element('no-shadow2')
+		class NoShadow extends Element {
+			override readonly hasShadow = false
 			override template = () => {
-				const div = document.createElement('div')
-				div.innerText = 'hello'
+				div = html`<div></div>`
 				return div
 			}
 		}
 
-		const el = new MyEl() as any
+		const el = new NoShadow()
+		els.push(el)
+		expect(el.shadowRoot).toBe(null)
+		document.body.append(el)
+		expect(el.shadowRoot).toBe(null)
+		// @ts-expect-error protected
+		expect(el.templateRoot).toBe(el)
+		expect(el.root).toBe(el)
+		// @ts-ignore
+		expect(el.querySelector('div')).toBe(div)
+	})
+
+	it('allows options to be passed to attachShadow() via .shadowOptions', () => {
+		const attachShadow = Element.prototype.attachShadow
+
+		let options
+
+		Element.prototype.attachShadow = function (opts, ...args) {
+			return attachShadow.call(this, (options = opts), ...args)
+		}
+
+		let count = 0
+
+		@element('shadow-options')
+		class ShadowOptions extends Element {
+			override shadowOptions: ShadowRootInit = {
+				get mode() {
+					count++
+					return 'open' as ShadowRootMode
+				},
+				delegatesFocus: true,
+				slotAssignment: 'manual',
+				serializable: true,
+			}
+		}
+
+		const el = new ShadowOptions()
+		els.push(el)
+
 		document.body.append(el)
 
-		expect(el.root.children.length).toBe(2)
-		// The DOM element returned from template()
-		expect(el.root.firstElementChild.outerHTML).toBe('<div>hello</div>')
-		// The style element that LumeElement creates
-		expect(el.root.lastElementChild.tagName.toLowerCase()).toBe('style')
+		expect(count).toBe(1)
+		expect(String(el.shadowRoot)).not.toBe('null')
+		expect(options).toEqual({mode: 'open', delegatesFocus: true, slotAssignment: 'manual', serializable: true})
+
+		el.remove()
+
+		@element('shadow-options2')
+		class ShadowOptions2 extends Element {
+			override shadowOptions: ShadowRootInit = {
+				get mode() {
+					count++
+					return 'closed' as ShadowRootMode
+				},
+				delegatesFocus: false,
+				slotAssignment: 'named',
+				serializable: false,
+			}
+		}
+
+		const el2 = new ShadowOptions2()
+		els.push(el2)
+
+		document.body.append(el2)
+
+		expect(count).toBe(2)
+		expect(String(el2.shadowRoot)).toBe('null')
+		expect(options).toEqual({mode: 'closed', delegatesFocus: false, slotAssignment: 'named', serializable: false})
+
+		el2.remove()
 	})
 
 	// TODO: JSX support, a .tsx file should be compiled to .js, but currently
@@ -99,6 +199,7 @@ describe('LumeElement', () => {
 	// 	}
 
 	// 	const el = new MyEl() as any
+	// els.push(el)
 	// 	document.body.append(el)
 
 	// 	expect(el.root.children.length).toBe(2)
@@ -128,6 +229,7 @@ describe('LumeElement', () => {
 		}
 
 		const el = new MyEl() as any
+		els.push(el)
 		document.body.append(el)
 
 		expect(el.root.children.length).toBe(2)
@@ -175,6 +277,7 @@ describe('LumeElement', () => {
 		customElements.define('html-template2', MyEl)
 
 		const el = new MyEl() as any
+		els.push(el)
 		document.body.append(el)
 
 		expect(el.root.children.length).toBe(2)
@@ -203,6 +306,7 @@ describe('LumeElement', () => {
 		customElements.define('html-template2.5', MyEl)
 
 		const el = new MyEl() as any
+		els.push(el)
 		document.body.append(el)
 
 		expect(el.root.children.length).toBe(2)
@@ -239,6 +343,7 @@ describe('LumeElement', () => {
 		}).toThrow('Did you forget to use the `@reactive` decorator')
 
 		const el = new MyEl() as any
+		els.push(el)
 		document.body.append(el)
 
 		expect(el.root.children.length).toBe(2)
@@ -270,6 +375,7 @@ describe('LumeElement', () => {
 	// subsequently be connected to the DOM to get upgraded).
 	it('initializes pre-upgrade properties by deleting them and re-assigning them after construction in a microtask, with decorator syntax', async () => {
 		const fooEl = document.createElement('foo-element') as FooElement
+		els.push(fooEl)
 
 		// fooEl is instanceof HTMLElement (not FooElement) at this point (ignore the type cast)
 		expect(fooEl).toBeInstanceOf(HTMLElement)
@@ -296,8 +402,6 @@ describe('LumeElement', () => {
 		class FooElement extends Element {
 			// @ts-ignore, in case TS complains about overiding an accessor (valid JS)
 			templateRoot = this
-
-			// TODO static readonly hasShadow = false
 
 			// Use both types of decorators so that we ensure both features surive the element upgrade.
 			@numberAttribute foo = 3
@@ -438,6 +542,7 @@ describe('LumeElement', () => {
 	// This is what plain JS users would need to do.
 	it('initializes pre-upgrade properties by deleting them and re-assigning them after construction in a microtask, no decorator syntax', async () => {
 		const fooEl = document.createElement('foo-elemento') as FooElemento
+		els.push(fooEl)
 
 		// fooEl is instanceof HTMLElement (not FooElement) at this point (ignore the type cast)
 		expect(fooEl).toBeInstanceOf(HTMLElement)
@@ -632,6 +737,7 @@ describe('LumeElement', () => {
 		function noLoop() {
 			createEffect(() => {
 				b = new Bar() // this should not track
+				els.push(b)
 				count++
 			})
 		}
@@ -678,6 +784,7 @@ describe('LumeElement', () => {
 		function noLoop() {
 			createEffect(() => {
 				b = new Bar() // this should not track
+				els.push(b)
 				count++
 			})
 		}
@@ -700,6 +807,7 @@ describe('LumeElement', () => {
 		class ManualEl extends Element {}
 
 		const el = document.createElement(name1)
+		els.push(el)
 		document.body.append(el)
 
 		expect(el).not.toBeInstanceOf(ManualEl)
@@ -713,6 +821,7 @@ describe('LumeElement', () => {
 
 		const name2 = 'manual-el2'
 		const el2 = document.createElement(name2)
+		els.push(el2)
 		document.body.append(el2)
 
 		const ManualEl2 = ManualEl.defineElement(name2) as typeof ManualEl
@@ -729,45 +838,42 @@ describe('LumeElement', () => {
 		// const registry = new CustomElementRegistry()
 	})
 
-	it('allows options to be passed to attachShadow() via .shadowOptions', () => {
-		let count = 0
-
-		@element('shadow-options')
-		class ShadowOptions extends Element {
-			override shadowOptions = {
-				get mode() {
-					count++
-					return 'open' as ShadowRootMode
-				},
-			}
+	it('cleans up its root instance and shared styles when no ShadowRoot is used', () => {
+		@element('style-cleanup')
+		class StyleCleanup extends Element {
+			override readonly hasShadow = false
+			override template = () => html`<div></div>`
+			static override css = `div {color: red}`
+			override css = `div {color: blue}`
 		}
 
-		const el = new ShadowOptions()
+		const el = new StyleCleanup()
+		const el2 = new StyleCleanup()
+		els.push(el, el2)
+
+		expect(document.querySelectorAll('style').length).toBe(0)
 
 		document.body.append(el)
 
-		expect(count).toBe(1)
-		expect(String(el.shadowRoot)).not.toBe('null')
-
-		el.remove()
-
-		@element('shadow-options2')
-		class ShadowOptions2 extends Element {
-			override shadowOptions = {
-				get mode() {
-					count++
-					return 'closed' as ShadowRootMode
-				},
-			}
-		}
-
-		const el2 = new ShadowOptions2()
+		// There is one static style shared between all elements of the same
+		// class, and one instance style for each element.
+		expect(document.querySelectorAll('style').length).toBe(2)
 
 		document.body.append(el2)
 
-		expect(count).toBe(2)
-		expect(String(el2.shadowRoot)).toBe('null')
+		// Added one style for the element instance.
+		expect(document.querySelectorAll('style').length).toBe(3)
+
+		el.remove()
+
+		// Removed one style for the removed element instance.
+		expect(document.querySelectorAll('style').length).toBe(2)
 
 		el2.remove()
+
+		// Removed a style for the removed element instance, and the shared
+		// static style is removed because there are no more instances of the
+		// element.
+		expect(document.querySelectorAll('style').length).toBe(0)
 	})
 })

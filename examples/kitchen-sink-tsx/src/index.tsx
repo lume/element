@@ -2,14 +2,15 @@ import {createEffect} from 'solid-js'
 import './KitchenSink.js'
 import {KitchenSink} from './KitchenSink.js'
 
-let sink: KitchenSink
+let sink!: KitchenSink
+let sink2!: KitchenSink
 
 document.body.append(
 	...((
 		<>
 			{/* Start with an initial value of 5 */}
 			<kitchen-sink
-				ref={sink!}
+				ref={sink}
 				id="sink"
 				count="5"
 				name="Mo"
@@ -26,9 +27,12 @@ document.body.append(
 
 					console.log('doingSomething after attribute change:', sink.doingSomething)
 				}}
+				onawesomeness={event => {
+					console.log('awesomeness happened!', event.type)
+				}}
 			></kitchen-sink>
 
-			<kitchen-sink id="sink2" count="1" name="Po" doing-something="false" color="blue">
+			<kitchen-sink ref={sink2} id="sink2" count="1" name="Po" doing-something="false" color="blue">
 				<p>child from light DOM, no slot specified</p>
 				<p slot="foo">child from light DOM, slotted to the foo slot</p>
 			</kitchen-sink>
@@ -39,3 +43,8 @@ document.body.append(
 createEffect(() => {
 	console.log('values outside the element:', sink.count, sink.name, sink.doingSomething)
 })
+
+// Event listeners can be set on 'on*' event properties directly, as with builtin events.
+sink2.onawesomeness = event => {
+	console.log('more awesomeness happened!', event.type)
+}

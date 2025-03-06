@@ -22,6 +22,9 @@ document.body.append(
 
 					console.log('doingSomething after attribute change:', sink.doingSomething)
 				}}
+				onawesomeness={event => {
+					console.log('awesomeness happened!', event.type)
+				}}
 			></kitchen-sink>
 
 			<kitchen-sink id="sink2" count="1" name="Po" doing-something="false" color="blue">
@@ -35,3 +38,8 @@ document.body.append(
 createEffect(() => {
 	console.log('values outside the element:', sink.count, sink.name, sink.doingSomething)
 })
+
+// Event listeners can be set on 'on*' event properties directly, as with builtin events.
+sink2.onawesomeness = event => {
+	console.log('more awesomeness happened!', event.type)
+}

@@ -1,6 +1,5 @@
 export * from './LumeElement.js'
-export * from './attribute.js'
-export * from './element.js'
+export * from './decorators/index.js'
 export * from './css.js'
 export {
 	identityTemplateTag,

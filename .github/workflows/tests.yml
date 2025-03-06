@@ -23,7 +23,7 @@ jobs:
                   npx playwright install
             - name: check formatting
               run: |
-                  npm run prettier:check
+                  npm run prettier
             - name: build
               run: |
                   npm run clean

@@ -1,8 +1,8 @@
 {
 	"type": "module",
 	"scripts": {
-		"build": "npm run clean && babel src -d dist",
 		"dev": "npm run clean && babel src -d dist --watch",
+		"build": "npm run clean && babel src -d dist",
 		"clean": "rimraf dist/",
 		"serve": "five-server ."
 	},

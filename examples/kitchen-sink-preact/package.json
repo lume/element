@@ -1,0 +1,21 @@
+{
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"start": "vite",
+		"dev": "vite",
+		"build": "vite build",
+		"preview": "vite preview"
+	},
+	"dependencies": {
+		"@lume/element": "../../lume+lume/packages/element",
+		"preact": "^10.20.0",
+		"preact-iso": "^2.9.0",
+		"preact-render-to-string": "^6.5.13"
+	},
+	"devDependencies": {
+		"@preact/preset-vite": "^2.8.2",
+		"typescript": "^5.8.2",
+		"vite": "^5.2.2"
+	}
+}
