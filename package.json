@@ -16,7 +16,7 @@
 		"build:copy": "npm run build:copy:jsx-runtime",
 		"build:copy:jsx-runtime": "ncp ./dist/jsx-runtime.d.ts ./jsx-runtime.d.ts && ncp ./dist/jsx-runtime.js ./jsx-runtime.js",
 		"// ^ build:copy TODO": "Add a copy files feature to lume build. This would copy specified files after each build or re-build. Perhaps add options for the existing copyAssets command",
-		"dev": "lume dev",
+		"dev": "patch-package && lume dev",
 		"typecheck": "lume typecheck",
 		"typecheck:watch": "lume typecheckWatch",
 		"test": "lume test",
