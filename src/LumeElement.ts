@@ -5,7 +5,12 @@ import {render} from 'solid-js/web'
 // element preupgrade value.
 import {Effectful, __isPropSetAtLeastOnce} from 'classy-solid'
 
-import type {AttributeHandler, __attributesToProps} from './decorators/attribute.js'
+import type {
+	AttributeHandler,
+	AttributePropSpecs,
+	__attributesToProps,
+	__hasAttributeChangedCallback,
+} from './decorators/attribute.js'
 import type {DashCasedProps} from './utils.js'
 
 // TODO `templateMode: 'append' | 'replace'`, which allows a subclass to specify
@@ -28,10 +33,18 @@ const root = Symbol('root')
 class LumeElement extends Effectful(HTMLElement) {
 	/**
 	 * The default tag name of the elements this class instantiates. When using
-	 * the `@element` decorator, this property will be set to the value defined
-	 * by the decorator.
+	 * the `@element` decorator, if this field has not been specified, it will
+	 * be set to the value defined by the decorator.
 	 */
 	static elementName: string = ''
+
+	/**
+	 * When using the @element decorator, the element will be automatically
+	 * defined in the CustomElementRegistry if this is true, otherwise manual
+	 * registration will be needed if false. If autoDefine is passed into the
+	 * decorator, this field will be overriden by that value.
+	 */
+	static autoDefine: boolean = true
 
 	/**
 	 * Define this class for the given element `name`, or using its default name
@@ -48,16 +61,20 @@ class LumeElement extends Effectful(HTMLElement) {
 	 * different subclass of the class this is called on if passing in a custom
 	 * `name`, otherwise returns the same class this is called on.
 	 */
-	static defineElement(name = this.elementName, registry: CustomElementRegistry = customElements) {
-		if (!name) {
-			console.warn(`defineElement(): Element name cannot be empty. This is a no-op.`)
-			return this
-		}
+	static defineElement(): typeof LumeElement
+	static defineElement(registry: CustomElementRegistry): typeof LumeElement
+	static defineElement(name: string): typeof LumeElement
+	static defineElement(name: string, registry: CustomElementRegistry): typeof LumeElement
+	static defineElement(
+		nameOrRegistry: string | CustomElementRegistry = this.elementName,
+		registry: CustomElementRegistry = customElements,
+	) {
+		const name = typeof nameOrRegistry === 'string' ? nameOrRegistry : this.elementName
+		registry = typeof nameOrRegistry === 'string' ? customElements : nameOrRegistry
 
-		if (registry.get(name)) {
-			console.warn(`defineElement(): An element class was already defined for tag name ${name}. This is a no-op.`)
-			return registry.get(name)!
-		}
+		if (this === LumeElement) throw new TypeError('defineElement() can only be called on a subclass of LumeElement.')
+		if (!name) throw new TypeError(`defineElement(): Element name cannot be empty.`)
+		if (registry.get(name)) throw new TypeError(`defineElement(): registry has an existing definition for "${name}".`)
 
 		// Allow the same element to be defined with multiple names.
 		const alreadyUsed = !!registry.getName(this)
@@ -111,7 +128,10 @@ class LumeElement extends Effectful(HTMLElement) {
 	static observedAttributeHandlers?: AttributeHandlerMap;
 
 	/** Note, this is internal and used by the @attribute decorator, see attribute.ts. */
-	declare [__attributesToProps]?: Record<string, {name: string; attributeHandler?: AttributeHandler}>
+	declare [__attributesToProps]?: AttributePropSpecs;
+
+	/** Note, this is internal and used by the @attribute decorator, see attribute.ts. */
+	declare [__hasAttributeChangedCallback]?: true
 
 	/**
 	 * This can be used by a subclass, or other frameworks handling elements, to

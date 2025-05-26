@@ -9,6 +9,11 @@ type PossibleStatics = {
     __proto__: PossibleStatics;
 };
 export type ElementCtor = typeof Element & PossibleStatics;
+export interface ElementDecoratorOptions {
+    elementName?: string;
+    autoDefine?: boolean;
+}
+type ElementClassDecorator = <T extends AnyConstructor<HTMLElement>>(Class: T, context?: ClassDecoratorContext) => T;
 /**
  * A class decorator that defines the target class as a custom element with the
  * given `tagName`. The `tagName` must contain a hyphen, as per standard Custom
@@ -77,7 +82,8 @@ export type ElementCtor = typeof Element & PossibleStatics;
  * class CoolElement extends HTMLElement {...}
  * ```
  */
-export declare function element(tagName: string, autoDefine?: boolean): <T extends AnyConstructor<HTMLElement>>(Class: T, context?: ClassDecoratorContext) => T;
+export declare function element(tagName: string, autoDefine?: boolean): ElementClassDecorator;
 export declare function element<T extends AnyConstructor<HTMLElement>>(Class: T, context?: ClassDecoratorContext): T;
+export declare function element(options: ElementDecoratorOptions): ElementClassDecorator;
 export {};
 //# sourceMappingURL=element.d.ts.map

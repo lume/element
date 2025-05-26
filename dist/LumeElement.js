@@ -18,34 +18,26 @@ const root = Symbol('root');
 class LumeElement extends Effectful(HTMLElement) {
     /**
      * The default tag name of the elements this class instantiates. When using
-     * the `@element` decorator, this property will be set to the value defined
-     * by the decorator.
+     * the `@element` decorator, if this field has not been specified, it will
+     * be set to the value defined by the decorator.
      */
     static elementName = '';
     /**
-     * Define this class for the given element `name`, or using its default name
-     * (`elementName`) if no `name` given. Defaults to using the global
-     * `customElements` registry unless another registry is provided (for
-     * example a ShadowRoot-scoped registry).
-     *
-     * If a `name` is given, then the class will be extended with an empty
-     * subclass so that a new class is used for each new name, because otherwise
-     * a CustomElementRegistry does not allow the same exact class to be used
-     * more than once regardless of the name.
-     *
-     * @returns Returns the defined element class, which is only going to be a
-     * different subclass of the class this is called on if passing in a custom
-     * `name`, otherwise returns the same class this is called on.
+     * When using the @element decorator, the element will be automatically
+     * defined in the CustomElementRegistry if this is true, otherwise manual
+     * registration will be needed if false. If autoDefine is passed into the
+     * decorator, this field will be overriden by that value.
      */
-    static defineElement(name = this.elementName, registry = customElements) {
-        if (!name) {
-            console.warn(`defineElement(): Element name cannot be empty. This is a no-op.`);
-            return this;
-        }
-        if (registry.get(name)) {
-            console.warn(`defineElement(): An element class was already defined for tag name ${name}. This is a no-op.`);
-            return registry.get(name);
-        }
+    static autoDefine = true;
+    static defineElement(nameOrRegistry = this.elementName, registry = customElements) {
+        const name = typeof nameOrRegistry === 'string' ? nameOrRegistry : this.elementName;
+        registry = typeof nameOrRegistry === 'string' ? customElements : nameOrRegistry;
+        if (this === _a)
+            throw new TypeError('defineElement() can only be called on a subclass of LumeElement.');
+        if (!name)
+            throw new TypeError(`defineElement(): Element name cannot be empty.`);
+        if (registry.get(name))
+            throw new TypeError(`defineElement(): registry has an existing definition for "${name}".`);
         // Allow the same element to be defined with multiple names.
         const alreadyUsed = !!registry.getName(this);
         const Class = alreadyUsed ? class extends this {

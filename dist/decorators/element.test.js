@@ -1,10 +1,3 @@
-var __runInitializers = (this && this.__runInitializers) || function (thisArg, initializers, value) {
-    var useValue = arguments.length > 2;
-    for (var i = 0; i < initializers.length; i++) {
-        value = useValue ? initializers[i].call(thisArg, value) : initializers[i].call(thisArg);
-    }
-    return useValue ? value : void 0;
-};
 var __esDecorate = (this && this.__esDecorate) || function (ctor, descriptorIn, decorators, contextIn, initializers, extraInitializers) {
     function accept(f) { if (f !== void 0 && typeof f !== "function") throw new TypeError("Function expected"); return f; }
     var kind = contextIn.kind, key = kind === "getter" ? "get" : kind === "setter" ? "set" : "value";
@@ -32,10 +25,305 @@ var __esDecorate = (this && this.__esDecorate) || function (ctor, descriptorIn, 
     if (target) Object.defineProperty(target, contextIn.name, descriptor);
     done = true;
 };
+var __runInitializers = (this && this.__runInitializers) || function (thisArg, initializers, value) {
+    var useValue = arguments.length > 2;
+    for (var i = 0; i < initializers.length; i++) {
+        value = useValue ? initializers[i].call(thisArg, value) : initializers[i].call(thisArg);
+    }
+    return useValue ? value : void 0;
+};
 import { createEffect } from 'solid-js';
 import { signal } from 'classy-solid';
 import { Element, element, attribute, numberAttribute, booleanAttribute, stringAttribute, } from '../index.js';
 describe('@element decorator', () => {
+    it('reads options from static class fields', () => {
+        let ElementWithStaticName = (() => {
+            let _classDecorators = [element];
+            let _classDescriptor;
+            let _classExtraInitializers = [];
+            let _classThis;
+            let _classSuper = Element;
+            var ElementWithStaticName = class extends _classSuper {
+                static { _classThis = this; }
+                static {
+                    const _metadata = typeof Symbol === "function" && Symbol.metadata ? Object.create(_classSuper[Symbol.metadata] ?? null) : void 0;
+                    __esDecorate(null, _classDescriptor = { value: _classThis }, _classDecorators, { kind: "class", name: _classThis.name, metadata: _metadata }, null, _classExtraInitializers);
+                    ElementWithStaticName = _classThis = _classDescriptor.value;
+                    if (_metadata) Object.defineProperty(_classThis, Symbol.metadata, { enumerable: true, configurable: true, writable: true, value: _metadata });
+                }
+                static elementName = 'el-with-static-name';
+                static {
+                    __runInitializers(_classThis, _classExtraInitializers);
+                }
+            };
+            return ElementWithStaticName = _classThis;
+        })();
+        const e = new ElementWithStaticName();
+        document.body.append(e);
+        expect(e.tagName.toLowerCase()).toBe('el-with-static-name');
+        e.remove();
+        let WithStaticOptions = (() => {
+            let _classDecorators = [element];
+            let _classDescriptor;
+            let _classExtraInitializers = [];
+            let _classThis;
+            let _classSuper = Element;
+            var WithStaticOptions = class extends _classSuper {
+                static { _classThis = this; }
+                static {
+                    const _metadata = typeof Symbol === "function" && Symbol.metadata ? Object.create(_classSuper[Symbol.metadata] ?? null) : void 0;
+                    __esDecorate(null, _classDescriptor = { value: _classThis }, _classDecorators, { kind: "class", name: _classThis.name, metadata: _metadata }, null, _classExtraInitializers);
+                    WithStaticOptions = _classThis = _classDescriptor.value;
+                    if (_metadata) Object.defineProperty(_classThis, Symbol.metadata, { enumerable: true, configurable: true, writable: true, value: _metadata });
+                }
+                static elementName = 'with-static-options';
+                static autoDefine = true;
+                static {
+                    __runInitializers(_classThis, _classExtraInitializers);
+                }
+            };
+            return WithStaticOptions = _classThis;
+        })();
+        const el = new WithStaticOptions();
+        document.body.append(el);
+        expect(el.tagName.toLowerCase()).toBe('with-static-options');
+        el.remove();
+        let WithStaticOptions2 = (() => {
+            let _classDecorators = [element];
+            let _classDescriptor;
+            let _classExtraInitializers = [];
+            let _classThis;
+            let _classSuper = Element;
+            var WithStaticOptions2 = class extends _classSuper {
+                static { _classThis = this; }
+                static {
+                    const _metadata = typeof Symbol === "function" && Symbol.metadata ? Object.create(_classSuper[Symbol.metadata] ?? null) : void 0;
+                    __esDecorate(null, _classDescriptor = { value: _classThis }, _classDecorators, { kind: "class", name: _classThis.name, metadata: _metadata }, null, _classExtraInitializers);
+                    WithStaticOptions2 = _classThis = _classDescriptor.value;
+                    if (_metadata) Object.defineProperty(_classThis, Symbol.metadata, { enumerable: true, configurable: true, writable: true, value: _metadata });
+                }
+                static elementName = 'with-static-options2';
+                static autoDefine = false; // don't automatically define in window.customElements
+                static {
+                    __runInitializers(_classThis, _classExtraInitializers);
+                }
+            };
+            return WithStaticOptions2 = _classThis;
+        })();
+        // it throws because the element is not defined yet.
+        expect(() => new WithStaticOptions2()).toThrow();
+        WithStaticOptions2.defineElement();
+        const el2 = new WithStaticOptions2();
+        document.body.append(el2);
+        expect(el2.tagName.toLowerCase()).toBe('with-static-options2');
+        el2.remove();
+    });
+    it('accepts and options object', () => {
+        let ElementWithOptionsName = (() => {
+            let _classDecorators = [element({ elementName: 'el-with-options-name' /* autoDefine: defaults to true */ })];
+            let _classDescriptor;
+            let _classExtraInitializers = [];
+            let _classThis;
+            let _classSuper = Element;
+            var ElementWithOptionsName = class extends _classSuper {
+                static { _classThis = this; }
+                static {
+                    const _metadata = typeof Symbol === "function" && Symbol.metadata ? Object.create(_classSuper[Symbol.metadata] ?? null) : void 0;
+                    __esDecorate(null, _classDescriptor = { value: _classThis }, _classDecorators, { kind: "class", name: _classThis.name, metadata: _metadata }, null, _classExtraInitializers);
+                    ElementWithOptionsName = _classThis = _classDescriptor.value;
+                    if (_metadata) Object.defineProperty(_classThis, Symbol.metadata, { enumerable: true, configurable: true, writable: true, value: _metadata });
+                    __runInitializers(_classThis, _classExtraInitializers);
+                }
+            };
+            return ElementWithOptionsName = _classThis;
+        })();
+        const e = new ElementWithOptionsName();
+        document.body.append(e);
+        expect(e.tagName.toLowerCase()).toBe('el-with-options-name');
+        e.remove();
+        let WithOptionsObject = (() => {
+            let _classDecorators = [element({ elementName: 'with-options-object', autoDefine: true })];
+            let _classDescriptor;
+            let _classExtraInitializers = [];
+            let _classThis;
+            let _classSuper = Element;
+            var WithOptionsObject = class extends _classSuper {
+                static { _classThis = this; }
+                static {
+                    const _metadata = typeof Symbol === "function" && Symbol.metadata ? Object.create(_classSuper[Symbol.metadata] ?? null) : void 0;
+                    __esDecorate(null, _classDescriptor = { value: _classThis }, _classDecorators, { kind: "class", name: _classThis.name, metadata: _metadata }, null, _classExtraInitializers);
+                    WithOptionsObject = _classThis = _classDescriptor.value;
+                    if (_metadata) Object.defineProperty(_classThis, Symbol.metadata, { enumerable: true, configurable: true, writable: true, value: _metadata });
+                    __runInitializers(_classThis, _classExtraInitializers);
+                }
+            };
+            return WithOptionsObject = _classThis;
+        })();
+        const el = new WithOptionsObject();
+        document.body.append(el);
+        expect(el.tagName.toLowerCase()).toBe('with-options-object');
+        el.remove();
+        let WithOptionsObject2 = (() => {
+            let _classDecorators = [element({ elementName: 'with-options-object2', autoDefine: false })];
+            let _classDescriptor;
+            let _classExtraInitializers = [];
+            let _classThis;
+            let _classSuper = Element;
+            var WithOptionsObject2 = class extends _classSuper {
+                static { _classThis = this; }
+                static {
+                    const _metadata = typeof Symbol === "function" && Symbol.metadata ? Object.create(_classSuper[Symbol.metadata] ?? null) : void 0;
+                    __esDecorate(null, _classDescriptor = { value: _classThis }, _classDecorators, { kind: "class", name: _classThis.name, metadata: _metadata }, null, _classExtraInitializers);
+                    WithOptionsObject2 = _classThis = _classDescriptor.value;
+                    if (_metadata) Object.defineProperty(_classThis, Symbol.metadata, { enumerable: true, configurable: true, writable: true, value: _metadata });
+                    __runInitializers(_classThis, _classExtraInitializers);
+                }
+            };
+            return WithOptionsObject2 = _classThis;
+        })();
+        // it throws because the element is not defined yet.
+        expect(() => new WithOptionsObject2()).toThrow();
+        WithOptionsObject2.defineElement();
+        const el2 = new WithOptionsObject2();
+        document.body.append(el2);
+        expect(el2.tagName.toLowerCase()).toBe('with-options-object2');
+        el2.remove();
+    });
+    it('uses the class name to derive the the dash-case element name if not provided', () => {
+        let WithConstructorName1 = (() => {
+            let _classDecorators = [element];
+            let _classDescriptor;
+            let _classExtraInitializers = [];
+            let _classThis;
+            let _classSuper = Element;
+            var WithConstructorName1 = class extends _classSuper {
+                static { _classThis = this; }
+                static {
+                    const _metadata = typeof Symbol === "function" && Symbol.metadata ? Object.create(_classSuper[Symbol.metadata] ?? null) : void 0;
+                    __esDecorate(null, _classDescriptor = { value: _classThis }, _classDecorators, { kind: "class", name: _classThis.name, metadata: _metadata }, null, _classExtraInitializers);
+                    WithConstructorName1 = _classThis = _classDescriptor.value;
+                    if (_metadata) Object.defineProperty(_classThis, Symbol.metadata, { enumerable: true, configurable: true, writable: true, value: _metadata });
+                    __runInitializers(_classThis, _classExtraInitializers);
+                }
+            };
+            return WithConstructorName1 = _classThis;
+        })();
+        expect(WithConstructorName1.elementName).toBe('with-constructor-name1');
+        const el = new WithConstructorName1();
+        document.body.append(el);
+        expect(el.tagName.toLowerCase()).toBe('with-constructor-name1');
+        el.remove();
+        let WithConstructorName2 = (() => {
+            let _classDecorators = [element];
+            let _classDescriptor;
+            let _classExtraInitializers = [];
+            let _classThis;
+            let _classSuper = Element;
+            var WithConstructorName2 = class extends _classSuper {
+                static { _classThis = this; }
+                static {
+                    const _metadata = typeof Symbol === "function" && Symbol.metadata ? Object.create(_classSuper[Symbol.metadata] ?? null) : void 0;
+                    __esDecorate(null, _classDescriptor = { value: _classThis }, _classDecorators, { kind: "class", name: _classThis.name, metadata: _metadata }, null, _classExtraInitializers);
+                    WithConstructorName2 = _classThis = _classDescriptor.value;
+                    if (_metadata) Object.defineProperty(_classThis, Symbol.metadata, { enumerable: true, configurable: true, writable: true, value: _metadata });
+                }
+                static autoDefine = false; // don't automatically define in window.customElements
+                static {
+                    __runInitializers(_classThis, _classExtraInitializers);
+                }
+            };
+            return WithConstructorName2 = _classThis;
+        })();
+        expect(WithConstructorName2.elementName).toBe('with-constructor-name2');
+        // it throws because the element is not defined yet.
+        expect(() => new WithConstructorName2()).toThrow();
+        WithConstructorName2.defineElement();
+        const el2 = new WithConstructorName2();
+        document.body.append(el2);
+        expect(el2.tagName.toLowerCase()).toBe('with-constructor-name2');
+        el2.remove();
+        const WithConstructorName3 = WithConstructorName2.defineElement('with-constructor-name3');
+        expect(WithConstructorName3.elementName).toBe('with-constructor-name3');
+        const el3 = document.createElement('with-constructor-name3');
+        document.body.append(el3);
+        expect(el3.tagName.toLowerCase()).toBe('with-constructor-name3');
+        el3.remove();
+        let WithConstructorName4 = (() => {
+            let _classDecorators = [element('', false)];
+            let _classDescriptor;
+            let _classExtraInitializers = [];
+            let _classThis;
+            let _classSuper = Element;
+            var WithConstructorName4 = class extends _classSuper {
+                static { _classThis = this; }
+                static {
+                    const _metadata = typeof Symbol === "function" && Symbol.metadata ? Object.create(_classSuper[Symbol.metadata] ?? null) : void 0;
+                    __esDecorate(null, _classDescriptor = { value: _classThis }, _classDecorators, { kind: "class", name: _classThis.name, metadata: _metadata }, null, _classExtraInitializers);
+                    WithConstructorName4 = _classThis = _classDescriptor.value;
+                    if (_metadata) Object.defineProperty(_classThis, Symbol.metadata, { enumerable: true, configurable: true, writable: true, value: _metadata });
+                    __runInitializers(_classThis, _classExtraInitializers);
+                }
+            };
+            return WithConstructorName4 = _classThis;
+        })();
+        expect(WithConstructorName4.elementName).toBe('with-constructor-name4');
+        // it throws because the element is not defined yet.
+        expect(() => new WithConstructorName4()).toThrow();
+        WithConstructorName4.defineElement();
+        const el4 = new WithConstructorName4();
+        document.body.append(el4);
+        expect(el4.tagName.toLowerCase()).toBe('with-constructor-name4');
+        el4.remove();
+        let WithConstructorName5 = (() => {
+            let _classDecorators = [element({ autoDefine: false })];
+            let _classDescriptor;
+            let _classExtraInitializers = [];
+            let _classThis;
+            let _classSuper = Element;
+            var WithConstructorName5 = class extends _classSuper {
+                static { _classThis = this; }
+                static {
+                    const _metadata = typeof Symbol === "function" && Symbol.metadata ? Object.create(_classSuper[Symbol.metadata] ?? null) : void 0;
+                    __esDecorate(null, _classDescriptor = { value: _classThis }, _classDecorators, { kind: "class", name: _classThis.name, metadata: _metadata }, null, _classExtraInitializers);
+                    WithConstructorName5 = _classThis = _classDescriptor.value;
+                    if (_metadata) Object.defineProperty(_classThis, Symbol.metadata, { enumerable: true, configurable: true, writable: true, value: _metadata });
+                    __runInitializers(_classThis, _classExtraInitializers);
+                }
+            };
+            return WithConstructorName5 = _classThis;
+        })();
+        expect(WithConstructorName5.elementName).toBe('with-constructor-name5');
+        // it throws because the element is not defined yet.
+        expect(() => new WithConstructorName5()).toThrow();
+        WithConstructorName5.defineElement();
+        const el5 = new WithConstructorName5();
+        document.body.append(el5);
+        expect(el5.tagName.toLowerCase()).toBe('with-constructor-name5');
+        el5.remove();
+        let WithConstructorName6 = (() => {
+            let _classDecorators = [element('')];
+            let _classDescriptor;
+            let _classExtraInitializers = [];
+            let _classThis;
+            let _classSuper = Element;
+            var WithConstructorName6 = class extends _classSuper {
+                static { _classThis = this; }
+                static {
+                    const _metadata = typeof Symbol === "function" && Symbol.metadata ? Object.create(_classSuper[Symbol.metadata] ?? null) : void 0;
+                    __esDecorate(null, _classDescriptor = { value: _classThis }, _classDecorators, { kind: "class", name: _classThis.name, metadata: _metadata }, null, _classExtraInitializers);
+                    WithConstructorName6 = _classThis = _classDescriptor.value;
+                    if (_metadata) Object.defineProperty(_classThis, Symbol.metadata, { enumerable: true, configurable: true, writable: true, value: _metadata });
+                    __runInitializers(_classThis, _classExtraInitializers);
+                }
+            };
+            return WithConstructorName6 = _classThis;
+        })();
+        expect(WithConstructorName6.elementName).toBe('with-constructor-name6');
+        const el6 = new WithConstructorName6();
+        document.body.append(el6);
+        expect(el6.tagName.toLowerCase()).toBe('with-constructor-name6');
+        el6.remove();
+    });
     it('ensures initial field values act as default attribute values when attributes removed, with decorator syntax', () => {
         let DefaultValueTest = (() => {
             let _classDecorators = [element('default-values-with-decorators')];
@@ -65,8 +353,8 @@ describe('@element decorator', () => {
             let _baz2_decorators;
             let _baz2_initializers = [];
             let _baz2_extraInitializers = [];
-            let _get_accessor_decorators;
-            let _set_accessor_decorators;
+            let _get_gettersetter_decorators;
+            let _set_gettersetter_decorators;
             var DefaultValueTest = class extends _classSuper {
                 static { _classThis = this; }
                 static {
@@ -78,10 +366,10 @@ describe('@element decorator', () => {
                     _bool2_decorators = [booleanAttribute];
                     _baz_decorators = [stringAttribute];
                     _baz2_decorators = [stringAttribute];
-                    _get_accessor_decorators = [numberAttribute];
-                    _set_accessor_decorators = [numberAttribute];
-                    __esDecorate(this, null, _get_accessor_decorators, { kind: "getter", name: "accessor", static: false, private: false, access: { has: obj => "accessor" in obj, get: obj => obj.accessor }, metadata: _metadata }, null, _instanceExtraInitializers);
-                    __esDecorate(this, null, _set_accessor_decorators, { kind: "setter", name: "accessor", static: false, private: false, access: { has: obj => "accessor" in obj, set: (obj, value) => { obj.accessor = value; } }, metadata: _metadata }, null, _instanceExtraInitializers);
+                    _get_gettersetter_decorators = [numberAttribute];
+                    _set_gettersetter_decorators = [numberAttribute];
+                    __esDecorate(this, null, _get_gettersetter_decorators, { kind: "getter", name: "gettersetter", static: false, private: false, access: { has: obj => "gettersetter" in obj, get: obj => obj.gettersetter }, metadata: _metadata }, null, _instanceExtraInitializers);
+                    __esDecorate(this, null, _set_gettersetter_decorators, { kind: "setter", name: "gettersetter", static: false, private: false, access: { has: obj => "gettersetter" in obj, set: (obj, value) => { obj.gettersetter = value; } }, metadata: _metadata }, null, _instanceExtraInitializers);
                     __esDecorate(null, null, _foo_decorators, { kind: "field", name: "foo", static: false, private: false, access: { has: obj => "foo" in obj, get: obj => obj.foo, set: (obj, value) => { obj.foo = value; } }, metadata: _metadata }, _foo_initializers, _foo_extraInitializers);
                     __esDecorate(null, null, _bar_decorators, { kind: "field", name: "bar", static: false, private: false, access: { has: obj => "bar" in obj, get: obj => obj.bar, set: (obj, value) => { obj.bar = value; } }, metadata: _metadata }, _bar_initializers, _bar_extraInitializers);
                     __esDecorate(null, null, _num_decorators, { kind: "field", name: "num", static: false, private: false, access: { has: obj => "num" in obj, get: obj => obj.num, set: (obj, value) => { obj.num = value; } }, metadata: _metadata }, _num_initializers, _num_extraInitializers);
@@ -109,10 +397,10 @@ describe('@element decorator', () => {
                 // The default attribute value will be 123, from the .num property.
                 ));
                 // The default attribute value will be 123, from the .num property.
-                get accessor() {
+                get gettersetter() {
                     return this.num;
                 }
-                set accessor(v) {
+                set gettersetter(v) {
                     this.num = v;
                 }
                 constructor() {
@@ -124,7 +412,7 @@ describe('@element decorator', () => {
         })();
         let el = document.createElement('default-values-with-decorators');
         document.body.append(el);
-        testAttributes(el, 'accessor');
+        testAttributes(el, 'gettersetter');
         el.remove();
         let DefaultValueTestSubclass = (() => {
             let _classDecorators = [element('default-values-with-decorators-subclass')];
@@ -154,8 +442,8 @@ describe('@element decorator', () => {
             let _yes2_decorators;
             let _yes2_initializers = [];
             let _yes2_extraInitializers = [];
-            let _get_accessor2_decorators;
-            let _set_accessor2_decorators;
+            let _get_gettersetter2_decorators;
+            let _set_gettersetter2_decorators;
             var DefaultValueTestSubclass = class extends _classSuper {
                 static { _classThis = this; }
                 static {
@@ -167,10 +455,10 @@ describe('@element decorator', () => {
                     _amit_decorators = [booleanAttribute];
                     _yes_decorators = [stringAttribute];
                     _yes2_decorators = [stringAttribute];
-                    _get_accessor2_decorators = [numberAttribute];
-                    _set_accessor2_decorators = [numberAttribute];
-                    __esDecorate(this, null, _get_accessor2_decorators, { kind: "getter", name: "accessor2", static: false, private: false, access: { has: obj => "accessor2" in obj, get: obj => obj.accessor2 }, metadata: _metadata }, null, _instanceExtraInitializers);
-                    __esDecorate(this, null, _set_accessor2_decorators, { kind: "setter", name: "accessor2", static: false, private: false, access: { has: obj => "accessor2" in obj, set: (obj, value) => { obj.accessor2 = value; } }, metadata: _metadata }, null, _instanceExtraInitializers);
+                    _get_gettersetter2_decorators = [numberAttribute];
+                    _set_gettersetter2_decorators = [numberAttribute];
+                    __esDecorate(this, null, _get_gettersetter2_decorators, { kind: "getter", name: "gettersetter2", static: false, private: false, access: { has: obj => "gettersetter2" in obj, get: obj => obj.gettersetter2 }, metadata: _metadata }, null, _instanceExtraInitializers);
+                    __esDecorate(this, null, _set_gettersetter2_decorators, { kind: "setter", name: "gettersetter2", static: false, private: false, access: { has: obj => "gettersetter2" in obj, set: (obj, value) => { obj.gettersetter2 = value; } }, metadata: _metadata }, null, _instanceExtraInitializers);
                     __esDecorate(null, null, _lorem_decorators, { kind: "field", name: "lorem", static: false, private: false, access: { has: obj => "lorem" in obj, get: obj => obj.lorem, set: (obj, value) => { obj.lorem = value; } }, metadata: _metadata }, _lorem_initializers, _lorem_extraInitializers);
                     __esDecorate(null, null, _ipsum_decorators, { kind: "field", name: "ipsum", static: false, private: false, access: { has: obj => "ipsum" in obj, get: obj => obj.ipsum, set: (obj, value) => { obj.ipsum = value; } }, metadata: _metadata }, _ipsum_initializers, _ipsum_extraInitializers);
                     __esDecorate(null, null, _dolor_decorators, { kind: "field", name: "dolor", static: false, private: false, access: { has: obj => "dolor" in obj, get: obj => obj.dolor, set: (obj, value) => { obj.dolor = value; } }, metadata: _metadata }, _dolor_initializers, _dolor_extraInitializers);
@@ -198,10 +486,10 @@ describe('@element decorator', () => {
                 // The default attribute value will be 123, from the .dolor property.
                 ));
                 // The default attribute value will be 123, from the .dolor property.
-                get accessor2() {
+                get gettersetter2() {
                     return this.dolor;
                 }
-                set accessor2(v) {
+                set gettersetter2(v) {
                     this.dolor = v;
                 }
                 constructor() {
@@ -214,21 +502,21 @@ describe('@element decorator', () => {
         DefaultValueTestSubclass;
         el = document.createElement('default-values-with-decorators-subclass');
         document.body.append(el);
-        testAttributes(el, 'accessor');
-        testAttributes(el, 'accessor2', 'lorem', 'ipsum', 'dolor', 'set', 'amit', 'yes', 'yes2');
+        testAttributes(el, 'gettersetter');
+        testAttributes(el, 'gettersetter2', 'lorem', 'ipsum', 'dolor', 'set', 'amit', 'yes', 'yes2');
         el.remove();
     });
     it('ensures initial field values act as default attribute values when attributes removed, no decorator syntax, class fields', () => {
         const DefaultValueTest = element('default-values-without-decorators')(class extends Element {
             static observedAttributeHandlers = {
                 foo: {},
-                bar: attribute.string(),
-                num: attribute.number(),
-                bool: attribute.boolean(),
-                bool2: attribute.boolean(),
-                baz: attribute.string(),
-                baz2: attribute.string(),
-                accessor: attribute.number(),
+                bar: attribute.string,
+                num: attribute.number,
+                bool: attribute.boolean,
+                bool2: attribute.boolean,
+                baz: attribute.string,
+                baz2: attribute.string,
+                gettersetter: attribute.number,
             };
             foo = 'foo';
             bar = 'bar';
@@ -239,27 +527,27 @@ describe('@element decorator', () => {
             // @ts-expect-error
             baz;
             baz2 = null;
-            get accessor() {
+            get gettersetter() {
                 return this.num;
             }
-            set accessor(v) {
+            set gettersetter(v) {
                 this.num = v;
             }
         });
         let el = document.createElement('default-values-without-decorators');
         document.body.append(el);
-        testAttributes(el, 'accessor');
+        testAttributes(el, 'gettersetter');
         el.remove();
         element('default-values-without-decorators-subclass')(class DefaultValueTestSubclass extends DefaultValueTest {
             static observedAttributeHandlers = {
                 lorem: {},
-                ipsum: attribute.string(),
-                dolor: attribute.number(),
-                set: attribute.boolean(),
-                amit: attribute.boolean(),
-                yes: attribute.string(),
-                yes2: attribute.string(),
-                accessor2: attribute.number(),
+                ipsum: attribute.string,
+                dolor: attribute.number,
+                set: attribute.boolean,
+                amit: attribute.boolean,
+                yes: attribute.string,
+                yes2: attribute.string,
+                gettersetter2: attribute.number,
             };
             lorem = 'foo';
             ipsum = 'bar';
@@ -270,29 +558,29 @@ describe('@element decorator', () => {
             // @ts-expect-error
             yes;
             yes2 = null;
-            get accessor2() {
+            get gettersetter2() {
                 return this.dolor;
             }
-            set accessor2(v) {
+            set gettersetter2(v) {
                 this.dolor = v;
             }
         });
         el = document.createElement('default-values-without-decorators-subclass');
         document.body.append(el);
-        testAttributes(el, 'accessor');
-        testAttributes(el, 'accessor2', 'lorem', 'ipsum', 'dolor', 'set', 'amit', 'yes', 'yes2');
+        testAttributes(el, 'gettersetter');
+        testAttributes(el, 'gettersetter2', 'lorem', 'ipsum', 'dolor', 'set', 'amit', 'yes', 'yes2');
         el.remove();
     });
     it('ensures initial field values act as default attribute values when attributes removed, no decorator syntax, constructor properties', () => {
         const DefaultValueTest = element('default-values-without-decorators-constructor-props')(class extends Element {
             static observedAttributeHandlers = {
                 foo: {},
-                bar: attribute.string(),
-                num: attribute.number(),
-                bool: attribute.boolean(),
-                bool2: attribute.boolean(),
-                baz: attribute.string(),
-                baz2: attribute.string(),
+                bar: attribute.string,
+                num: attribute.number,
+                bool: attribute.boolean,
+                bool2: attribute.boolean,
+                baz: attribute.string,
+                baz2: attribute.string,
             };
             constructor() {
                 super();
@@ -320,12 +608,12 @@ describe('@element decorator', () => {
         element('default-values-without-decorators-constructor-props-subclass')(class DefaultValueTestSubclass extends DefaultValueTest {
             static observedAttributeHandlers = {
                 lorem: {},
-                ipsum: attribute.string(),
-                dolor: attribute.number(),
-                set: attribute.boolean(),
-                amit: attribute.boolean(),
-                yes: attribute.string(),
-                yes2: attribute.string(),
+                ipsum: attribute.string,
+                dolor: attribute.number,
+                set: attribute.boolean,
+                amit: attribute.boolean,
+                yes: attribute.string,
+                yes2: attribute.string,
             };
             constructor() {
                 super();
@@ -505,7 +793,7 @@ describe('@element decorator', () => {
     it('automatically does not track reactivity in constructors when not using decorators', () => {
         const Foo = element('untracked-ctor3')(class Foo extends Element {
             static observedAttributeHandlers = {
-                amount: attribute.number(),
+                amount: attribute.number,
             };
             amount = 3;
         });
@@ -513,7 +801,7 @@ describe('@element decorator', () => {
             static observedAttributeHandlers = {
                 // __proto__: super.observedAttributeHandlers,
                 // ...super.observedAttributeHandlers,
-                double: attribute.number(),
+                double: attribute.number,
             };
             double = 0;
             constructor() {
@@ -539,7 +827,7 @@ describe('@element decorator', () => {
         expect(b).toBe(b2);
     });
 });
-function testAttributes(el, accessor = '', foo = 'foo', bar = 'bar', num = 'num', bool = 'bool', bool2 = 'bool2', baz = 'baz', baz2 = 'baz2') {
+function testAttributes(el, gettersetter = '', foo = 'foo', bar = 'bar', num = 'num', bool = 'bool', bool2 = 'bool2', baz = 'baz', baz2 = 'baz2') {
     el.setAttribute(foo, 'blah');
     // @ts-ignore
     expect(el[foo]).toBe('blah');
@@ -585,13 +873,13 @@ function testAttributes(el, accessor = '', foo = 'foo', bar = 'bar', num = 'num'
     el.removeAttribute(baz2);
     // @ts-ignore
     expect(el[baz2] === null).toBe(true);
-    if (accessor) {
-        el.setAttribute(accessor, '456');
+    if (gettersetter) {
+        el.setAttribute(gettersetter, '456');
         // @ts-ignore
-        expect(el[accessor]).toBe(456);
-        el.removeAttribute(accessor);
+        expect(el[gettersetter]).toBe(456);
+        el.removeAttribute(gettersetter);
         // @ts-ignore
-        expect(el[accessor]).toBe(123);
+        expect(el[gettersetter]).toBe(123);
     }
 }
 //# sourceMappingURL=element.test.js.map
