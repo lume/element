@@ -2,9 +2,16 @@ import './metadata-shim.js'
 import {untrack} from 'solid-js'
 import {reactive, signalify} from 'classy-solid'
 import {Element, type AttributeHandlerMap} from '../LumeElement.js'
-import {__classFinishers, __setUpAttribute, __attributesToProps, type AttributeHandler} from './attribute.js'
+import {
+	__classFinishers,
+	__setUpAttribute,
+	__attributesToProps,
+	type AttributeHandler,
+	type AttributePropSpec,
+} from './attribute.js'
 import type {AnyConstructor} from 'lowclass/dist/Constructor.js'
 import type {PropKey} from 'classy-solid/dist/decorators/types.js'
+import {camelCaseToDash} from '../utils.js'
 
 type PossibleStatics = {
 	observedAttributes?: string[]
@@ -16,6 +23,13 @@ type PossibleStatics = {
 export type ElementCtor = typeof Element & PossibleStatics
 
 const isAttributeHandler = Symbol('isAttributeHandler')
+
+export interface ElementDecoratorOptions {
+	elementName?: string
+	autoDefine?: boolean
+}
+
+type ElementClassDecorator = <T extends AnyConstructor<HTMLElement>>(Class: T, context?: ClassDecoratorContext) => T
 
 /**
  * A class decorator that defines the target class as a custom element with the
@@ -85,38 +99,37 @@ const isAttributeHandler = Symbol('isAttributeHandler')
  * class CoolElement extends HTMLElement {...}
  * ```
  */
-export function element(
-	tagName: string,
-	autoDefine?: boolean,
-): <T extends AnyConstructor<HTMLElement>>(Class: T, context?: ClassDecoratorContext) => T
+export function element(tagName: string, autoDefine?: boolean): ElementClassDecorator
 export function element<T extends AnyConstructor<HTMLElement>>(Class: T, context?: ClassDecoratorContext): T
+export function element(options: ElementDecoratorOptions): ElementClassDecorator
 export function element(
-	tagNameOrClass: string | AnyConstructor<HTMLElement>,
+	tagNameOrClassOrOptions: string | ElementDecoratorOptions | AnyConstructor<HTMLElement> = {},
 	autoDefineOrContext?: boolean | ClassDecoratorContext,
 ): any {
-	let tagName = ''
-	let autoDefine = !!(autoDefineOrContext ?? true)
-
-	// when called as a decorator factory, f.e. `@element('foo-bar') class MyEl ...` or `element('my-el')(class MyEl ...)`
-	if (typeof tagNameOrClass === 'string') {
-		tagName = tagNameOrClass
-		return (Class: AnyConstructor<HTMLElement>, context: ClassDecoratorContext) => {
-			return applyElementDecoration(Class as ElementCtor, context, tagName, autoDefine)
-		}
+	// when called as a decorator factory with tagName and autoDefine, f.e. `@element('my-el') class MyEl ...` or `element('my-el', false)(class MyEl ...)`
+	if (typeof tagNameOrClassOrOptions === 'string') {
+		const elementName = tagNameOrClassOrOptions
+		const autoDefine = !!(autoDefineOrContext ?? true)
+		return (Class: AnyConstructor<HTMLElement>, context: ClassDecoratorContext) =>
+			applyElementDecoration(Class as ElementCtor, context, {elementName, autoDefine})
 	}
 
-	// Otherwise `@element class MyEl ...` or `element(class MyEl ...)`
-	autoDefine = false
-	const Class = tagNameOrClass
+	// when called as a decorator factory with or without an options object, f.e. `@element() class MyEl ...` or `@element({tagName: 'my-el'}) class MyEl ...` or `element({tagName: 'my-el', autoDefine: false})(class MyEl ...)`
+	if (typeof tagNameOrClassOrOptions === 'object') {
+		return (Class: AnyConstructor<HTMLElement>, context: ClassDecoratorContext) =>
+			applyElementDecoration(Class as ElementCtor, context, tagNameOrClassOrOptions)
+	}
+
+	// Otherwise called as a decorator, f.e. `@element class MyEl ...` or `element(class MyEl ...)`
+	const Class = tagNameOrClassOrOptions
 	const context = autoDefineOrContext as DecoratorContext | undefined
-	return applyElementDecoration(Class as ElementCtor, context, tagName, autoDefine)
+	return applyElementDecoration(Class as ElementCtor, context)
 }
 
 function applyElementDecoration(
 	Class: ElementCtor,
 	context: DecoratorContext | undefined,
-	tagName: string,
-	autoDefine: boolean,
+	options: ElementDecoratorOptions = {},
 ): any {
 	if (typeof Class !== 'function' || (context && context.kind !== 'class'))
 		throw new Error('@element is only for use on classes.')
@@ -127,11 +140,7 @@ function applyElementDecoration(
 	// Check only own metadata.noSignal, we don't want to use the one inherited from a base class.
 	const noSignal = (Object.hasOwn(metadata, 'noSignal') && (metadata.noSignal as Set<PropKey>)) || undefined
 
-	let Ctor = Class
-	const attrs = Ctor.observedAttributes
-
-	if (Ctor.hasOwnProperty('elementName')) tagName = Ctor.elementName || tagName
-	else Ctor.elementName = tagName
+	const attrs = Class.observedAttributes
 
 	if (Array.isArray(attrs)) {
 		// Nothing to do here: either the user provided a regular
@@ -139,15 +148,16 @@ function applyElementDecoration(
 		// they used our decorators which happen to create the array for
 		// them.
 	} else if (attrs && typeof attrs === 'object') {
-		// When we're not using decorators, our users have the option to
-		// provide an observedAttributes object (instead of the usual
-		// array) to specify attribute types. In this case, we need to
-		// track the types, and convert observedAttributes to an array so
-		// the browser will understand it like usual.
+		// When we're not using decorators, our users have the option to provide
+		// an observedAttributes object (instead of the usual array) to specify
+		// attribute types (deprecated, use observedAttributeHandlers instead).
+		// In this case, we need to track the types, and convert
+		// observedAttributes to an array so the browser will understand it like
+		// usual.
 
 		// Delete it, so that it will be re-created as an array by the
 		// following __setUpAttribute calls.
-		Ctor.observedAttributes = undefined
+		Class.observedAttributes = undefined
 
 		const stack = new Error().stack
 		console.warn(
@@ -157,11 +167,21 @@ function applyElementDecoration(
 
 		const _attrs = attrs as AttributeHandlerMap
 
-		for (const prop in _attrs) __setUpAttribute(Ctor, prop, attrs[prop]!)
+		for (const prop in _attrs) {
+			const handler = _attrs[prop]!
+			const attrName = (handler.name ?? (handler.dashcase === false ? prop : camelCaseToDash(prop))).toLowerCase()
+			__setUpAttribute(Class, attrName, prop, handler)
+		}
 	}
 
-	const handlers = Object.hasOwn(Ctor, 'observedAttributeHandlers') ? Ctor.observedAttributeHandlers : undefined
-	if (handlers) for (const prop of Object.keys(handlers)) __setUpAttribute(Ctor, prop, handlers[prop]!)
+	const handlers = Object.hasOwn(Class, 'observedAttributeHandlers') ? Class.observedAttributeHandlers : undefined
+
+	if (handlers) {
+		for (const [prop, handler] of Object.entries(handlers)) {
+			const attrName = (handler.name ?? (handler.dashcase === false ? prop : camelCaseToDash(prop))).toLowerCase()
+			__setUpAttribute(Class, attrName, prop, handlers[prop]!)
+		}
+	}
 
 	// @prod-prune
 	queueMicrotask(() => {
@@ -175,9 +195,9 @@ function applyElementDecoration(
 	})
 
 	// We need to compose with @reactive so that it will signalify any @signal properties.
-	Ctor = reactive(Ctor, context)
+	const ReactiveDecorated: ElementCtor = reactive(Class, context)
 
-	class ElementDecorator extends Ctor {
+	class ElementDecorated extends ReactiveDecorated {
 		constructor(...args: any[]) {
 			// @ts-expect-error we don't know what the user's args will be, just pass them all.
 			super(...args)
@@ -187,7 +207,7 @@ function applyElementDecoration(
 			untrack(() => {
 				handlePreUpgradeValues(this)
 
-				const attrsToProps = ElementDecorator.prototype[__attributesToProps] ?? {}
+				const attrsToProps = ElementDecorated.prototype[__attributesToProps] ?? {}
 
 				// We're using Object.values here for *own* properties so
 				// we handle properties of the current decorated class (not
@@ -266,7 +286,7 @@ function applyElementDecoration(
 
 					// Default values for fields are handled in their initializer,
 					// and this catches default values for getters/setters.
-					if (!('default' in handler)) handler.default = initialValue
+					if (!('default' in propSpec)) propSpec.default = 'default' in handler ? handler.default : initialValue
 					handler.sideEffect?.(this, prop as string, initialValue)
 
 					let storage: symbol | undefined
@@ -301,12 +321,14 @@ function applyElementDecoration(
 					const newSetter = isAccessor
 						? // function because it will be on the prototype, needs dynamic `this`
 							(function (this: Element, value: any) {
-								if (typeof value === 'string' || value === null) value = __handleAttributeValue(value, handler)
+								if (typeof value === 'string' || value === null)
+									value = __handleAttributeValue(value, handler, propSpec)
 								untrack(() => handler.sideEffect?.(this, prop as string, value))
 								set!.call(this, value)
 							} as HandlerSetter)
 						: (function (this: Element, value: any) {
-								if (typeof value === 'string' || value === null) value = __handleAttributeValue(value, handler)
+								if (typeof value === 'string' || value === null)
+									value = __handleAttributeValue(value, handler, propSpec)
 								untrack(() => handler.sideEffect?.(this, prop as string, value))
 								// @ts-expect-error indexed access with symbol
 								this[storage!] = value
@@ -330,11 +352,18 @@ function applyElementDecoration(
 	__classFinishers.length = 0
 
 	function finishClass() {
-		for (const finisher of classFinishers) finisher(ElementDecorator)
+		// This need to be here in the finisher because it will run *after*
+		// static class fields (the decorator function itself runs before static
+		// class fields are ready).
+		options.elementName ||= Class.elementName || camelCaseToDash(Class.name)
+		options.autoDefine ??= Class.autoDefine
+		Object.assign(Class, options)
 
-		if (tagName && autoDefine)
+		for (const finisher of classFinishers) finisher(ElementDecorated)
+
+		if (options.elementName && options.autoDefine)
 			// guard against missing DOM API (f.e. SSR)
-			globalThis.window?.customElements?.define(tagName, ElementDecorator)
+			globalThis.window?.customElements?.define(options.elementName, ElementDecorated)
 	}
 
 	if (context?.addInitializer) {
@@ -353,7 +382,7 @@ function applyElementDecoration(
 		finishClass()
 	}
 
-	return ElementDecorator
+	return ElementDecorated
 }
 
 function handlePreUpgradeValues(self: HTMLElement) {
@@ -386,14 +415,18 @@ function handlePreUpgradeValues(self: HTMLElement) {
 	}
 }
 
-function __handleAttributeValue(value: string | null, handler?: AttributeHandler) {
+function __handleAttributeValue(value: string | null, handler?: AttributeHandler, propSpec?: AttributePropSpec) {
 	// prettier-ignore
 	return !handler
 		? value
 		: value === null // attribute removed
-			? 'default' in handler
-				? handler.default
-				: null
+			// ? 'default' in handler
+			// 	? handler.default
+			// 	: null
+			// ? 'default' in propSpec!
+			// 	? propSpec!.default
+			// 	: null
+			? propSpec!.default
 			: handler.from
 				? handler.from(value)
 				: value

@@ -377,7 +377,7 @@ describe('LumeElement', () => {
 		const fooEl = document.createElement('foo-element') as FooElement
 		els.push(fooEl)
 
-		// fooEl is instanceof HTMLElement (not FooElement) at this point (ignore the type cast)
+		// fooEl is instanceof HTMLElement (not FooElement) at this point (ignore the above type cast)
 		expect(fooEl).toBeInstanceOf(HTMLElement)
 
 		document.body.append(fooEl)
@@ -576,11 +576,11 @@ describe('LumeElement', () => {
 
 				// When not using decorators, we can define the reactive attributes like this instead.
 				static override observedAttributeHandlers: AttributeHandlerMap = {
-					foo: attribute.string(),
-					baz: attribute.string(),
-					ping: attribute.string(),
-					pong: attribute.string(),
-					beep: attribute.string(),
+					foo: attribute.string,
+					baz: attribute.string,
+					ping: attribute.string,
+					pong: attribute.string,
+					beep: attribute.string,
 				}
 
 				foo = 3
@@ -716,13 +716,15 @@ describe('LumeElement', () => {
 
 	it('ensure wrapped @reactive decorator still automatically does not track reactivity in constructors', () => {
 		@element
-		class Foo extends Element {
+		class FooEl extends Element {
 			@attribute amount = 3
 		}
 
 		// previously caused an infinite constructor loop
-		@element('no-loop')
-		class Bar extends Foo {
+		@element
+		class NoLoop extends FooEl {
+			static override elementName = 'no-loop'
+
 			@attribute double = 0
 
 			constructor() {
@@ -731,12 +733,12 @@ describe('LumeElement', () => {
 			}
 		}
 
-		let b: Bar
+		let b: NoLoop
 		let count = 0
 
 		function noLoop() {
 			createEffect(() => {
-				b = new Bar() // this should not track
+				b = new NoLoop() // this should not track
 				els.push(b)
 				count++
 			})
@@ -757,17 +759,21 @@ describe('LumeElement', () => {
 
 	it('ensure wrapped @reactive decorator still automatically does not track reactivity in constructors even when not the root most decorator', () => {
 		@element
-		class Foo extends Element {
+		class FooEl2 extends Element {
 			@attribute amount = 3
 		}
 
 		function someOtherDecorator(Class: any, _context: any): any {
-			return class Foo extends Class {}
+			const Sub = class Sub extends Class {}
+			Object.defineProperty(Sub, 'name', {value: Class.name, configurable: true})
+			return Sub
 		}
 
-		@someOtherDecorator
 		@element
-		class Bar extends Foo {
+		@someOtherDecorator
+		class NoLoop2 extends FooEl2 {
+			static override elementName = 'no-loop2'
+
 			@attribute double = 0
 
 			constructor() {
@@ -776,14 +782,12 @@ describe('LumeElement', () => {
 			}
 		}
 
-		customElements.define('no-loop2', Bar)
-
-		let b: Bar
+		let b: NoLoop2
 		let count = 0
 
 		function noLoop() {
 			createEffect(() => {
-				b = new Bar() // this should not track
+				b = new NoLoop2() // this should not track
 				els.push(b)
 				count++
 			})
@@ -810,10 +814,11 @@ describe('LumeElement', () => {
 		els.push(el)
 		document.body.append(el)
 
+		// The element is not upgraded yet.
 		expect(el).not.toBeInstanceOf(ManualEl)
 
 		ManualEl.defineElement()
-		ManualEl.defineElement() // no error
+		expect(() => ManualEl.defineElement()).toThrow() // already defined
 
 		expect(el).toBeInstanceOf(ManualEl)
 		expect(el.tagName.toLowerCase()).toBe(ManualEl.elementName)
@@ -825,8 +830,9 @@ describe('LumeElement', () => {
 		document.body.append(el2)
 
 		const ManualEl2 = ManualEl.defineElement(name2) as typeof ManualEl
-		ManualEl.defineElement(name2) // no error
-		ManualEl2.defineElement(name2) // no error
+		expect(() => ManualEl.defineElement(name2)).toThrow() // already defined
+		expect(() => ManualEl2.defineElement()).toThrow() // already defined
+		expect(() => ManualEl2.defineElement(name2)).toThrow() // already defined
 
 		expect(el2).toBeInstanceOf(ManualEl)
 		expect(el2).toBeInstanceOf(ManualEl2)

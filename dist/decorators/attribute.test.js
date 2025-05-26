@@ -753,9 +753,9 @@ describe('@attribute tests', () => {
     });
     const OverrideBase2 = element('override-base2')(class extends Element {
         static observedAttributeHandlers = {
-            foo: attribute.number(),
-            bar: attribute.string(),
-            baz: attribute.boolean(),
+            foo: attribute.number,
+            bar: attribute.string,
+            baz: attribute.boolean,
         };
         foo = 123;
         #bar = '123';
@@ -769,9 +769,9 @@ describe('@attribute tests', () => {
     });
     const OverrideSubclass2 = element('override-subclass2')(class extends OverrideBase2 {
         static observedAttributeHandlers = {
-            foo: attribute.string(),
-            bar: attribute.number(),
-            baz: attribute.string(),
+            foo: attribute.string,
+            bar: attribute.number,
+            baz: attribute.string,
         };
         // @ts-expect-error overriding with an incompatible type is fine in plain JS
         foo = '123';
@@ -1275,8 +1275,8 @@ describe('various types of attributes', () => {
             const onokThisIsTheFinalOne = (e) => (okThisIsTheFinalOneEvent = e);
             const MyEl = element('event-listeners2')(class extends Element {
                 static observedAttributeHandlers = {
-                    'onseriously-the-last-one': attribute.event(),
-                    onokThisIsTheFinalOne: attribute.event(),
+                    'onseriously-the-last-one': attribute.event,
+                    onokThisIsTheFinalOne: attribute.event,
                 };
                 'onseriously-the-last-one' = null;
                 onokThisIsTheFinalOne = null;
@@ -1418,8 +1418,8 @@ describe('various types of attributes', () => {
             win.okThisIsTheFinalOneEvent = null;
             const MyEl = element('event-listeners4')(class extends Element {
                 static observedAttributeHandlers = {
-                    'onseriously-the-last-one': attribute.event(),
-                    onokThisIsTheFinalOne: attribute.event(),
+                    'onseriously-the-last-one': attribute.event,
+                    onokThisIsTheFinalOne: attribute.event,
                 };
                 'onseriously-the-last-one' = null;
                 onokThisIsTheFinalOne = null;

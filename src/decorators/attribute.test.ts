@@ -485,9 +485,9 @@ describe('@attribute tests', () => {
 	const OverrideBase2 = element('override-base2')(
 		class extends Element {
 			static override observedAttributeHandlers: AttributeHandlerMap = {
-				foo: attribute.number(),
-				bar: attribute.string(),
-				baz: attribute.boolean(),
+				foo: attribute.number,
+				bar: attribute.string,
+				baz: attribute.boolean,
 			}
 
 			foo = 123
@@ -508,9 +508,9 @@ describe('@attribute tests', () => {
 	const OverrideSubclass2 = element('override-subclass2')(
 		class extends OverrideBase2 {
 			static override observedAttributeHandlers: AttributeHandlerMap = {
-				foo: attribute.string(),
-				bar: attribute.number(),
-				baz: attribute.string(),
+				foo: attribute.string,
+				bar: attribute.number,
+				baz: attribute.string,
 			}
 
 			// @ts-expect-error overriding with an incompatible type is fine in plain JS
@@ -955,8 +955,8 @@ describe('various types of attributes', () => {
 			const MyEl = element('event-listeners2')(
 				class extends Element {
 					static override observedAttributeHandlers?: AttributeHandlerMap | undefined = {
-						'onseriously-the-last-one': attribute.event(),
-						onokThisIsTheFinalOne: attribute.event(),
+						'onseriously-the-last-one': attribute.event,
+						onokThisIsTheFinalOne: attribute.event,
 					}
 
 					'onseriously-the-last-one': EventListener | null = null
@@ -1110,8 +1110,8 @@ describe('various types of attributes', () => {
 			const MyEl = element('event-listeners4')(
 				class extends Element {
 					static override observedAttributeHandlers?: AttributeHandlerMap | undefined = {
-						'onseriously-the-last-one': attribute.event(),
-						onokThisIsTheFinalOne: attribute.event(),
+						'onseriously-the-last-one': attribute.event,
+						onokThisIsTheFinalOne: attribute.event,
 					}
 
 					'onseriously-the-last-one': EventListener | null = null

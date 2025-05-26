@@ -38,7 +38,7 @@ import {Element, element, numberAttribute} from '@lume/element'
 import html from 'solid-js/html'
 import {createEffect} from 'solid-js'
 
-@element('click-counter')
+@element
 class ClickCounter extends Element {
   @numberAttribute count = 0
 
@@ -572,7 +572,7 @@ component. This shows that any regular Solid.js component can be
 used in the `template` of a custom element made with `@lume/element`:
 
 ```jsx
-@element('cool-element')
+@element // The 'cool-element' name is implied from the constructor name (dash-cased)
 class CoolElement extends Element {
   template = () => (
     <>
@@ -1033,8 +1033,10 @@ HTML attributes mapped to same-name JS properties:
 ```js
 import {Element, element} from '@lume/element'
 
-element('cool-element')(
+element(
   class CoolElement extends Element {
+    static elementName = 'cool-element'
+
     static observedAttributeHandlers = {
       foo: {from: Number},
       bar: {from: Boolean},
@@ -1069,13 +1071,15 @@ which are alternatives to a respective set of included [decorators](#decorators)
 ```js
 import {Element, element, attribute} from '@lume/element'
 
-element('cool-element')(
+element(
   class CoolElement extends Element {
+    static elementName = 'cool-element'
+
     static observedAttributeHandlers = {
-      lorem: {}, // Effectively the same as attribute.string()
-      foo: attribute.string(), // Effectively the same as the @stringAttribute decorator. Values get passed to the JS property as strings.
-      bar: attribute.number(), // Effectively the same as the @numberAttribute decorator. Values get passed to the JS property as numbers.
-      baz: attribute.boolean(), // Effectively the same as the @booleanAttribute decorator. Values get passed to the JS property as booleans.
+      lorem: {}, // Effectively the same as attribute.string
+      foo: attribute.string, // Effectively the same as the @stringAttribute decorator. Values get passed to the JS property as strings.
+      bar: attribute.number, // Effectively the same as the @numberAttribute decorator. Values get passed to the JS property as numbers.
+      baz: attribute.boolean, // Effectively the same as the @booleanAttribute decorator. Values get passed to the JS property as booleans.
 
       // Here we define an attribute with custom handling of the string value, in this case making it accept a JSON string that maps it to a parsed object on the JS property.
       bespoke: {from: value => JSON.parse(value)}, // f.e. besoke='{"b": true}' results in the JS property having the value `{b: true}`
@@ -1101,8 +1105,10 @@ JS engines), defining attributes with [decorators](#decorators) is simpler and m
 ```js
 import {Element, element, numberAttribute, booleanAttribute} from '@lume/element'
 
-@element('cool-element')
+@element
 class CoolElement extends Element {
+  static elementName = 'cool-element'
+
   // Due to the `@numberAttribute` decorator, any time the `"foo"` attribute
   // on the element changes, the attribute string value will be converted into a
   // `Number` and assigned to the JS `.foo` property.
@@ -1137,7 +1143,7 @@ getter/setter properties as well:
 ```js
 import {Element, element, numberAttribute, booleanAttribute} from '@lume/element'
 
-@element('cool-element')
+@element // The 'cool-element' name is implied from the constructor name (dash-cased)
 class CoolElement extends Element {
   #foo = 123
 
@@ -1157,7 +1163,7 @@ class CoolElement extends Element {
 They also work with "auto accessors", which creates a _prototype_ getter/setter:
 
 ```js
-@element('cool-element')
+@element
 class CoolElement extends Element {
   // The same rules with initial values and attribute removal apply.
   @numberAttribute accessor foo = 123
@@ -1187,7 +1193,7 @@ import {Element, element, attribute} from '@lume/element'
 const SomeEl = element('some-el')(
   class extends Element {
     static observedAttributeHandlers = {
-      onjump: attribute.event(),
+      onjump: attribute.event,
     }
 
     // Also define the property explicitly (here with an optional type definition).
@@ -1221,9 +1227,9 @@ type checking. See the [TypeScript](#typescript) section for more info.
 
 ### `static elementName`
 
-The default tag name of the elements this class instantiates. When using
-the `@element` decorator, this property will be set to the value defined
-by the decorator.
+The default tag name of the elements this class instantiates. When using the
+`@element` decorator, this name value will be used if a name value is not
+supplied to the decorator.
 
 ```js
 @element
@@ -1231,10 +1237,53 @@ class SomeEl extends LumeElement {
   static elementName = 'some-el'
 }
 
-SomeEl.defineElement() // defines <some-el> with the SomeEl class
+console.log(document.createElement('some-el') instanceof SomeEl) // true
 ```
 
 [Example on CodePen](https://codepen.io/trusktr/pen/ZEdgMZY)
+
+### `static autoDefine`
+
+Set this to `false` to tell the `@element` decorator (or `element()` when called
+as a function) to not automatically define the element in the global
+`customElements` registry. When un-specified, it defaults to `true`.
+
+```js
+@element
+class SomeEl extends LumeElement {
+  static elementName = 'some-el'
+  static autoDefine = false
+}
+
+const el = document.createElement('some-el')
+console.log(el instanceof SomeEl) // false
+customElements.define(SomeEl.elementName, SomeEl)
+console.log(el instanceof SomeEl) // true
+```
+
+Preventing automatic definition can be useful for use with non-global
+CustomElementRegistry instances for scoping element definitions to ShadowRoots,
+
+```js
+// Use a non-global element registry instead of the default global element registry:
+const myRegistry = new CustomElementRegistry()
+SomeEl.defineElement(myRegistry)
+
+// Use the non-global registry for scoped element definitions inside a custom element's ShadowRoot:
+class SomeElementWithScopedRegistry extends HTMLElement {
+  constructor() {
+    super()
+    const root = this.attachShadow({mode: 'open', customElementRegistry: myRegistry})
+    root.innerHTML = `<some-el></some-el>`
+  }
+}
+```
+
+or for re-naming elements in case of a name collision:
+
+```js
+SomeEl.defineElement('some-el-renamed')
+```
 
 ### `static defineElement`
 
@@ -1245,19 +1294,41 @@ defined using the `@element` decorator. Defaults to using the global
 ShadowRoot-scoped registry) as a second argument.
 
 ```js
-@element('some-el') // defines <some-el> with the decorated class
+// Defines <some-el> with the decorated class, using the passed-in name.
+@element('some-el')
 class SomeEl extends LumeElement {}
 
-const OtherEl = SomeEl.defineElement('other-el') // defines <other-el> with an empty subclass of SomeEl
+// Defines <other-el> with an empty subclass of SomeEl using the name passed
+// into .defineElement().
+const OtherEl = SomeEl.defineElement('other-el')
 console.log(OtherEl === SomeEl) // false
 
-@element // without a name, the decorator does not perform the element definition
-class AnotherEl extends LumeElement {}
+@element
+class AnotherEl extends LumeElement {
+  static autoDefine = false
+}
 
+// The first call to .defineElement() will not make a subclass if the class has
+// not been used in a definition yet.
 const El = AnotherEl.defineElement('another-el') // defines <another-el>
 console.log(El === AnotherEl) // true
+
+// The second call to .defineElement() will make a new subclass.
 const El2 = AnotherEl.defineElement('yet-another-el') // defines <yet-another-el>
 console.log(El2 === AnotherEl) // false
+
+// Use a non-global element registry instead of the default global element registry:
+const myRegistry = new CustomElementRegistry()
+AnotherEl.defineElement('one-more-el', myRegistry)
+
+// Use the non-global registry for scoped element definitions inside a custom element's ShadowRoot:
+class SomeElementWithScopedRegistry extends HTMLElement {
+  constructor() {
+    super()
+    const root = this.attachShadow({mode: 'open', customElementRegistry: myRegistry})
+    root.innerHTML = `<one-more-el></one-more-el>`
+  }
+}
 ```
 
 If the class is already registered with another name, then the class will be
@@ -1524,9 +1595,11 @@ Here's the list of included attribute decorators and the attribute handler
 equivalents:
 
 - Use `@stringAttribute foo` in place of `foo: {}`
-- Use `@stringAttribute foo` in place of `foo: attribute.string()`
-- Use `@numberAttribute foo` in place of `foo: attribute.number()`
-- Use `@booleanAttribute foo` in place of `foo: attribute.boolean()`
+- Use `@stringAttribute foo` in place of `foo: attribute.string`
+- Use `@numberAttribute foo` in place of `foo: attribute.number`
+- Use `@booleanAttribute foo` in place of `foo: attribute.boolean`
+- Use `@eventAttribute foo` in place of `foo: attribute.event`
+- Use `@jsonAttribute foo` in place of `foo: attribute.json`
 
 > [!Warning]
 > When using attribute decorators, the `@element` decorator is also required on
@@ -1538,12 +1611,12 @@ Below are more details on each decorator:
 
 The star of the show, a decorator for defining a custom element.
 
-When passed a string, it will be the element's tag name:
+When passed a name string, it will be the element's tag name:
 
 ```js
 import {Element, element} from '@lume/element'
 
-@element('cool-element')
+@element('my-element') // <my-element> will be defined
 class CoolElement extends Element {
   // ...
 }
@@ -1553,27 +1626,21 @@ class CoolElement extends Element {
 > Make sure you extend from the `Element` base class from `@lume/element` when
 > using the `@element` decorator.
 
-When not passed a string, the element will not be defined (while reactivity
-features will still be applied), and `customElements.define` should be used
-manually, which can be useful for upcoming scoped registries:
+When not passed a name string, the name is derived from the dash-cased name of
+the class:
 
 ```js
 import {Element, element} from '@lume/element'
 
-@element
+@element // The 'cool-element' name is implied
 class CoolElement extends Element {
   // ...
 }
-
-customElements.define('cool-element', CoolElement)
-// or
-const myRegistry = new CustomElementRegistry()
-myRegistry.define('cool-element', CoolElement)
 ```
 
-Finally, even if passed a string for the element name, a second boolean option
-can disable automatic definition as well. The constructor's `.defineElement()`
-method can be used to trigger the definition using the given name:
+A second boolean argument can disable automatic definition in the global
+`customElements` registry. The constructor's `.defineElement()` method can then
+be used to manually trigger the definition using the given name:
 
 ```js
 import {Element, element} from '@lume/element'
@@ -1585,7 +1652,19 @@ class CoolElement extends Element {
   // ...
 }
 
-CoolElement.defineElement() // defines <cool-element>
+CoolElement.defineElement() // uses the global customElements to define <cool-element>
+// or
+const myRegistry = new CustomElementRegistry()
+CoolElement.defineElement(myRegistry) // uses a non-global registry to define <cool-element>
+
+// Use a non-global registry for scoped element definitions inside a custom element's ShadowRoot:
+class SomeElementWithScopedRegistry extends HTMLElement {
+  constructor() {
+    super()
+    const root = this.attachShadow({mode: 'open', customElementRegistry: myRegistry})
+    root.innerHTML = `<cool-element></cool-element>`
+  }
+}
 ```
 
 A custom name can be passed to `.defineElement()` too:
@@ -1593,6 +1672,64 @@ A custom name can be passed to `.defineElement()` too:
 ```js
 CoolElement.defineElement('other-element') // defines <other-element> (even if `<cool-element>` is already defined)
 ```
+
+`@element` also accepts options as an object:
+
+```js
+const autoDefine = false
+
+@element({elementName: 'cool-element', autoDefine})
+class CoolElement extends Element {
+  // ...
+}
+```
+
+```js
+const autoDefine = false
+
+@element({autoDefine}) // The "cool-element" name is implied.
+class CoolElement extends Element {
+  // ...
+}
+```
+
+Without passing arguments to `@element`, options can be specified using
+static class fields:
+
+```js
+const autoDefine = false
+
+@element
+class CoolElement extends Element {
+  static elementName = 'cool-element'
+  static autoDefine = autoDefine
+  // ...
+}
+```
+
+The last format is nice and clean if you like all the aspects of your class
+defined _within_ the class, or your minifier is mangling your class name. It is
+also useful in TypeScript to avoid repeating the class name multiple times:
+
+```ts
+const autoDefine = false
+
+@element
+class CoolElement extends Element {
+  static readonly elementName = 'cool-element'
+  static readonly autoDefine = autoDefine
+  // ...
+}
+
+declare global {
+  interface HTMLElementTagNameMap {
+    // This avoids error-prone repitition of 'cool-element' in multiple locations.
+    [CoolElement.elementName]: CoolElement
+  }
+}
+```
+
+See more on [TypeScript](#typescript) below.
 
 ### `@attribute`
 
@@ -1604,7 +1741,7 @@ The `@attribute` decorator is effectively the same as the `@stringAttribute` dec
 ```ts
 import {Element, element, attribute} from '@lume/element'
 
-@element('cool-element')
+@element
 class CoolElement extends Element {
   @attribute firstName = null // the attribute name is first-name
   // ...
@@ -1612,7 +1749,9 @@ class CoolElement extends Element {
 ```
 
 When an attribute is removed, the JS property will receive the default value
-determined by the initial value of the JS property.
+determined by the initial value of the JS property, ensuring consistency: when
+all attributes of an element are removed, the values the JS properties will have
+is known based on the class definition.
 
 Sample usage of the attribute from the outside:
 
@@ -1644,9 +1783,7 @@ el.removeAttribute('first-name')
 console.log(el.firstName) // logs "Batman"
 ```
 
-This is great because the intial values that we see in the class definition are
-always the expected values when the element has no attributes, or when all
-attributes are removed, making the outcome more _predictable and consistent_.
+The outcome is _predictable and consistent_.
 
 For TypeScript, if the initial value is a string and we're using `@attribute` (or
 `@stringAttribute`), then no type annotation is needed because it will always
@@ -1654,7 +1791,7 @@ receive a string (f.e. even when the attribute is removed) and the type will be
 inferred from the initial value:
 
 ```ts
-@element('cool-element')
+@element
 class CoolElement extends Element {
   @attribute firstName = 'Batman' // always a `string`
   // ...
@@ -1664,7 +1801,7 @@ class CoolElement extends Element {
 You could of course make the string type more specific,
 
 ```ts
-@element('cool-element')
+@element
 class CoolElement extends Element {
   @attribute firstName: 'Batman' | 'Robin' = 'Batman'
   // ...
@@ -1685,7 +1822,7 @@ mapped separately to internal structures:
 ```ts
 import {Element, element, attribute} from '@lume/element'
 
-@element('cool-element')
+@element
 class CoolElement extends Element {
   @attribute firstName: string | number = 'Batman'
   // ...
@@ -1697,6 +1834,8 @@ const el = document.querySelector('cool-element')
 
 el.firstName = 123 // ok
 ```
+
+#### Custom attribute handlers
 
 The `@attribute` decorator is also useful for defining custom handling of
 attributes. For example, the following shows how we can define an attribute that
@@ -1715,14 +1854,14 @@ const jsonAttribute = attribute({from: str => JSON.parse(str)})
 Now we can use the new `jsonAttribute` decorator in an element class:
 
 ```js
-@element('cool-element')
+@element
 class CoolElement extends Element {
   @jsonAttribute someValue = {foo: 123}
   // ...
 }
 ```
 
-Now in HTML it can accept a JSON string:
+Now in HTML/DOM the attribute can accept JSON strings:
 
 ```html
 <cool-element id="el" some-value='{"foo": 456}'></cool-element>
@@ -1733,10 +1872,10 @@ Now in HTML it can accept a JSON string:
 </script>
 ```
 
-Note that we could have used `attribute` result as a decorator directly,
+Note that we could have used `attribute()` as a decorator directly,
 
 ```js
-@element('cool-element')
+@element
 class CoolElement extends Element {
   @attribute({from: str => JSON.parse(str)}) someValue = {foo: 123}
   // ...
@@ -1747,11 +1886,16 @@ but then the result would not have been saved into a re-usable `jsonAttribute`
 variable, and the class field definition would have been a little messier to
 read.
 
-What new attribute decorators will you make? A `@stringEnumAttribute` that
-accepts only certain string values otherwise throws an error? A
-`@cssColorAttribute` that accepts only CSS-format color strings otherwise throws
-an error? A `@threeColorAttribute` that coerces CSS color values into Three.js
-`Color` objects? The sky is not the limit!
+What new attribute decorators will you make?
+
+- A `@stringEnumAttribute` that accepts only certain string values otherwise
+  throws an error?
+- A `@cssColorAttribute` that accepts only CSS-format color strings otherwise
+  throws an error?
+- A `@threeColorAttribute` that coerces CSS color values into Three.js `Color`
+  objects?
+
+The sky is not the limit!
 
 ### `@stringAttribute`
 
@@ -1775,7 +1919,7 @@ value will result in `NaN`).
 ```ts
 import {Element, element, numberAttribute} from '@lume/element'
 
-@element('cool-element')
+@element
 class CoolElement extends Element {
   @numberAttribute age = 10
   // ...
@@ -1805,7 +1949,7 @@ number. Add a type annotation only if you use a non-number initial value, f.e.
 ```ts
 import {Element, element, numberAttribute} from '@lume/element'
 
-@element('cool-element')
+@element
 class CoolElement extends Element {
   @numberAttribute age: 'ten' | number = 'ten'
   // ...
@@ -1844,7 +1988,7 @@ with an initial value of `false`:
 ```ts
 import {Element, element, booleanAttribute} from '@lume/element'
 
-@element('cool-element')
+@element
 class CoolElement extends Element {
   @booleanAttribute hasPizza = false
   // ...
@@ -1916,7 +2060,7 @@ predictability of default state.
 ```ts
 import {Element, element, booleanAttribute} from '@lume/element'
 
-@element('cool-element')
+@element
 class CoolElement extends Element {
   @booleanAttribute hasPizza = true
   // ...
@@ -2030,6 +2174,42 @@ in plain HTML as with native event attributes such as `onclick`:
 </body>
 ```
 
+### `@jsonAttribute`
+
+A decorator that defines an attribute that accepts JSON strings. In general, you
+want to avoid such complex attributes and instead provide a set of attributes
+that accept simple values. Setting (or deserializing) whole objects at a time
+for state changes can be too costly in performance sensitive situations.
+
+This can be usedul in certain scenarios such as wrapping a JavaScript API that
+accepts an object with unknown properties; in such a scenario we wouldn't know
+which attribute to define on the element, so we simply pass the object along:
+
+```js
+@element
+class HTMLInterfaceForSomeAPI extends Element {
+  static elementName = 'some-api'
+
+  @jsonAttribute data = {}
+
+  connectedCallback() {
+    super.connectedCallback()
+
+    this.createEffect(() => {
+      const obj = new SomeAPI(data)
+
+      // ...
+
+      onCleanup(() => obj.dispose())
+    })
+  }
+}
+```
+
+```html
+<some-api data='{"someValue": 123}'></some-api> <some-api data='{"otherValue": 456}'></some-api>
+```
+
 ### `@signal`
 
 This is from [`classy-solid`](https://github.com/lume/classy-solid) for creating
@@ -2049,7 +2229,7 @@ class Something {
 
 // An element class decoratorated with `@element` (or passed to `element()` when
 // not using decorators) does not also need to be decorated with `@reactive`:
-@element('cool-element')
+@element
 class CoolElement extends Element {
   // hasPizza will be reactive but an attribute will not be observed for this
   // property, and the property can only be set via JS.
@@ -2071,7 +2251,7 @@ reactive, for some reason. Avoid it if you can, but you can do it with
 ```ts
 import {Element, element, booleanAttribute, noSignal} from '@lume/element'
 
-@element('cool-element')
+@element
 class CoolElement extends Element {
   // This property gets updated when a `has-drink` attribute is updated, but it is not reactive.
   @booleanAttribute @noSignal hasDrink = false
@@ -2084,7 +2264,7 @@ reactivity for the property:
 ```ts
 import {Element, element, booleanAttribute, noSignal} from '@lume/element'
 
-@element('cool-element')
+@element
 class CoolElement extends Element {
   #hasDrink = false
 
@@ -2139,7 +2319,7 @@ An alternative approach is to throw an error in the `set`ter of an
 might already exist where the `@attribute` decorator is being added:
 
 ```js
-@element('cool-element')
+@element
 class CoolElement extends Element {
   #foo = 123
 
@@ -2163,12 +2343,18 @@ being defined, with non-null initial values:
 ```ts
 import {Element, element, attribute, stringAttribute, numberAttribute, booleanAttribute} from '@lume/element'
 
-@element('cool-element')
+@element
 class CoolElement extends Element {
+  static readonly elementName = 'cool-element'
+
   @attribute firstName: string = 'John'
   @stringAttribute lastName: string = 'Doe'
   @numberAttribute age: number = 75
   @booleanAttribute likesPizza: boolean = true
+  // jsonAttribute is implemented as an example above
+  @jsonAttribute info: SomeObject = {
+    /*...*/
+  }
   // ...
 }
 ```
@@ -2176,12 +2362,16 @@ class CoolElement extends Element {
 If properties are initialized with `null` values, add `| null` to each type:
 
 ```ts
-@element('cool-element')
+@element
 class CoolElement extends Element {
+  static readonly elementName = 'cool-element'
+
   @attribute firstName: string | null = null
   @stringAttribute lastName: string | null = null
   @numberAttribute age: number | null = null
   @booleanAttribute likesPizza: boolean | null = null
+  // jsonAttribute is implemented as an example above
+  @jsonAttribute info: SomeObject | null = null
   // ...
 }
 ```
@@ -2192,8 +2382,10 @@ Although it is not recommended, this aspect of the properties can be exposed if
 needed:
 
 ```ts
-@element('cool-element')
+@element
 class CoolElement extends Element {
+  static readonly elementName = 'cool-element'
+
   @attribute firstName: string = 'John'
   @stringAttribute lastName: string = 'Doe'
   @numberAttribute age: `${number}` | number = 75
@@ -2376,8 +2568,10 @@ import {Element, element, stringAttribute, numberAttribute, eventAttribute} from
 // attribute decorators, or that they are on* event properties.
 export type CoolElementAttributes = 'coolType' | 'coolFactor' | 'oncoolness'
 
-@element('cool-element')
+@element
 export class CoolElement extends Element {
+  static readonly elementName = 'cool-element'
+
 	@stringAttribute coolType: 'beans' | 'hair' = 'beans'
 	@numberAttribute coolFactor = 100
 	// ^ NOTE: These are the camelCase equivalents of the attributes defined above.
@@ -2406,7 +2600,7 @@ class CoolnessEvent extends Event {
 // type of `document.createElement('cool-element')` will be `CoolElement`.
 declare global {
 	interface HTMLElementTagNameMap {
-		'cool-element': CoolElement
+		[CoolElement.elementName]: CoolElement
 	}
 }
 
@@ -2414,7 +2608,7 @@ declare global {
 declare module 'solid-js' {
 	namespace JSX {
 		interface IntrinsicElements {
-			'cool-element': ElementAttributes<CoolElement, CoolElementAttributes>
+			[CoolElement.elementName]: ElementAttributes<CoolElement, CoolElementAttributes>
 		}
 	}
 }
@@ -2461,7 +2655,7 @@ import type {ReactElementAttributes} from '@lume/element/dist/framework-types/re
 declare module 'react' {
   namespace JSX {
     interface IntrinsicElements {
-      'cool-element': ReactElementAttributes<CoolElement, CoolElementAttributes>
+      [CoolElement.elementName]: ReactElementAttributes<CoolElement, CoolElementAttributes>
     }
   }
 }
@@ -2533,7 +2727,7 @@ Register the element type for Angular like so:
 // https://github.com/angular/angular/issues/58483
 declare global {
   interface HTMLElementTagNameMap {
-    'cool-element': CoolElement
+    [CoolElement.elementName]: CoolElement
   }
 }
 ```
@@ -2552,7 +2746,7 @@ import type {VueElementAttributes} from '@lume/element/dist/framework-types/vue.
 // Hook up the type for use in Vue templates
 declare module 'vue' {
   interface GlobalComponents {
-    'cool-element': VueElementAttributes<CoolElement, CoolElementAttributes>
+    [CoolElement.elementName]: VueElementAttributes<CoolElement, CoolElementAttributes>
   }
 }
 ```
@@ -2571,7 +2765,7 @@ import type {SvelteElementAttributes} from '@lume/element/dist/framework-types/v
 // Hook up the type for use in Svelte templates
 declare module 'svelte/elements' {
   interface SvelteHTMLElements {
-    'cool-element': SvelteElementAttributes<CoolElement, CoolElementAttributes>
+    [CoolElement.elementName]: SvelteElementAttributes<CoolElement, CoolElementAttributes>
   }
 }
 ```
@@ -2591,7 +2785,7 @@ import type {StencilElementAttributes} from '@lume/element/dist/framework-types/
 declare module '@stencil/core' {
   export namespace JSX {
     interface IntrinsicElements {
-      'cool-element': StencilElementAttributes<CoolElement, CoolElementAttributes>
+      [CoolElement.elementName]: StencilElementAttributes<CoolElement, CoolElementAttributes>
     }
   }
 }
@@ -2602,8 +2796,10 @@ declare module '@stencil/core' {
 Given a custom element definition like so,
 
 ```ts
-@element('my-el')
+@element
 class MyEl extends Element {
+  static readonly elementName = 'my-el'
+
   #position = new Vec3()
 
   get position(): Vec3 {
@@ -2639,8 +2835,10 @@ getter/setter name to define the setter type that will appear in JSX/framework
 templates:
 
 ```ts
-@element('my-el')
+@element
 class MyEl extends Element {
+  static readonly elementName = 'my-el'
+
   #position = new Vec3()
 
   get position(): Vec3 {

@@ -31,10 +31,11 @@ type AttributeDecoratorContext<This = unknown, Value = unknown> = ClassFieldDeco
 export declare function attribute(value: unknown, context: AttributeDecoratorContext): any;
 export declare function attribute(handler?: AttributeHandler): (value: unknown, context: AttributeDecoratorContext) => any;
 export declare namespace attribute {
-    var string: AttributeType<string>;
-    var number: AttributeType<number>;
-    var boolean: AttributeType<boolean>;
-    var event: AttributeType<EventListener<Event> | null>;
+    var string: AttributeHandler<string>;
+    var number: AttributeHandler<number>;
+    var boolean: AttributeHandler<boolean>;
+    var event: AttributeHandler<EventListener<Event> | null>;
+    var json: AttributeHandler<JSONValue>;
 }
 /**
  * Place this decorator before `@element` to avoid the property from being
@@ -42,8 +43,15 @@ export declare namespace attribute {
  * still receive values from the HTML attribute.
  */
 export declare const noSignal: (_value: unknown, context: AttributeDecoratorContext) => void;
-export declare function __setUpAttribute(ctor: ElementCtor, propName: string, attributeHandler: AttributeHandler): any;
+export declare function __setUpAttribute(ctor: ElementCtor, attrName: string, propName: string, attributeHandler: AttributeHandler): any;
+export declare const __hasAttributeChangedCallback: unique symbol;
 export declare const __attributesToProps: unique symbol;
+export type AttributePropSpec = {
+    name: string;
+    default?: unknown;
+    attributeHandler?: AttributeHandler;
+};
+export type AttributePropSpecs = Record<string, AttributePropSpec>;
 /**
  * Defines how values are mapped from an attribute to a JS property on a custom
  * element class.
@@ -141,7 +149,6 @@ export type AttributeHandler<T = any> = {
      */
     noWarn?: boolean;
 };
-type AttributeType<T> = () => AttributeHandler<T>;
 /**
  * This is essentially an alias for `@attribute`. You can just use `@attribute`
  * if you want a more concise definition.
@@ -181,7 +188,7 @@ type AttributeType<T> = () => AttributeHandler<T>;
  * <my-el color="any string in here"></my-el>
  * ```
  */
-export declare function stringAttribute(value: unknown, context: AttributeDecoratorContext): any;
+export declare const stringAttribute: (value: unknown, context: AttributeDecoratorContext) => any;
 /**
  * A decorator for mapping a number attribute to a JS property. The string value
  * of the attribute will be parsed into a number.
@@ -220,7 +227,7 @@ export declare function stringAttribute(value: unknown, context: AttributeDecora
  * <my-el money="blahblah"></my-el>
  * ```
  */
-export declare function numberAttribute(value: unknown, context: AttributeDecoratorContext): any;
+export declare const numberAttribute: (value: unknown, context: AttributeDecoratorContext) => any;
 /**
  * A decorator for mapping a boolean attribute to a JS property. The string
  * value of the attribute will be converted into a boolean value on the JS
@@ -263,7 +270,7 @@ export declare function numberAttribute(value: unknown, context: AttributeDecora
  * <my-el has-money="blahblah"></my-el>
  * ```
  */
-export declare function booleanAttribute(value: unknown, context: AttributeDecoratorContext): any;
+export declare const booleanAttribute: (value: unknown, context: AttributeDecoratorContext) => any;
 /**
  * A decorator for mapping an event attribute to a JS property (similar to
  * builtin attributes like "onclick"). The string value of the attribute will be
@@ -305,10 +312,14 @@ export declare function booleanAttribute(value: unknown, context: AttributeDecor
  * return <my-el onsomeevent={event => console.log('someevent', event)} />
  * ```
  */
-export declare function eventAttribute(value: unknown, context: AttributeDecoratorContext): any;
+export declare const eventAttribute: (value: unknown, context: AttributeDecoratorContext) => any;
 export type EventListener<T extends Event = Event> = (event: T) => void;
 export type EventHandler<T extends Event = Event> = {
     handleEvent: EventListener<T>;
 };
+export declare const jsonAttribute: (value: unknown, context: AttributeDecoratorContext) => any;
+export type JSONValue = string | number | boolean | null | {
+    [key: string]: JSONValue;
+} | Array<JSONValue>;
 export {};
 //# sourceMappingURL=attribute.d.ts.map

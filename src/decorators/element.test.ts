@@ -11,6 +11,147 @@ import {
 } from '../index.js'
 
 describe('@element decorator', () => {
+	it('reads options from static class fields', () => {
+		@element
+		class ElementWithStaticName extends Element {
+			static override elementName = 'el-with-static-name'
+			// static autoDefine defaults to true
+		}
+
+		const e = new ElementWithStaticName()
+		document.body.append(e)
+		expect(e.tagName.toLowerCase()).toBe('el-with-static-name')
+		e.remove()
+
+		@element
+		class WithStaticOptions extends Element {
+			static override elementName = 'with-static-options'
+			static override autoDefine = true
+		}
+
+		const el = new WithStaticOptions()
+		document.body.append(el)
+		expect(el.tagName.toLowerCase()).toBe('with-static-options')
+		el.remove()
+
+		@element
+		class WithStaticOptions2 extends Element {
+			static override elementName = 'with-static-options2'
+			static override autoDefine = false // don't automatically define in window.customElements
+		}
+
+		// it throws because the element is not defined yet.
+		expect(() => new WithStaticOptions2()).toThrow()
+
+		WithStaticOptions2.defineElement()
+		const el2 = new WithStaticOptions2()
+		document.body.append(el2)
+		expect(el2.tagName.toLowerCase()).toBe('with-static-options2')
+		el2.remove()
+	})
+
+	it('accepts and options object', () => {
+		@element({elementName: 'el-with-options-name' /* autoDefine: defaults to true */})
+		class ElementWithOptionsName extends Element {}
+
+		const e = new ElementWithOptionsName()
+		document.body.append(e)
+		expect(e.tagName.toLowerCase()).toBe('el-with-options-name')
+		e.remove()
+
+		@element({elementName: 'with-options-object', autoDefine: true})
+		class WithOptionsObject extends Element {}
+
+		const el = new WithOptionsObject()
+		document.body.append(el)
+		expect(el.tagName.toLowerCase()).toBe('with-options-object')
+		el.remove()
+
+		@element({elementName: 'with-options-object2', autoDefine: false})
+		class WithOptionsObject2 extends Element {}
+
+		// it throws because the element is not defined yet.
+		expect(() => new WithOptionsObject2()).toThrow()
+
+		WithOptionsObject2.defineElement()
+		const el2 = new WithOptionsObject2()
+		document.body.append(el2)
+		expect(el2.tagName.toLowerCase()).toBe('with-options-object2')
+		el2.remove()
+	})
+
+	it('uses the class name to derive the the dash-case element name if not provided', () => {
+		@element
+		class WithConstructorName1 extends Element {}
+
+		expect(WithConstructorName1.elementName).toBe('with-constructor-name1')
+		const el = new WithConstructorName1()
+		document.body.append(el)
+		expect(el.tagName.toLowerCase()).toBe('with-constructor-name1')
+		el.remove()
+
+		@element
+		class WithConstructorName2 extends Element {
+			static override autoDefine = false // don't automatically define in window.customElements
+		}
+
+		expect(WithConstructorName2.elementName).toBe('with-constructor-name2')
+
+		// it throws because the element is not defined yet.
+		expect(() => new WithConstructorName2()).toThrow()
+
+		WithConstructorName2.defineElement()
+		const el2 = new WithConstructorName2()
+		document.body.append(el2)
+		expect(el2.tagName.toLowerCase()).toBe('with-constructor-name2')
+		el2.remove()
+
+		const WithConstructorName3 = WithConstructorName2.defineElement('with-constructor-name3')
+
+		expect(WithConstructorName3.elementName).toBe('with-constructor-name3')
+		const el3 = document.createElement('with-constructor-name3')
+		document.body.append(el3)
+		expect(el3.tagName.toLowerCase()).toBe('with-constructor-name3')
+		el3.remove()
+
+		@element('', false)
+		class WithConstructorName4 extends Element {}
+
+		expect(WithConstructorName4.elementName).toBe('with-constructor-name4')
+
+		// it throws because the element is not defined yet.
+		expect(() => new WithConstructorName4()).toThrow()
+
+		WithConstructorName4.defineElement()
+		const el4 = new WithConstructorName4()
+		document.body.append(el4)
+		expect(el4.tagName.toLowerCase()).toBe('with-constructor-name4')
+		el4.remove()
+
+		@element({autoDefine: false})
+		class WithConstructorName5 extends Element {}
+
+		expect(WithConstructorName5.elementName).toBe('with-constructor-name5')
+
+		// it throws because the element is not defined yet.
+		expect(() => new WithConstructorName5()).toThrow()
+
+		WithConstructorName5.defineElement()
+		const el5 = new WithConstructorName5()
+		document.body.append(el5)
+		expect(el5.tagName.toLowerCase()).toBe('with-constructor-name5')
+		el5.remove()
+
+		@element('') // autoDefine is still true, so the class name will still be used instead of an empty string.
+		class WithConstructorName6 extends Element {}
+
+		expect(WithConstructorName6.elementName).toBe('with-constructor-name6')
+		const el6 = new WithConstructorName6()
+		document.body.append(el6)
+		expect(el6.tagName.toLowerCase()).toBe('with-constructor-name6')
+		el6.remove()
+	})
+
 	it('ensures initial field values act as default attribute values when attributes removed, with decorator syntax', () => {
 		@element('default-values-with-decorators')
 		class DefaultValueTest extends Element {
@@ -27,11 +168,11 @@ describe('@element decorator', () => {
 
 			// The default attribute value will be 123, from the .num property.
 			@numberAttribute
-			get accessor() {
+			get gettersetter() {
 				return this.num
 			}
 			@numberAttribute
-			set accessor(v) {
+			set gettersetter(v) {
 				this.num = v
 			}
 		}
@@ -39,7 +180,7 @@ describe('@element decorator', () => {
 		let el = document.createElement('default-values-with-decorators')
 		document.body.append(el)
 
-		testAttributes(el, 'accessor')
+		testAttributes(el, 'gettersetter')
 
 		el.remove()
 
@@ -58,11 +199,11 @@ describe('@element decorator', () => {
 
 			// The default attribute value will be 123, from the .dolor property.
 			@numberAttribute
-			get accessor2() {
+			get gettersetter2() {
 				return this.dolor
 			}
 			@numberAttribute
-			set accessor2(v) {
+			set gettersetter2(v) {
 				this.dolor = v
 			}
 		}
@@ -72,8 +213,8 @@ describe('@element decorator', () => {
 		el = document.createElement('default-values-with-decorators-subclass')
 		document.body.append(el)
 
-		testAttributes(el, 'accessor')
-		testAttributes(el, 'accessor2', 'lorem', 'ipsum', 'dolor', 'set', 'amit', 'yes', 'yes2')
+		testAttributes(el, 'gettersetter')
+		testAttributes(el, 'gettersetter2', 'lorem', 'ipsum', 'dolor', 'set', 'amit', 'yes', 'yes2')
 
 		el.remove()
 	})
@@ -83,13 +224,13 @@ describe('@element decorator', () => {
 			class extends Element {
 				static override observedAttributeHandlers: AttributeHandlerMap = {
 					foo: {},
-					bar: attribute.string(),
-					num: attribute.number(),
-					bool: attribute.boolean(),
-					bool2: attribute.boolean(),
-					baz: attribute.string(),
-					baz2: attribute.string(),
-					accessor: attribute.number(),
+					bar: attribute.string,
+					num: attribute.number,
+					bool: attribute.boolean,
+					bool2: attribute.boolean,
+					baz: attribute.string,
+					baz2: attribute.string,
+					gettersetter: attribute.number,
 				}
 
 				foo = 'foo'
@@ -103,10 +244,10 @@ describe('@element decorator', () => {
 				baz
 				baz2: string | null = null
 
-				get accessor() {
+				get gettersetter() {
 					return this.num
 				}
-				set accessor(v) {
+				set gettersetter(v) {
 					this.num = v
 				}
 			},
@@ -115,7 +256,7 @@ describe('@element decorator', () => {
 		let el = document.createElement('default-values-without-decorators')
 		document.body.append(el)
 
-		testAttributes(el, 'accessor')
+		testAttributes(el, 'gettersetter')
 
 		el.remove()
 
@@ -123,13 +264,13 @@ describe('@element decorator', () => {
 			class DefaultValueTestSubclass extends DefaultValueTest {
 				static override observedAttributeHandlers: AttributeHandlerMap = {
 					lorem: {},
-					ipsum: attribute.string(),
-					dolor: attribute.number(),
-					set: attribute.boolean(),
-					amit: attribute.boolean(),
-					yes: attribute.string(),
-					yes2: attribute.string(),
-					accessor2: attribute.number(),
+					ipsum: attribute.string,
+					dolor: attribute.number,
+					set: attribute.boolean,
+					amit: attribute.boolean,
+					yes: attribute.string,
+					yes2: attribute.string,
+					gettersetter2: attribute.number,
 				}
 
 				lorem = 'foo'
@@ -143,10 +284,10 @@ describe('@element decorator', () => {
 				yes
 				yes2: string | null = null
 
-				get accessor2() {
+				get gettersetter2() {
 					return this.dolor
 				}
-				set accessor2(v) {
+				set gettersetter2(v) {
 					this.dolor = v
 				}
 			},
@@ -155,8 +296,8 @@ describe('@element decorator', () => {
 		el = document.createElement('default-values-without-decorators-subclass')
 		document.body.append(el)
 
-		testAttributes(el, 'accessor')
-		testAttributes(el, 'accessor2', 'lorem', 'ipsum', 'dolor', 'set', 'amit', 'yes', 'yes2')
+		testAttributes(el, 'gettersetter')
+		testAttributes(el, 'gettersetter2', 'lorem', 'ipsum', 'dolor', 'set', 'amit', 'yes', 'yes2')
 
 		el.remove()
 	})
@@ -166,12 +307,12 @@ describe('@element decorator', () => {
 			class extends Element {
 				static override observedAttributeHandlers: AttributeHandlerMap = {
 					foo: {},
-					bar: attribute.string(),
-					num: attribute.number(),
-					bool: attribute.boolean(),
-					bool2: attribute.boolean(),
-					baz: attribute.string(),
-					baz2: attribute.string(),
+					bar: attribute.string,
+					num: attribute.number,
+					bool: attribute.boolean,
+					bool2: attribute.boolean,
+					baz: attribute.string,
+					baz2: attribute.string,
 				}
 
 				constructor() {
@@ -208,12 +349,12 @@ describe('@element decorator', () => {
 			class DefaultValueTestSubclass extends DefaultValueTest {
 				static override observedAttributeHandlers: AttributeHandlerMap = {
 					lorem: {},
-					ipsum: attribute.string(),
-					dolor: attribute.number(),
-					set: attribute.boolean(),
-					amit: attribute.boolean(),
-					yes: attribute.string(),
-					yes2: attribute.string(),
+					ipsum: attribute.string,
+					dolor: attribute.number,
+					set: attribute.boolean,
+					amit: attribute.boolean,
+					yes: attribute.string,
+					yes2: attribute.string,
 				}
 
 				constructor() {
@@ -330,7 +471,7 @@ describe('@element decorator', () => {
 		const Foo = element('untracked-ctor3')(
 			class Foo extends Element {
 				static override observedAttributeHandlers: AttributeHandlerMap = {
-					amount: attribute.number(),
+					amount: attribute.number,
 				}
 
 				amount = 3
@@ -344,7 +485,7 @@ describe('@element decorator', () => {
 				static override observedAttributeHandlers: AttributeHandlerMap = {
 					// __proto__: super.observedAttributeHandlers,
 					// ...super.observedAttributeHandlers,
-					double: attribute.number(),
+					double: attribute.number,
 				}
 
 				double = 0
@@ -384,7 +525,7 @@ describe('@element decorator', () => {
 
 function testAttributes(
 	el: HTMLElement,
-	accessor = '',
+	gettersetter = '',
 	foo = 'foo',
 	bar = 'bar',
 	num = 'num',
@@ -445,12 +586,12 @@ function testAttributes(
 	// @ts-ignore
 	expect(el[baz2] === null).toBe(true)
 
-	if (accessor) {
-		el.setAttribute(accessor, '456')
+	if (gettersetter) {
+		el.setAttribute(gettersetter, '456')
 		// @ts-ignore
-		expect(el[accessor]).toBe(456)
-		el.removeAttribute(accessor)
+		expect(el[gettersetter]).toBe(456)
+		el.removeAttribute(gettersetter)
 		// @ts-ignore
-		expect(el[accessor]).toBe(123)
+		expect(el[gettersetter]).toBe(123)
 	}
 }

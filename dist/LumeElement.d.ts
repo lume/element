@@ -1,4 +1,4 @@
-import type { AttributeHandler, __attributesToProps } from './decorators/attribute.js';
+import type { AttributeHandler, AttributePropSpecs, __attributesToProps, __hasAttributeChangedCallback } from './decorators/attribute.js';
 import type { DashCasedProps } from './utils.js';
 declare const root: unique symbol;
 declare const LumeElement_base: (new (...a: any[]) => {
@@ -19,10 +19,17 @@ declare class LumeElement extends LumeElement_base {
     #private;
     /**
      * The default tag name of the elements this class instantiates. When using
-     * the `@element` decorator, this property will be set to the value defined
-     * by the decorator.
+     * the `@element` decorator, if this field has not been specified, it will
+     * be set to the value defined by the decorator.
      */
     static elementName: string;
+    /**
+     * When using the @element decorator, the element will be automatically
+     * defined in the CustomElementRegistry if this is true, otherwise manual
+     * registration will be needed if false. If autoDefine is passed into the
+     * decorator, this field will be overriden by that value.
+     */
+    static autoDefine: boolean;
     /**
      * Define this class for the given element `name`, or using its default name
      * (`elementName`) if no `name` given. Defaults to using the global
@@ -38,7 +45,10 @@ declare class LumeElement extends LumeElement_base {
      * different subclass of the class this is called on if passing in a custom
      * `name`, otherwise returns the same class this is called on.
      */
-    static defineElement(name?: string, registry?: CustomElementRegistry): CustomElementConstructor;
+    static defineElement(): typeof LumeElement;
+    static defineElement(registry: CustomElementRegistry): typeof LumeElement;
+    static defineElement(name: string): typeof LumeElement;
+    static defineElement(name: string, registry: CustomElementRegistry): typeof LumeElement;
     /**
      * Non-decorator users can use this to specify a list of attributes, and the
      * attributes will automatically be mapped to reactive properties. All
@@ -80,10 +90,9 @@ declare class LumeElement extends LumeElement_base {
      */
     static observedAttributeHandlers?: AttributeHandlerMap;
     /** Note, this is internal and used by the @attribute decorator, see attribute.ts. */
-    [__attributesToProps]?: Record<string, {
-        name: string;
-        attributeHandler?: AttributeHandler;
-    }>;
+    [__attributesToProps]?: AttributePropSpecs;
+    /** Note, this is internal and used by the @attribute decorator, see attribute.ts. */
+    [__hasAttributeChangedCallback]?: true;
     /**
      * This can be used by a subclass, or other frameworks handling elements, to
      * detect property values that exist from before custom element upgrade.

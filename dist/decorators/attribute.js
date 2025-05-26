@@ -31,19 +31,20 @@ function handleAttributeDecoration(value, context, attributeHandler = {}) {
         throw new Error('@attribute is not supported on private fields yet.');
     if (isStatic)
         throw new Error('@attribute is not supported on static fields.');
-    __classFinishers.push((Class) => __setUpAttribute(Class, name, attributeHandler));
+    const attrName = (attributeHandler.name ?? (attributeHandler.dashcase === false ? name : camelCaseToDash(name))).toLowerCase();
+    __classFinishers.push((Class) => __setUpAttribute(Class, attrName, name, attributeHandler));
     if (kind === 'field') {
         const signalInitializer = useSignal ? signal(value, context) : (v) => v;
         return function (initialValue) {
             initialValue = signalInitializer(initialValue);
+            const propSpec = this[__attributesToProps][attrName];
             // Typically the first initializer to run for a class field (on
             // instantiation of the first instance of its class) will be our
             // source of truth for our default attribute value, but we check for
             // 'default' in attributeHandler just in case that a an attribute
             // decorator was passed an explicit default, f.e.
             // `@attribute({default: 123})`.
-            if (!('default' in attributeHandler))
-                attributeHandler.default = initialValue;
+            propSpec.default = 'default' in attributeHandler ? attributeHandler.default : initialValue;
             return initialValue;
         };
     }
@@ -54,8 +55,8 @@ function handleAttributeDecoration(value, context, attributeHandler = {}) {
     else if (kind === 'accessor') {
         context.addInitializer(function () {
             const initialValue = this[name];
-            if (!('default' in attributeHandler))
-                attributeHandler.default = initialValue;
+            const propSpec = this[__attributesToProps][attrName];
+            propSpec.default = 'default' in attributeHandler ? attributeHandler.default : initialValue;
             // attributeHandler.sideEffect?.(this, name, initialValue)
         });
         if (useSignal)
@@ -71,7 +72,7 @@ function handleAttributeDecoration(value, context, attributeHandler = {}) {
 // template method, so users don't have to extend from the LumeElement base class.
 // Extending from the LumeElement base class will be the method that non-decorator
 // users must use.
-export function __setUpAttribute(ctor, propName, attributeHandler) {
+export function __setUpAttribute(ctor, attrName, propName, attributeHandler) {
     if (
     //
     !ctor.observedAttributes ||
@@ -87,7 +88,6 @@ export function __setUpAttribute(ctor, propName, attributeHandler) {
     if (!Array.isArray(ctor.observedAttributes)) {
         throw new TypeError('observedAttributes is in the wrong format. Maybe you forgot to decorate your custom element class with the `@element` decorator.');
     }
-    const attrName = (attributeHandler.name ?? (attributeHandler.dashcase === false ? propName : camelCaseToDash(propName))).toLowerCase();
     // @prod-prune
     if (!attributeHandler.noWarn &&
         !attributeHandler.name &&
@@ -104,13 +104,13 @@ export function __setUpAttribute(ctor, propName, attributeHandler) {
         ctor.observedAttributes.push(attrName);
     mapAttributeToProp(ctor.prototype, attrName, propName, attributeHandler);
 }
-const hasAttributeChangedCallback = Symbol('hasAttributeChangedCallback');
+export const __hasAttributeChangedCallback = Symbol('hasAttributeChangedCallback');
 export const __attributesToProps = Symbol('attributesToProps');
 // This stores attribute definitions as an inheritance chain on the constructor.
 function mapAttributeToProp(prototype, attr, prop, attributeHandler) {
     // Only define attributeChangedCallback once.
-    if (!prototype[hasAttributeChangedCallback]) {
-        prototype[hasAttributeChangedCallback] = true;
+    if (!prototype[__hasAttributeChangedCallback]) {
+        prototype[__hasAttributeChangedCallback] = true;
         const originalAttrChanged = prototype.attributeChangedCallback;
         prototype.attributeChangedCallback = function (attr, oldVal, newVal) {
             // If the class already has an attributeChangedCallback, let is run,
@@ -125,7 +125,7 @@ function mapAttributeToProp(prototype, attr, prop, attributeHandler) {
                 prototype.__proto__?.attributeChangedCallback?.call(this, attr, oldVal, newVal);
             }
             // map from attribute to property
-            const prop = this[__attributesToProps]?.[attr];
+            const prop = this[__attributesToProps][attr];
             this[prop.name] = newVal;
         };
     }
@@ -135,12 +135,12 @@ function mapAttributeToProp(prototype, attr, prop, attributeHandler) {
     // We use inheritance here or else all classes would pile their
     // attribute-prop definitions on a shared base class (they can clash,
     // override each other willy nilly and seemingly randomly).
-    if (!Object.hasOwn(prototype, __attributesToProps)) {
+    if (!Object.hasOwn(prototype, __attributesToProps))
         prototype[__attributesToProps] = { __proto__: prototype[__attributesToProps] || Object.prototype };
-    }
     prototype[__attributesToProps][attr] = { name: prop, attributeHandler };
 }
-const toString = (str) => str;
+// The function form is deprecated, but still around for back compat.
+// type AttributeType<T> = AttributeHandler<T> & (() => AttributeHandler<T>)
 /**
  * An attribute type for string attributes for use in the `static
  * observedAttributeHandlers` map when not using decorators.
@@ -159,7 +159,7 @@ const toString = (str) => str;
  * )
  * ```
  */
-attribute.string = (() => ({ from: toString }));
+attribute.string = { from: str => str };
 /**
  * This is essentially an alias for `@attribute`. You can just use `@attribute`
  * if you want a more concise definition.
@@ -199,10 +199,7 @@ attribute.string = (() => ({ from: toString }));
  * <my-el color="any string in here"></my-el>
  * ```
  */
-export function stringAttribute(value, context) {
-    return attribute(attribute.string())(value, context);
-}
-const toNumber = (str) => +str;
+export const stringAttribute = attribute(attribute.string);
 /**
  * An attribute type for number attributes for use in the `static
  * observedAttributeHandlers` map when not using decorators.
@@ -221,7 +218,7 @@ const toNumber = (str) => +str;
  * )
  * ```
  */
-attribute.number = (() => ({ from: toNumber }));
+attribute.number = { from: str => +str };
 /**
  * A decorator for mapping a number attribute to a JS property. The string value
  * of the attribute will be parsed into a number.
@@ -260,10 +257,7 @@ attribute.number = (() => ({ from: toNumber }));
  * <my-el money="blahblah"></my-el>
  * ```
  */
-export function numberAttribute(value, context) {
-    return attribute(attribute.number())(value, context);
-}
-const toBoolean = (str) => str !== 'false';
+export const numberAttribute = attribute(attribute.number);
 /**
  * An attribute type for boolean attributes for use in the `static
  * observedAttributeHandlers` map when not using decorators.
@@ -282,7 +276,7 @@ const toBoolean = (str) => str !== 'false';
  * )
  * ```
  */
-attribute.boolean = (() => ({ from: toBoolean }));
+attribute.boolean = { from: str => str !== 'false' };
 /**
  * A decorator for mapping a boolean attribute to a JS property. The string
  * value of the attribute will be converted into a boolean value on the JS
@@ -325,15 +319,29 @@ attribute.boolean = (() => ({ from: toBoolean }));
  * <my-el has-money="blahblah"></my-el>
  * ```
  */
-export function booleanAttribute(value, context) {
-    return attribute(attribute.boolean())(value, context);
-}
-/**
- * Converts an attribute string value (JS code) into a function for use as an
- * event handler, similar to built-in event attributes such as "onclick".
- */
-const toEvent = function (str) {
-    return new Function(str);
+export const booleanAttribute = attribute(attribute.boolean);
+const eventAttributeHandler = {
+    /**
+     * Converts an attribute string value (JS code) into a function for use as an
+     * event handler, similar to built-in event attributes such as "onclick".
+     */
+    from: str => new Function(str),
+    dashcase: false,
+    /**
+     * When the value is set, we add an event listener with that code. When a
+     * new value is set, we remove the previous listener and make a new one (or
+     * no new one if the value is null).
+     */
+    sideEffect(el, prop, handler) {
+        if (handler && typeof handler !== 'function')
+            throw new Error('Event handlers must be functions.');
+        const previousHandler = el[prop];
+        const eventName = prop.replace(/^on/, '');
+        if (previousHandler)
+            el.removeEventListener(eventName, previousHandler);
+        if (handler)
+            el.addEventListener(eventName, handler);
+    },
 };
 /**
  * An attribute type for attribute events for use in the `static
@@ -366,20 +374,8 @@ const toEvent = function (str) {
  * document.body.append(el2) // will log "someevent Event {...}" when the element is connected
  * ```
  */
-attribute.event = (() => ({
-    from: toEvent,
-    dashcase: false,
-    sideEffect(el, prop, handler) {
-        if (handler && typeof handler !== 'function')
-            throw new Error('Event handlers must be functions.');
-        const previousHandler = el[prop];
-        const eventName = prop.replace(/^on/, '');
-        if (previousHandler)
-            el.removeEventListener(eventName, previousHandler);
-        if (handler)
-            el.addEventListener(eventName, handler);
-    },
-}));
+attribute.event = eventAttributeHandler;
+// Object.assign(attribute.event, eventAttributeHandler)
 /**
  * A decorator for mapping an event attribute to a JS property (similar to
  * builtin attributes like "onclick"). The string value of the attribute will be
@@ -421,7 +417,7 @@ attribute.event = (() => ({
  * return <my-el onsomeevent={event => console.log('someevent', event)} />
  * ```
  */
-export function eventAttribute(value, context) {
-    return attribute(attribute.event())(value, context);
-}
+export const eventAttribute = attribute(attribute.event);
+attribute.json = { from: (str) => JSON.parse(str) };
+export const jsonAttribute = attribute(attribute.json);
 //# sourceMappingURL=attribute.js.map
