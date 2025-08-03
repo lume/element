@@ -212,8 +212,11 @@ type Template = TemplateContent | (() => TemplateContent);
  * ```jsx
  * let coolEl = <cool-element foo={'foo'} bar={null} lorem-ipsum={456}></cool-element>
  * ```
+ *
+ * If your element has no attributes, you can use `ElementAttributes<YourElement>`
+ * without specifying any properties.
  */
-export type ElementAttributes<El, SelectedProperties extends keyof RemoveSetterPrefixes<RemoveAccessors<El>>, AdditionalProperties extends object = {}> = Omit<JSX.HTMLAttributes<El>, SelectedProperties | keyof AdditionalProperties | 'onerror'> & {
+export type ElementAttributes<El, SelectedProperties extends keyof RemoveSetterPrefixes<RemoveAccessors<El>> | keyof {} = keyof {}, AdditionalProperties extends object = {}> = Omit<JSX.HTMLAttributes<El>, SelectedProperties | keyof AdditionalProperties | 'onerror'> & {
     onerror?: ((error: ErrorEvent) => void) | null;
 } & Partial<DashCasedProps<WithStringValues<NonNumberProps<NonBooleanProps<NonOnProps<El, SelectedProperties>>>>>> & Partial<PrefixProps<'prop:', WithStringValues<NonNumberProps<NonBooleanProps<Pick<RemapSetters<El>, SelectedProperties>>>>>> & Partial<PrefixProps<'attr:', DashCasedProps<AsStringValues<NonNumberProps<NonBooleanProps<Pick<RemapSetters<El>, SelectedProperties>>>>>>> & Partial<DashCasedProps<WithBooleanStringValues<BooleanProps<NonOnProps<El, SelectedProperties>>>> & PrefixProps<'bool:', DashCasedProps<AsBooleanValues<BooleanProps<Pick<RemapSetters<El>, SelectedProperties>>>>> & PrefixProps<'prop:', WithBooleanStringValues<BooleanProps<Pick<RemapSetters<El>, SelectedProperties>>>> & PrefixProps<'attr:', DashCasedProps<WithBooleanStringValues<BooleanProps<Pick<RemapSetters<El>, SelectedProperties>>>>>> & Partial<DashCasedProps<WithNumberStringValues<NumberProps<NonOnProps<El, SelectedProperties>>>> & PrefixProps<'prop:', WithNumberStringValues<NumberProps<Pick<RemapSetters<El>, SelectedProperties>>>> & PrefixProps<'attr:', DashCasedProps<WithNumberStringValues<NumberProps<Pick<RemapSetters<El>, SelectedProperties>>>>>> & Partial<WithStringValues<SkipUppercase<EventListenersOnly<EventProps<El, SelectedProperties>>>>> & Partial<AddDelimitersToEventKeys<EventListenersOnly<EventProps<El, SelectedProperties>>>> & AdditionalProperties;
 export type RemapSetters<El> = RemoveSetterPrefixes<RemoveAccessors<El>>;

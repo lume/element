@@ -520,10 +520,14 @@ type Template = TemplateContent | (() => TemplateContent)
  * ```jsx
  * let coolEl = <cool-element foo={'foo'} bar={null} lorem-ipsum={456}></cool-element>
  * ```
+ *
+ * If your element has no attributes, you can use `ElementAttributes<YourElement>`
+ * without specifying any properties.
  */
 export type ElementAttributes<
 	El,
-	SelectedProperties extends keyof RemoveSetterPrefixes<RemoveAccessors<El>>,
+	// The `keyof {}` type here allows SelectedProperties to be omitted, picking no properties. For example `ElementAttributes<MyElement>`.
+	SelectedProperties extends keyof RemoveSetterPrefixes<RemoveAccessors<El>> | keyof {} = keyof {},
 	AdditionalProperties extends object = {},
 > =
 	// Any props inherited from HTMLElement except for any that we will override from the custom element subclass or AdditionalProperties
