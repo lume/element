@@ -26,6 +26,7 @@
 		"release:patch": "lume releasePatch",
 		"release:minor": "lume releaseMinor",
 		"release:major": "lume releaseMajor",
+		"release:beta": "lume releaseBeta",
 		"version": "lume versionHook",
 		"postversion": "lume postVersionHook"
 	},
