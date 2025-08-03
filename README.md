@@ -621,6 +621,42 @@ A base class for custom elements made with `@lume/element`.
 
 The `Element` class provides:
 
+### `static elementName`
+
+The default tag name of the elements that are instances of this class.
+
+This field is optional: if not provided the element tag name will default to the
+dash-cased version of the class name. For example instances of a class
+`CoolElement` will be written with the `<cool-element>` tag in HTML.
+
+When using the [`@element`](#element) decorator, this field's value
+will be used if an element name is not passed to the decorator.
+
+```js
+@element
+class SomeEl extends LumeElement {
+  static elementName = 'some-el'
+}
+
+console.log(document.createElement('some-el') instanceof SomeEl) // true
+
+@element
+class CoolEl extends LumeElement {
+  // static elementName omitted
+}
+
+console.log(document.createElement('cool-el') instanceof CoolEl) // true
+
+@element
+class SaucyElement extends LumeElement {
+  static elementName = 'juicy-el'
+}
+
+console.log(document.createElement('juicy-el') instanceof SaucyElement) // true
+```
+
+[Example on CodePen](https://codepen.io/trusktr/pen/ZEdgMZY)
+
 ### `template`
 
 A subclass can define a `.template` that returns a DOM node, and this DOM node
@@ -791,99 +827,6 @@ class CoolElement extends Element {
 ```
 
 [Example on CodePen](https://codepen.io/trusktr/pen/NWZQEJa) (with `html` template tag instead of JSX)
-
-### `connectedCallback`
-
-Nothing new here, this is simply a part of the browser's [native Custom Elements
-`connectedCallback` API](https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_custom_elements#custom_element_lifecycle_callbacks).
-It is triggered when the element is connected into the document. Use it to
-create things.
-
-```js
-import {Element} from '@lume/element'
-
-class CoolElement extends Element {
-  connectedCallback() {
-    // Don't forget to call the super method from the Element class!
-    super.connectedCallback()
-
-    // ...Create things...
-  }
-  // ...
-}
-```
-
-### `disconnectedCallback`
-
-Nothing new here, this is simply a part of the browser's [native Custom Elements
-`disconnectedCallback` API](https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_custom_elements#custom_element_lifecycle_callbacks).
-It is triggered when the element is disconnected from the document. Use it to
-clean things up.
-
-```js
-import {Element} from '@lume/element'
-
-class CoolElement extends Element {
-  disconnectedCallback() {
-    // Don't forget to call the super method from the Element class!
-    super.disconnectedCallback()
-
-    // ...Clean things up...
-  }
-  // ...
-}
-```
-
-### `adoptedCallback`
-
-Nothing new here, this is simply a part of the browser's [native Custom Elements
-`adoptedCallback` API](https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_custom_elements#custom_element_lifecycle_callbacks).
-It is triggered when the element is adopted into a new document (f.e. in an iframe).
-
-```js
-import {Element} from '@lume/element'
-
-class CoolElement extends Element {
-  adoptedCallback() {
-    // Don't forget to call the super method from the Element class!
-    super.adoptedCallback()
-
-    // ...Do something when the element was transferred into another window's or iframe's document...
-  }
-  // ...
-}
-```
-
-### `attributeChangedCallback`
-
-Nothing new here, this is simply a part of the browser's [native Custom Elements
-`attributeChangedCallback` API](https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_custom_elements#custom_element_lifecycle_callbacks).
-It is triggered when an _observed attribute_ of the element is added, modified,
-or removed.
-
-```js
-import {Element} from '@lume/element'
-
-class CoolElement extends Element {
-  static observedAttributes = ['foo', 'bar']
-
-  attributeChangedCallback(attributeName, oldValue, newValue) {
-    // Don't forget to call the super method from the Element class!
-    super.attributeChangedCallback(attributeName, oldValue, newValue)
-
-    // Attribute name is the name of the attribute change changed.
-    // If `oldValue` is `null` and `newValue` is a string, it means the attribute was added.
-    // If `oldValue` and `newValue` are both strings, it means the value changed.
-    // If `oldValue` is a string and `newValue` is `null`, it means the attribute was removed.
-  }
-  // ...
-}
-```
-
-> [!Warning]
-> The `static observedAttributes` property is required for observing attributes, and specifies which
-> attributes will trigger `attributeChangedCallback`. `attributeChangedCallback`
-> will not be triggered for any attributes that are not listed in `static observedAttributes`!
 
 ### `static observedAttributes`
 
@@ -1225,22 +1168,268 @@ properties on the class, for example `onjump` in the last example. Any
 properties that start with `on` will be mapped to `on`-prefixed JSX props for
 type checking. See the [TypeScript](#typescript) section for more info.
 
-### `static elementName`
+### `attributeChangedCallback`
 
-The default tag name of the elements this class instantiates. When using the
-`@element` decorator, this name value will be used if a name value is not
-supplied to the decorator.
+Nothing new here, this is simply a part of the browser's [native Custom Elements
+`attributeChangedCallback` API](https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_custom_elements#custom_element_lifecycle_callbacks).
+It is triggered when an _observed attribute_ of the element is added, modified,
+or removed.
+
+> [!Note]
+> If you're using Lume Elements's features only, you do not need to define this
+> method. Lume Element's reactive properties will automatically receive updated
+> values when attributes change, and the element's `template` will automatically
+> update. Writing an `attributesChanged` callback is only useful if you need to
+> handle something custom that is not covered by Lume Element, for example a
+> 3rd-party lib such as a mixin that implements logic in
+> `attributeChangedCallback` that needs to be overriden.
 
 ```js
-@element
-class SomeEl extends LumeElement {
-  static elementName = 'some-el'
-}
+import {Element} from '@lume/element'
 
-console.log(document.createElement('some-el') instanceof SomeEl) // true
+class CoolElement extends Element {
+  static observedAttributes = ['foo', 'bar']
+
+  attributeChangedCallback(attributeName, oldValue, newValue) {
+    // Don't forget to call the super method from the Element class!
+    super.attributeChangedCallback(attributeName, oldValue, newValue)
+
+    // Attribute name is the name of the attribute change changed.
+    // If `oldValue` is `null` and `newValue` is a string, it means the attribute was added.
+    // If `oldValue` and `newValue` are both strings, it means the value changed.
+    // If `oldValue` is a string and `newValue` is `null`, it means the attribute was removed.
+  }
+  // ...
+}
 ```
 
-[Example on CodePen](https://codepen.io/trusktr/pen/ZEdgMZY)
+> [!Warning]
+> The `static observedAttributes` property is required for observing attributes, and specifies which
+> attributes will trigger `attributeChangedCallback`. `attributeChangedCallback`
+> will not be triggered for any attributes that are not listed in `static observedAttributes`!
+
+### `connectedCallback`
+
+Nothing new here, this is simply a part of the browser's [native Custom Elements
+`connectedCallback` API](https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_custom_elements#custom_element_lifecycle_callbacks).
+It is triggered when the element is connected into the document. Use it to
+create initialize any processes.
+
+With Lume Element, the main use case of this is to create effects.
+
+```js
+import {Element} from '@lume/element'
+
+class CoolElement extends Element {
+  connectedCallback() {
+    // Don't forget to call the super method from the Element class!
+    super.connectedCallback()
+
+    // ...Create processes, such effects...
+
+    this.createEffect(() => {
+      // ... re-runs when any properties or signals change ...
+    })
+  }
+  // ...
+}
+```
+
+### `disconnectedCallback`
+
+Nothing new here, this is simply a part of the browser's [native Custom Elements
+`disconnectedCallback` API](https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_custom_elements#custom_element_lifecycle_callbacks).
+It is triggered when the element is disconnected from the document. Use it to
+clean things up.
+
+> ![Note]
+> When using only effects, it is unnecessary to define `disconnectedCallback`.
+
+```js
+import {Element} from '@lume/element'
+
+class CoolElement extends Element {
+  connectedCallback() {
+    super.connectedCallback()
+
+    this.interval = setInterval(() => {...}, 1000)
+
+    this.createEffect(() => {
+      // ...
+    })
+  }
+
+  disconnectedCallback() {
+    // Don't forget to call the super method from the Element class!
+    super.disconnectedCallback()
+
+    // ...Clean up anything that is not Lume-Element-specific...
+    clearInterval(this.interval)
+
+    // You do not need to manually clean up effects made with `this.createEffect()`.
+  }
+  // ...
+}
+```
+
+### `adoptedCallback`
+
+Nothing new here, this is simply a part of the browser's [native Custom Elements
+`adoptedCallback` API](https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_custom_elements#custom_element_lifecycle_callbacks).
+It is triggered when the element is adopted into a new document (f.e. in an iframe).
+You almost never need this.
+
+```js
+import {Element} from '@lume/element'
+
+class CoolElement extends Element {
+  adoptedCallback() {
+    // Don't forget to call the super method from the Element class!
+    super.adoptedCallback()
+
+    // ...Do something when the element was transferred into another window's or iframe's document...
+  }
+  // ...
+}
+```
+
+### `createEffect`
+
+The `createEffect` method is a wrapper around Solid's `createEffect` with some differences for convenience:
+
+- `createRoot` is not required in order to dispose of effects created with `this.createEffect()`
+- Effects created with `this.createEffect()` will automatically be cleaned up when the element is disconnected.
+- Besides being useful for re-running logic on signals changes,
+  `this.createEffect()` is useful as an alternative to `disconnectedCallback` when
+  paired with Solid's `onCleanup`.
+
+```js
+import {Element} from '@lume/element'
+import {createSignal, onCleanup} from 'solid-js'
+
+const [count, setCount] = createSignal(0)
+
+setInterval(() => setCount(n => ++n), 1000)
+
+class CoolElement extends Element {
+  connectedCallback() {
+    super.connectedCallback()
+
+    // Log `count()` any time it changes.
+    this.createEffect(() => console.log(count()))
+
+    this.createEffect(() => {
+      const interval1 = setInterval(() => console.log('interval 1'), 1000)
+      onCleanup(() => clearInterval(interval1))
+
+      const interval2 = setInterval(() => console.log('interval 2'), 1000)
+      onCleanup(() => clearInterval(interval2))
+    })
+  }
+
+  // disconnectedCallback is not required here for effects to clean up on disconnect.
+  // Prefer createEffect+onCleanup over disconnectedCallback for composable logic.
+}
+
+customElements.define('cool-element', CoolElement)
+
+// After removing the element, onCleanup fires and cleans up the intervals created in connectedCallback (not the count interval outside the element)
+setTimeout(() => {
+  const el = document.querySelector('cool-element')
+  el.remove()
+}, 2000)
+```
+
+[Example on CodePen](https://codepen.io/trusktr/pen/MWNgaGQ?editors=1011)
+
+Compare that to using `disconnectedCallback`:
+
+```js
+import {Element} from '@lume/element'
+import {createSignal, onCleanup} from 'solid-js'
+
+const [count, setCount] = createSignal(0)
+
+setInterval(() => setCount(n => ++n), 1000)
+
+class CoolElement extends Element {
+  #interval1 = 0
+  #interval2 = 0
+
+  connectedCallback() {
+    super.connectedCallback()
+
+    // Log `count()` any time it changes.
+    this.createEffect(() => console.log(count()))
+
+    this.#interval1 = setInterval(() => console.log('interval 1'), 1000)
+    this.#interval2 = setInterval(() => console.log('interval 2'), 1000)
+  }
+
+  disconnectedCallback() {
+    super.disconnectedCallback()
+
+    clearInterval(this.#interval1)
+    clearInterval(this.#interval2)
+  }
+}
+
+customElements.define('cool-element', CoolElement)
+```
+
+> :bulb:**Tip:**
+>
+> Prefer `onCleanup` instead of `disconnectedCallback` because composition of
+> logic will be easier while also keeping it co-located and easier to read. That
+> example is simple, but when logic grows, having to clean things up in
+> `disconnectedCallback` can get more complicated, especially when each piece of
+> creation logic and cleanup logic is multiple lines long and interleaving
+> them would be harder to read. Plus, putting them in effects makes them
+> creatable+cleanable if signals in the effects change, not just if the element is
+> connected or disconnected. For example, the following element cleans up the
+> interval any time the signal changes, not only on disconnect:
+
+```js
+import {Element} from '@lume/element'
+import {createSignal, onCleanup} from 'solid-js'
+
+const [count, setCount] = createSignal(0)
+
+setInterval(() => setCount(n => ++n), 1000)
+
+class CoolElement extends Element {
+  connectedCallback() {
+    super.connectedCallback()
+
+    // Log `count()` any time it changes.
+    this.createEffect(() => console.log(count()))
+
+    this.createEffect(() => {
+      // Run the interval only during moments that count() is an even number.
+      // Whenever count() is odd, the running interval will be cleaned up and a new interval will not be created.
+      // Also, when the element is disconnected (while count() is even), the interval will be cleaned up.
+      if (count() % 2 !== 0) return
+      const interval = setInterval(() => console.log('interval'), 100)
+      onCleanup(() => clearInterval(interval))
+    })
+  }
+}
+
+customElements.define('cool-element', CoolElement)
+
+// After removing the element, onCleanup fires and cleans up any interval currently created in connectedCallback (not the count interval outside the element)
+setTimeout(() => {
+  const el = document.querySelector('cool-element')
+  el.remove()
+}, 2500)
+```
+
+[Example on CodePen](https://codepen.io/trusktr/pen/qBeWOLz?editors=1011)
+
+The beauty of this is we can write logic based on signals, without worrying
+about `disconnectedCallback`, and we'll rest assured things clean up properly.
+Cleanup logic is co-located with the pieces they are relevant to, which opens
+the door to powerful compositional patterns...
 
 ### `static autoDefine`
 
@@ -1288,7 +1477,7 @@ SomeEl.defineElement('some-el-renamed')
 ### `static defineElement`
 
 Define this class for the given element `name`, or using its default name
-(`TheClass.elementName`) if no was `name` given and the element was not already
+(`TheClass.elementName`) if no `name` was given and the element was not already
 defined using the `@element` decorator. Defaults to using the global
 `customElements` registry unless another registry is provided (for example a
 ShadowRoot-scoped registry) as a second argument.
@@ -1450,141 +1639,6 @@ element's style sheet into the `ShadowRoot` conflicts with how DOM is created in
 `ShadowRoot` content, or etc, then the user may want to place the stylesheet
 somewhere else).
 
-### `createEffect`
-
-The `createEffect` method is a wrapper around Solid's `createEffect` with some differences for convenience:
-
-- `createRoot` is not required in order to dispose of effects created with `this.createEffect()`
-- Effects created with `this.createEffect()` will automatically be cleaned up when the element is disconnected.
-- Besides being useful for re-running logic on signals changes,
-  `this.createEffect()` is useful as an alternative to `disconnectedCallback` when
-  paired with Solid's `onCleanup`.
-
-```js
-import {Element} from '@lume/element'
-import {createSignal, onCleanup} from 'solid-js'
-
-const [count, setCount] = createSignal(0)
-
-setInterval(() => setCount(n => ++n), 1000)
-
-class CoolElement extends Element {
-  connectedCallback() {
-    super.connectedCallback()
-
-    // Log `count()` any time it changes.
-    this.createEffect(() => console.log(count()))
-
-    this.createEffect(() => {
-      const interval1 = setInterval(() => console.log('interval 1'), 1000)
-      onCleanup(() => clearInterval(interval1))
-
-      const interval2 = setInterval(() => console.log('interval 2'), 1000)
-      onCleanup(() => clearInterval(interval2))
-    })
-  }
-}
-
-customElements.define('cool-element', CoolElement)
-
-// After removing the element, onCleanup fires and cleans up the intervals created in connectedCallback (not the count interval outside the element)
-setTimeout(() => {
-  const el = document.querySelector('cool-element')
-  el.remove()
-}, 2000)
-```
-
-[Example on CodePen](https://codepen.io/trusktr/pen/MWNgaGQ?editors=1011)
-
-Compare that to using `disconnectedCallback`:
-
-```js
-import {Element} from '@lume/element'
-import {createSignal, onCleanup} from 'solid-js'
-
-const [count, setCount] = createSignal(0)
-
-setInterval(() => setCount(n => ++n), 1000)
-
-class CoolElement extends Element {
-  #interval1 = 0
-  #interval2 = 0
-
-  connectedCallback() {
-    super.connectedCallback()
-
-    // Log `count()` any time it changes.
-    this.createEffect(() => console.log(count()))
-
-    this.#interval1 = setInterval(() => console.log('interval 1'), 1000)
-    this.#interval2 = setInterval(() => console.log('interval 2'), 1000)
-  }
-
-  disconnectedCallback() {
-    super.disconnectedCallback()
-
-    clearInterval(this.#interval1)
-    clearInterval(this.#interval2)
-  }
-}
-
-customElements.define('cool-element', CoolElement)
-```
-
-> :bulb:**Tip:**
->
-> Prefer `onCleanup` instead of `disconnectedCallback` because composition of
-> logic will be easier while also keeping it co-located and easier to read. That
-> example is simple, but when logic grows, having to clean things up in
-> `disconnectedCallback` can get more complicated, especially when each piece of
-> creation logic and cleanup logic is multiple lines long and interleaving
-> them would be harder to read. Plus, putting them in effects makes them
-> creatable+cleanable if signals in the effects change, not just if the element is
-> connected or disconnected. For example, the following element cleans up the
-> interval any time the signal changes, not only on disconnect:
-
-```js
-import {Element} from '@lume/element'
-import {createSignal, onCleanup} from 'solid-js'
-
-const [count, setCount] = createSignal(0)
-
-setInterval(() => setCount(n => ++n), 1000)
-
-class CoolElement extends Element {
-  connectedCallback() {
-    super.connectedCallback()
-
-    // Log `count()` any time it changes.
-    this.createEffect(() => console.log(count()))
-
-    this.createEffect(() => {
-      // Run the interval only during moments that count() is an even number.
-      // Whenever count() is odd, the running interval will be cleaned up and a new interval will not be created.
-      // Also, when the element is disconnected (while count() is even), the interval will be cleaned up.
-      if (count() % 2 !== 0) return
-      const interval = setInterval(() => console.log('interval'), 100)
-      onCleanup(() => clearInterval(interval))
-    })
-  }
-}
-
-customElements.define('cool-element', CoolElement)
-
-// After removing the element, onCleanup fires and cleans up any interval currently created in connectedCallback (not the count interval outside the element)
-setTimeout(() => {
-  const el = document.querySelector('cool-element')
-  el.remove()
-}, 2500)
-```
-
-[Example on CodePen](https://codepen.io/trusktr/pen/qBeWOLz?editors=1011)
-
-The beauty of this is we can write logic based on signals, without worrying
-about `disconnectedCallback`, and we'll rest assured things clean up properly.
-Cleanup logic is co-located with the pieces they are relevant to, which opens
-the door to powerful compositional patterns...
-
 ## Decorators
 
 Using decorators (if available in your build, or natively in your JS engine)
@@ -1609,7 +1663,7 @@ Below are more details on each decorator:
 
 ### `@element`
 
-The star of the show, a decorator for defining a custom element.
+The star of the decorator show, a decorator for defining a custom element.
 
 When passed a name string, it will be the element's tag name:
 
@@ -1684,15 +1738,6 @@ class CoolElement extends Element {
 }
 ```
 
-```js
-const autoDefine = false
-
-@element({autoDefine}) // The "cool-element" name is implied.
-class CoolElement extends Element {
-  // ...
-}
-```
-
 Without passing arguments to `@element`, options can be specified using
 static class fields:
 
@@ -1707,9 +1752,23 @@ class CoolElement extends Element {
 }
 ```
 
-The last format is nice and clean if you like all the aspects of your class
-defined _within_ the class, or your minifier is mangling your class name. It is
-also useful in TypeScript to avoid repeating the class name multiple times:
+If a name is not passed into `@element`, and if the `static elementName` class
+field is not defined, the name will be inferred as the dash-cased version of the
+class name:
+
+```js
+@element // The "cool-element" tag name is inferred.
+class CoolElement extends Element {
+  // ...
+}
+```
+
+Using the class fields is nice and clean if you like all the aspects of your
+class defined _within_ the class, or if your minifier is mangling your class
+name.
+
+The fields are also useful in TypeScript to avoid repeating values. For example
+here we use the `elementName` value in multiple spots:
 
 ```ts
 const autoDefine = false
