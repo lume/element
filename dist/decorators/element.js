@@ -1,11 +1,18 @@
 import './metadata-shim.js';
 import { untrack } from 'solid-js';
-import { reactive, signalify } from 'classy-solid';
+import { signalify, untracked, isSignalGetter__ } from 'classy-solid';
+import { getInheritedDescriptor } from 'lowclass/dist/getInheritedDescriptor.js';
 import { Element } from '../LumeElement.js';
-import { __classFinishers, __setUpAttribute, __attributesToProps, } from './attribute.js';
+import { classFinishers__, setUpAttribute__, attributesToProps__, } from './attribute.js';
 import { camelCaseToDash } from '../utils.js';
 const isAttributeHandler = Symbol('isAttributeHandler');
-export function element(tagNameOrClassOrOptions = {}, autoDefineOrContext) {
+/**
+ * @param tagNameOrClassOrOptions - Either the tag name to define the element as, or
+ * the class to decorate, or an options object.
+ * @param autoDefineOrContext - Either whether to auto-define the element,
+ * or the decorator context if the first arg was the class.
+ */
+export function element(tagNameOrClassOrOptions, autoDefineOrContext) {
     // when called as a decorator factory with tagName and autoDefine, f.e. `@element('my-el') class MyEl ...` or `element('my-el', false)(class MyEl ...)`
     if (typeof tagNameOrClassOrOptions === 'string') {
         const elementName = tagNameOrClassOrOptions;
@@ -13,7 +20,7 @@ export function element(tagNameOrClassOrOptions = {}, autoDefineOrContext) {
         return (Class, context) => applyElementDecoration(Class, context, { elementName, autoDefine });
     }
     // when called as a decorator factory with or without an options object, f.e. `@element() class MyEl ...` or `@element({tagName: 'my-el'}) class MyEl ...` or `element({tagName: 'my-el', autoDefine: false})(class MyEl ...)`
-    if (typeof tagNameOrClassOrOptions === 'object') {
+    if (!tagNameOrClassOrOptions || typeof tagNameOrClassOrOptions === 'object') {
         return (Class, context) => applyElementDecoration(Class, context, tagNameOrClassOrOptions);
     }
     // Otherwise called as a decorator, f.e. `@element class MyEl ...` or `element(class MyEl ...)`
@@ -21,13 +28,13 @@ export function element(tagNameOrClassOrOptions = {}, autoDefineOrContext) {
     const context = autoDefineOrContext;
     return applyElementDecoration(Class, context);
 }
-function applyElementDecoration(Class, context, options = {}) {
+function applyElementDecoration(Class, context, options) {
     if (typeof Class !== 'function' || (context && context.kind !== 'class'))
         throw new Error('@element is only for use on classes.');
     const usedAsDecorator = !!context;
-    const { metadata = {} } = context ?? {}; // context may be undefined with plain-JS element() usage.
+    const metadata = context?.metadata; // context may be undefined with plain-JS element() usage.
     // Check only own metadata.noSignal, we don't want to use the one inherited from a base class.
-    const noSignal = (Object.hasOwn(metadata, 'noSignal') && metadata.noSignal) || undefined;
+    const noSignal = (metadata && Object.hasOwn(metadata, 'noSignal') && metadata.noSignal) || undefined;
     const attrs = Class.observedAttributes;
     if (Array.isArray(attrs)) {
         // Nothing to do here: either the user provided a regular
@@ -52,14 +59,14 @@ function applyElementDecoration(Class, context, options = {}) {
         for (const prop in _attrs) {
             const handler = _attrs[prop];
             const attrName = (handler.name ?? (handler.dashcase === false ? prop : camelCaseToDash(prop))).toLowerCase();
-            __setUpAttribute(Class, attrName, prop, handler);
+            setUpAttribute__(Class, attrName, prop, handler);
         }
     }
     const handlers = Object.hasOwn(Class, 'observedAttributeHandlers') ? Class.observedAttributeHandlers : undefined;
     if (handlers) {
         for (const [prop, handler] of Object.entries(handlers)) {
             const attrName = (handler.name ?? (handler.dashcase === false ? prop : camelCaseToDash(prop))).toLowerCase();
-            __setUpAttribute(Class, attrName, prop, handlers[prop]);
+            setUpAttribute__(Class, attrName, prop, handlers[prop]);
         }
     }
     // @prod-prune
@@ -70,21 +77,33 @@ function applyElementDecoration(Class, context, options = {}) {
             console.warn(`When using 'static observedAttributeHandlers' do not use the 'element' function as a decorator, instead call it as a plain function, otherwise 'static observedAttributeHandlers' will not handled because class static fields are initialized after class decorators.`);
         }
     });
-    // We need to compose with @reactive so that it will signalify any @signal properties.
-    const ReactiveDecorated = reactive(Class, context);
-    class ElementDecorated extends ReactiveDecorated {
+    const Untracked = untracked(Class, context);
+    class ElementDecorated extends Untracked {
         constructor(...args) {
             // @ts-expect-error we don't know what the user's args will be, just pass them all.
             super(...args);
             // Untrack to be sure we don't cause dependencies during creation of
             // objects (super() is already untracked by the reactive decorator).
             untrack(() => {
-                handlePreUpgradeValues(this);
-                const attrsToProps = ElementDecorated.prototype[__attributesToProps] ?? {};
+                const handlerKeys = Object.keys(Class.observedAttributeHandlers ?? {});
+                for (const prop of handlerKeys) {
+                    const fieldDesc = Object.getOwnPropertyDescriptor(this, prop);
+                    const protoDesc = Object.getOwnPropertyDescriptor(Class.prototype, prop);
+                    // The decorated property is either on the instance (field), or the decorated class's prototype (getter/setter).
+                    if (!(fieldDesc ?? protoDesc))
+                        descriptorError(prop);
+                }
+                const leafAttrsToProps = this[attributesToProps__] ?? {};
+                const protoInheritedAttrsToProps = ElementDecorated.prototype[attributesToProps__] ?? {};
+                const protoOwnAttrsToProps = Object.getOwnPropertyDescriptor(ElementDecorated.prototype, attributesToProps__)?.value ?? {};
+                // Handle only props for the current class, not super classes
+                // (when using the decorator syntax, not observedAttributeHandlers).
+                if (!Class.observedAttributeHandlers && protoInheritedAttrsToProps !== protoOwnAttrsToProps)
+                    return;
                 // We're using Object.values here for *own* properties so
                 // we handle properties of the current decorated class (not
                 // of the super classes).
-                const propSpecs = Object.values(attrsToProps);
+                const protoPropSpecKeys = Object.keys(protoInheritedAttrsToProps);
                 // This is signalifying any attribute props that may have been
                 // defined in `static observedAttributes` or `static
                 // observedAttributeHandlers` rather than with an attribute
@@ -104,54 +123,77 @@ function applyElementDecoration(Class, context, options = {}) {
                 // Having to duplicate keys in observedAttributes as well as class
                 // fields is more room for human error, so it'll be nice to remove
                 // non-decorator usage.
-                for (const propSpec of propSpecs) {
+                // (Set up only the current class's props, subclasses will subsequently set up their own.)
+                for (const key of protoPropSpecKeys) {
+                    const propSpec = leafAttrsToProps[key];
                     const prop = propSpec.name;
                     const useSignal = !noSignal?.has(prop);
                     if (!useSignal)
                         continue;
                     const fieldDesc = Object.getOwnPropertyDescriptor(this, prop);
-                    const protoDesc = Object.getOwnPropertyDescriptor(Class.prototype, prop);
                     const isField = !!fieldDesc;
+                    // const isAutoAccessor = prop === 'ontestevent'
+                    // const protoDesc = isAutoAccessor
+                    // 	? getInheritedDescriptor(Class.prototype, prop as keyof Element)
+                    // 	: Object.getOwnPropertyDescriptor(Class.prototype, prop)
+                    const protoDesc = getInheritedDescriptor(Class.prototype, prop);
                     // The decorated property is either on the instance (field), or the decorated class's prototype (getter/setter).
                     let descriptor = fieldDesc ?? protoDesc;
                     if (!descriptor)
                         descriptorError(prop);
                     const { get, set } = descriptor;
+                    if (get && isSignalGetter__.has(get))
+                        continue;
                     const isAccessor = !!(descriptor && (get || set));
                     const initialValue = isAccessor && get ? get.call(this) : this[prop];
                     signalify(isField ? this : Class.prototype, [prop, initialValue]);
                 }
                 // Intercept JS values to run attribute handlers.
-                for (const propSpec of propSpecs) {
-                    const prop = propSpec.name;
-                    const handler = propSpec.attributeHandler;
-                    if (!handler)
+                // (Set up only the current class's props, subclasses will subsequently set up their own.)
+                for (const key of protoPropSpecKeys) {
+                    const leafPropSpec = leafAttrsToProps[key];
+                    const protoPropSpec = protoInheritedAttrsToProps[key];
+                    // `key` may be some-prop while `prop` will be someProp
+                    const prop = protoPropSpec.name;
+                    const leafHandler = leafPropSpec.attributeHandler;
+                    const protoHandler = protoPropSpec.attributeHandler;
+                    if (!protoHandler || !leafHandler) {
+                        console.warn(`Attribute handler missing for property "${String(prop)}".`);
                         continue;
+                    }
                     const fieldDesc = Object.getOwnPropertyDescriptor(this, prop);
-                    const protoDesc = Object.getOwnPropertyDescriptor(Class.prototype, prop);
                     const isField = !!fieldDesc;
+                    // const isAutoAccessor = prop === 'ontestevent'
+                    // const protoDesc = isAutoAccessor
+                    // 	? getInheritedDescriptor(Class.prototype, prop as keyof Element)
+                    // 	: Object.getOwnPropertyDescriptor(Class.prototype, prop)
+                    const protoDesc = getInheritedDescriptor(Class.prototype, prop);
                     // The decorated property is either on the instance (field), or the decorated class's prototype (getter/setter).
                     let descriptor = fieldDesc ?? protoDesc;
                     if (!descriptor)
                         descriptorError(prop);
                     const { get, set, writable } = descriptor;
                     const isAccessor = !!(get || set);
-                    if (!isAccessor && !isField)
-                        throw new Error(`Cannot map attribute to prototype value property "${String(prop)}". Only prototype getters/setters are supported. Either make the property a class field, or make two separate properties: one for the attribute as a class field, one for the prototype value property.`);
                     if ((isAccessor && !set) || (!isAccessor && !writable))
                         throw new Error(`An attribute decorator cannot be used on readonly property "${String(prop)}".`);
+                    // TODO the initial value shouldn't come from this[prop], it
+                    // should come from the attribute initializer, but for now
+                    // we have things working well enough.
                     const initialValue = isAccessor && get ? get.call(this) : this[prop];
                     // Default values for fields are handled in their initializer,
                     // and this catches default values for getters/setters.
-                    if (!('default' in propSpec))
-                        propSpec.default = 'default' in handler ? handler.default : initialValue;
-                    handler.sideEffect?.(this, prop, initialValue);
+                    if (!('default' in protoPropSpec))
+                        protoPropSpec.default = 'default' in protoHandler ? protoHandler.default : initialValue;
+                    protoHandler.sideEffect?.(this, prop, initialValue);
                     let storage;
-                    // We check if we have an accessor, because sometimes we
-                    // don't if the property is not signalified (f.e. if
-                    // `@attribute @noSignal` was used, then we have a regular
-                    // field.)
+                    // We check if we have an non-field accessor, because
+                    // sometimes we don't if the property is not signalified
+                    // (f.e. if `@attribute @noSignal` was used, then we have a
+                    // regular field.), and sometimes we have a field that's
+                    // already been converted into an attribute handler from a
+                    // super class but a subclass handler will override it.
                     if (isAccessor) {
+                        // Re-use an existing attribute handler if detected.
                         if (set?.[isAttributeHandler])
                             continue;
                     }
@@ -172,18 +214,19 @@ function applyElementDecoration(Class, context, options = {}) {
                         ? // function because it will be on the prototype, needs dynamic `this`
                             function (value) {
                                 if (typeof value === 'string' || value === null)
-                                    value = __handleAttributeValue(value, handler, propSpec);
-                                untrack(() => handler.sideEffect?.(this, prop, value));
+                                    value = handleAttributeValue__(value, leafHandler, leafPropSpec);
+                                untrack(() => leafHandler.sideEffect?.(this, prop, value));
                                 set.call(this, value);
                             }
                         : function (value) {
                             if (typeof value === 'string' || value === null)
-                                value = __handleAttributeValue(value, handler, propSpec);
-                            untrack(() => handler.sideEffect?.(this, prop, value));
+                                value = handleAttributeValue__(value, leafHandler, leafPropSpec);
+                            untrack(() => leafHandler.sideEffect?.(this, prop, value));
                             // @ts-expect-error indexed access with symbol
                             this[storage] = value;
                         };
-                    newGetter && (newGetter[isAttributeHandler] = true);
+                    if (newGetter)
+                        newGetter[isAttributeHandler] = true;
                     newSetter[isAttributeHandler] = true;
                     Object.defineProperty(location, prop, {
                         enumerable: descriptor.enumerable,
@@ -192,23 +235,30 @@ function applyElementDecoration(Class, context, options = {}) {
                         set: newSetter,
                     });
                 }
+                handlePreUpgradeValues(this);
             });
         }
     }
-    const classFinishers = [...__classFinishers];
-    __classFinishers.length = 0;
+    if (metadata) {
+        const count = Object.getOwnPropertyDescriptor(metadata, 'attributeCount')?.value;
+        const usingDecoratorsAndHasAttrs = count !== undefined;
+        if (usingDecoratorsAndHasAttrs && count !== classFinishers__.length) {
+            throw new Error(`Expected ${count} attribute decorators to be applied, but got ${classFinishers__.length}. Make sure the @element decorator is used on any class that also uses @attribute decorators.`);
+        }
+    }
+    const classFinishers = [...classFinishers__];
+    classFinishers__.length = 0;
     function finishClass() {
-        // This need to be here in the finisher because it will run *after*
+        // This needs to be here in the finisher because it will run *after*
         // static class fields (the decorator function itself runs before static
         // class fields are ready).
-        options.elementName ||= Class.elementName || camelCaseToDash(Class.name);
-        options.autoDefine ??= Class.autoDefine;
-        Object.assign(Class, options);
+        Class.elementName = options?.elementName || Class.elementName || camelCaseToDash(Class.name);
+        Class.autoDefine = options?.autoDefine ?? Class.autoDefine;
         for (const finisher of classFinishers)
             finisher(ElementDecorated);
-        if (options.elementName && options.autoDefine)
+        if (Class.elementName && Class.autoDefine)
             // guard against missing DOM API (f.e. SSR)
-            globalThis.window?.customElements?.define(options.elementName, ElementDecorated);
+            globalThis.window?.customElements?.define(Class.elementName, ElementDecorated);
     }
     if (context?.addInitializer) {
         // Use addInitializer to run logic after the class is fully defined
@@ -255,17 +305,10 @@ function handlePreUpgradeValues(self) {
         self[key] = value;
     }
 }
-function __handleAttributeValue(value, handler, propSpec) {
-    // prettier-ignore
+function handleAttributeValue__(value, handler, propSpec) {
     return !handler
         ? value
         : value === null // attribute removed
-            // ? 'default' in handler
-            // 	? handler.default
-            // 	: null
-            // ? 'default' in propSpec!
-            // 	? propSpec!.default
-            // 	: null
             ? propSpec.default
             : handler.from
                 ? handler.from(value)

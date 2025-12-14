@@ -1,8 +1,8 @@
 import {createEffect} from 'solid-js'
 import html from 'solid-js/html'
-import {reactive, signal, signalify} from 'classy-solid'
+import {effect, memo, signal, signalify} from 'classy-solid'
 import {Element, element, type AttributeHandlerMap} from './index.js'
-import {attribute, numberAttribute} from './decorators/attribute.js'
+import {attribute, classFinishers__, numberAttribute} from './decorators/attribute.js'
 
 // TODO move type def to @lume/cli, map @types/jest's `expect` type into the
 // global env.
@@ -223,9 +223,8 @@ describe('LumeElement', () => {
 		class MyEl extends Element {
 			@signal message = 'hello'
 			@signal count = 0
-			override template = () => html`<div count=${() => this.count}>${() => this.message}</div>`
-			// TODO test prop:theCount once `html` supports the prop: namespace prefix.
-			// html`<div count=${() => this.count} prop:theCount=${() => this.count}>${() => this.message}</div>`
+			override template = () =>
+				html`<div count=${() => this.count} prop:theCount=${() => this.count}>${() => this.message}</div>`
 		}
 
 		const el = new MyEl() as any
@@ -246,28 +245,11 @@ describe('LumeElement', () => {
 		expect(el.root.firstElementChild.count).toBe(undefined)
 		// The attribute has the value.
 		expect(el.root.firstElementChild.getAttribute('count')).toBe('1')
-		// TODO If the prop: prefix was used, then the template sets the JS property on the element. `html` doesn't have namespace prefixes yet.
-		// expect(el.root.firstElementChild.theCount).toBe(1)
-
-		/**
-		 * Simulate a click event.
-		 * @public
-		 * @param {Element} elem  the element to simulate a click on
-		 */
-		// var simulateClick = function (elem) {
-		// 	// Create our event (with options)
-		// 	var evt = new MouseEvent('click', {
-		// 		bubbles: true,
-		// 		cancelable: true,
-		// 		view: window
-		// 	});
-		// 	// If cancelled, don't dispatch our event
-		// 	var canceled = !elem.dispatchEvent(evt);
-		// };
+		expect(el.root.firstElementChild.theCount).toBe(1)
 	})
 
-	it('same as previous test, but @reactive is required if @element is not used', () => {
-		@reactive
+	it('same as previous test, but @reactive is (no longer) required if @element is not used', () => {
+		// @reactive // no longer required in latest classy-solid
 		class MyEl extends Element {
 			@signal message = 'hello'
 			@signal count = 0
@@ -292,7 +274,7 @@ describe('LumeElement', () => {
 		expect(el.root.firstElementChild.getAttribute('count')).toBe('1')
 	})
 
-	it('same as previous test, but using signalify() instead of @reactive', () => {
+	it('same as previous test, but using signalify() instead of @signal', () => {
 		class MyEl extends Element {
 			message = 'hello'
 			count = 0
@@ -321,42 +303,93 @@ describe('LumeElement', () => {
 		expect(el.root.firstElementChild.getAttribute('count')).toBe('1')
 	})
 
-	it('forgetting to use @reactive, @element, or signalify() causes a runtime error', () => {
-		// @reactive <---- user forgets to use the class decorator, or forgets to use `signalify()`
-		class MyEl extends Element {
-			@signal message = 'hello'
-			@signal count = 0
-			override template = () => html`<div count=${() => this.count}>${() => this.message}</div>`
-		}
+	describe('invalid usages', () => {
+		it('throws when forgetting to use @element on a single class', () => {
+			expect(() => {
+				// @element <---- user forgets to use the class decorator
+				class ElWithoutDeco extends Element {
+					@attribute money = 1_000_000
+				}
 
-		customElements.define('html-template3', MyEl)
+				customElements.define('el-without-deco', ElWithoutDeco)
 
-		// This class will throw when it detects an extraneous property due to
-		// the previous class missing @reactive.
-		expect(() => {
-			@reactive
-			class OtherClass {
-				@signal foo = 123
-			}
+				// document.createElement('el-without-deco') // this catches and emits the error, prevents regular try-catch from working (i.e. the test will not see the error)
+				new ElWithoutDeco() // so we test with direct construction instead
+			}).toThrowError('Make sure the @element decorator is used on any class that also uses @attribute decorators.')
 
-			new OtherClass()
-		}).toThrow('Did you forget to use the `@reactive` decorator')
-
-		const el = new MyEl() as any
-		els.push(el)
-		document.body.append(el)
-
-		expect(el.root.children.length).toBe(2)
-		expect(el.root.firstElementChild.outerHTML).toBe('<div count="0">hello</div>')
-		expect(el.root.lastElementChild.tagName.toLowerCase()).toBe('style')
-
-		const expectation = expect(() => {
-			// Error writing to these properties
-			el.message = 'goodbye'
-			el.count++
+			classFinishers__.length = 0 // reset class finishers to avoid polluting other tests
 		})
 
-		expectation.not.toThrow()
+		it('throws when forgetting to use @element on a base class', () => {
+			expect(() => {
+				// @element <---- user does not use the class decorator
+				class MyEl extends Element {
+					@attribute money = 1_000_000
+				}
+
+				@element
+				class SubEl extends MyEl {
+					@attribute moreMoney = 2_000_000
+				}
+
+				SubEl
+
+				document.createElement('sub-el')
+			}).toThrowError('Make sure the @element decorator is used on any class that also uses @attribute decorators.')
+
+			classFinishers__.length = 0 // reset class finishers to avoid polluting other tests
+		})
+
+		it('throws when forgetting to use @element on a leaf class', () => {
+			expect(() => {
+				@element
+				class BaseEl extends Element {
+					@attribute money = 1_000_000
+				}
+
+				// @element <---- user does not use the class decorator
+				class SubEl2 extends BaseEl {
+					@attribute moreMoney = 2_000_000
+				}
+
+				customElements.define('sub-el2', SubEl2)
+
+				// document.createElement('sub-el2') // this catches and emits the error, prevents regular try-catch from working (i.e. the test will not see the error)
+				new SubEl2() // so we test with direct construction instead
+			}).toThrowError('Make sure the @element decorator is used on any class that also uses @attribute decorators.')
+
+			classFinishers__.length = 0 // reset class finishers to avoid polluting other tests
+		})
+
+		it('(no longer) causes runtime errors when forgetting to use @element', () => {
+			// @element <---- user does not use the class decorator
+			class MyEl extends Element {
+				@signal message = 'hello'
+				@signal count = 0
+				override template = () => html`<div count=${() => this.count}>${() => this.message}</div>`
+			}
+
+			customElements.define('html-template3', MyEl)
+
+			// This class used to throw due to the previous class missing @element
+			// (which was composed with classy-solid's no-longer-needed @reactive decorator).
+			expect(() => {
+				// @reactive // no longer required in latest classy-solid
+				class OtherClass {
+					@signal foo = 123
+				}
+
+				new OtherClass()
+			}).not.toThrow()
+
+			const el = new MyEl() as any
+			els.push(el)
+			document.body.append(el)
+
+			expect(el.root.children.length).toBe(2)
+			expect(el.root.firstElementChild.outerHTML).toBe('<div count="0">hello</div>')
+			expect(el.root.lastElementChild.tagName.toLowerCase()).toBe('style')
+		})
 	})
 
 	// TODO
@@ -373,27 +406,28 @@ describe('LumeElement', () => {
 	// work because they set properties on elements before they are upgraded due
 	// to the fact that cloneNode skips upgrade (the cloned node must
 	// subsequently be connected to the DOM to get upgraded).
-	it('initializes pre-upgrade properties by deleting them and re-assigning them after construction in a microtask, with decorator syntax', async () => {
-		const fooEl = document.createElement('foo-element') as FooElement
-		els.push(fooEl)
+	it('initializes pre-upgrade properties by deleting them and re-assigning them after construction, with decorator syntax', async () => {
+		const el = document.createElement('foo-element') as FooElement
+		els.push(el)
 
+		expect(customElements.get('foo-element') === undefined).toBe(true)
 		// fooEl is instanceof HTMLElement (not FooElement) at this point (ignore the above type cast)
-		expect(fooEl).toBeInstanceOf(HTMLElement)
+		expect(el).toBeInstanceOf(HTMLElement)
 
-		document.body.append(fooEl)
+		document.body.append(el)
 
-		fooEl.foo = 1
-		fooEl.bar = 2
-		fooEl.setAttribute('baz', '3')
-		fooEl.lorem = 4
-		fooEl.ipsum = 5
-		fooEl.ping = '456'
-		fooEl.setAttribute('ping', 'ping')
-		fooEl.pong = '456'
-		fooEl.setAttribute('pong', 'pong')
-		fooEl.bop = 'beep'
+		el.foo = 1
+		el.bar = 2
+		el.setAttribute('baz', '3')
+		el.lorem = 4
+		el.ipsum = 5
+		el.ping = '456'
+		el.setAttribute('ping', 'ping')
+		el.pong = '456'
+		el.setAttribute('pong', 'pong')
+		el.bop = 'beep'
 
-		let fooDescriptor = Object.getOwnPropertyDescriptor(fooEl, 'foo')
+		let fooDescriptor = Object.getOwnPropertyDescriptor(el, 'foo')
 		let initialValuesHandled = !('value' in fooDescriptor!)
 		let attributeChangedCalled = false
 
@@ -423,144 +457,166 @@ describe('LumeElement', () => {
 			}
 		}
 
-		fooDescriptor = Object.getOwnPropertyDescriptor(fooEl, 'foo')
+		fooDescriptor = Object.getOwnPropertyDescriptor(el, 'foo')
 		initialValuesHandled = !('value' in fooDescriptor!)
 
 		expect(initialValuesHandled).toBe(true, 'should have handled pre-upgrade values (they have accessor descriptors)')
 		expect(attributeChangedCalled).toBe(true)
 
+		expect(customElements.get('foo-element')).toBe(FooElement)
 		// At this point, fooEl is now instanceof FooElement due to the Custom
 		// Element upgrade process.
-		expect(fooEl).toBeInstanceOf(FooElement)
+		expect(el).toBeInstanceOf(FooElement)
 
 		// Pre-upgrade values are in place thanks to the @element class decorator.
-		expect(fooEl.foo).toBe(1)
-		expect(fooEl.bar).toBe(2)
-		expect(fooEl.baz).toBe('3')
-		expect(fooEl.lorem).toBe(4)
-		expect(fooEl.ipsum).toBe(5, 'non decorated properties should get pre-upgrade values too')
-		expect(fooEl.getAttribute('baz')).toBe('3')
-		expect(fooEl.ping).toBe('ping')
-		expect(fooEl.getAttribute('ping')).toBe('ping')
-		expect(fooEl.pong).toBe('pong')
-		expect(fooEl.getAttribute('pong')).toBe('pong')
-		expect(fooEl.beep).toBe('beep')
+		expect(el.foo).toBe(1)
+		expect(el.bar).toBe(2)
+		expect(el.baz).toBe('3')
+		expect(el.lorem).toBe(4)
+		expect(el.ipsum).toBe(5, 'non decorated properties should get pre-upgrade values too')
+		expect(el.getAttribute('baz')).toBe('3')
+		expect(el.ping).toBe('ping')
+		expect(el.getAttribute('ping')).toBe('ping')
+		expect(el.pong).toBe('pong')
+		expect(el.getAttribute('pong')).toBe('pong')
+		expect(el.beep).toBe('beep')
 		// We haven't explicitly set the attribute, and props don't map back to
 		// attributes (for performance). Use `setAttribute` if you intend to set
 		// an attribute.
-		expect(fooEl.getAttribute('beep')).toBe(null)
-		expect(fooEl.boop).toBe('boop')
-		expect(fooEl.getAttribute('boop')).toBe(null)
+		expect(el.getAttribute('beep')).toBe(null)
+		expect(el.boop).toBe('boop')
+		expect(el.getAttribute('boop')).toBe(null)
 
-		expect(fooEl.templateRoot).toBe(fooEl)
+		expect(el.templateRoot).toBe(el)
 
-		fooEl.setAttribute('foo', '456')
-		expect(fooEl.foo).toBe(456)
-		fooEl.removeAttribute('foo')
-		expect(fooEl.foo).toBe(3)
+		el.setAttribute('foo', '456')
+		expect(el.foo).toBe(456)
+		el.removeAttribute('foo')
+		expect(el.foo).toBe(3)
 
-		expect(fooEl.foo2).toBe(3.5)
-		fooEl.setAttribute('foo2', '456')
-		expect(fooEl.foo2).toBe('456')
-		fooEl.removeAttribute('foo2')
-		expect(fooEl.foo2).toBe(3.5)
+		expect(el.foo2).toBe(3.5)
+		el.setAttribute('foo2', '456')
+		expect(el.foo2).toBe('456')
+		el.removeAttribute('foo2')
+		expect(el.foo2).toBe(3.5)
 
-		expect(fooEl.foo3).toBe(3.6)
-		fooEl.setAttribute('foo3', '456')
-		expect(fooEl.foo3).toBe('456')
-		fooEl.removeAttribute('foo3')
-		expect(fooEl.foo3).toBe(true)
+		expect(el.foo3).toBe(3.6)
+		el.setAttribute('foo3', '456')
+		expect(el.foo3).toBe('456')
+		el.removeAttribute('foo3')
+		expect(el.foo3).toBe(true)
 
 		let count = 0
 		createEffect(() => {
-			fooEl.foo // reactive
-			fooEl.bar // reactive
-			fooEl.baz // reactive
-			fooEl.lorem // reactive
-			fooEl.ipsum // Not tracked.
-			fooEl.beep // reactive
-			fooEl.boop // Not tracked.
+			el.foo // reactive
+			el.bar // reactive
+			el.baz // reactive
+			el.lorem // reactive
+			el.ipsum // Not tracked.
+			el.beep // reactive
+			el.boop // Not tracked.
 			count++
 		}) // run 1
 		expect(count).toBe(1)
 
-		fooEl.foo = 10 // run 2
+		el.foo = 10 // run 2
 		expect(count).toBe(2)
-		fooEl.bar = 20 // run 3
+		el.bar = 20 // run 3
 		expect(count).toBe(3)
-		fooEl.lorem = 30 // run 4
+		el.lorem = 30 // run 4
 		expect(count).toBe(4)
-		fooEl.ipsum = 40 // Does not trigger effects.
+		el.ipsum = 40 // Does not trigger effects.
 		expect(count).toBe(4)
 		// Sets the prop via attributeChangedCallback, hence triggers effects.
-		fooEl.setAttribute('beep', 'bop') // run 5
+		el.setAttribute('beep', 'bop') // run 5
 
-		// Reactivity with classy-solid currently triggers immediately (not a microtask).
-		// If this expectation fails, check to make sure there are not duplicate solid-js libs.
-		// TODO we want effects to run async in the next microtask (use this:
-		// https://github.com/solidjs/solid/discussions/943#discussioncomment-6654607)).
-		// But we can update this separately in a next step.
-		//
-		// await null
 		expect(count).toBe(5, 'reactivity should be triggered')
 
-		expect(fooEl.foo).toBe(10)
-		expect(fooEl.bar).toBe(20)
-		expect(fooEl.lorem).toBe(30)
-		expect(fooEl.ipsum).toBe(40)
-		expect(fooEl.beep).toBe('bop')
-		expect(fooEl.getAttribute('beep')).toBe('bop')
-		expect(fooEl.bop).toBe('beep') // pre-upgrade value
+		expect(el.foo).toBe(10)
+		expect(el.bar).toBe(20)
+		expect(el.lorem).toBe(30)
+		expect(el.ipsum).toBe(40)
+		expect(el.beep).toBe('bop')
+		expect(el.getAttribute('beep')).toBe('bop')
+		expect(el.bop).toBe('beep') // pre-upgrade value
 
-		// defer to the next microtask
+		// previously pre-upgrade worked with a microtask, but that is no longer
+		// needed, ensure things still work.
 		await null
-
-		expect(fooEl.foo).toBe(10)
-		expect(fooEl.bar).toBe(20)
-		expect(fooEl.baz).toBe('3')
-		expect(fooEl.lorem).toBe(30)
-		expect(fooEl.ipsum).toBe(40)
-		expect(fooEl.ping).toBe('ping')
-		expect(fooEl.pong).toBe('pong')
-		expect(fooEl.beep).toBe('bop')
-		expect(fooEl.getAttribute('beep')).toBe('bop')
-		expect(fooEl.boop).toBe('boop')
-		expect(fooEl.getAttribute('boop')).toBe(null)
+		expect(el.foo).toBe(10)
+		expect(el.bar).toBe(20)
+		expect(el.baz).toBe('3')
+		expect(el.lorem).toBe(30)
+		expect(el.ipsum).toBe(40)
+		expect(el.ping).toBe('ping')
+		expect(el.pong).toBe('pong')
+		expect(el.beep).toBe('bop')
+		expect(el.getAttribute('beep')).toBe('bop')
+		expect(el.boop).toBe('boop')
+		expect(el.getAttribute('boop')).toBe(null)
 		// TODO test reactive var that wasn't set before the await
-		expect(fooEl.bop).toBe('beep', "reactive var that wasn't set before the await should have the pre-upgrade value")
+		expect(el.bop).toBe('beep', "reactive var that wasn't set before the await should have the pre-upgrade value")
 
 		// Regression fix: The initial prop handling process should not mess with the private
 		// variables defined in the LumeElement class, and thus this expectation
 		// should still hold after deferral.
-		expect(fooEl.templateRoot).toBe(fooEl)
+		expect(el.templateRoot).toBe(el)
 
-		// TODO also test that unshadowing of pre-upgrade properties works in
+		////////////////
+		// Basic test that unshadowing of pre-upgrade properties works in
 		// subclasses of a direct subclass of LumeElement.
+		const subEl = document.createElement('foo-element-subclass') as FooElementSubclass
+
+		expect(customElements.get('foo-element-subclass') === undefined).toBe(true)
+		expect(subEl).toBeInstanceOf(HTMLElement)
+
+		document.body.append(subEl)
+		els.push(subEl)
+
+		subEl.subProp = 'pre-upgrade'
+
+		@element('foo-element-subclass')
+		class FooElementSubclass extends FooElement {
+			@attribute subProp = 'initializer'
+
+			constructor() {
+				super()
+				expect(subEl.subProp).toBe(
+					'initializer',
+					'subProp should still be the initializer value in the subclass constructor',
+				)
+			}
+		}
+
+		expect(customElements.get('foo-element-subclass')).toBe(FooElementSubclass)
+		expect(subEl).toBeInstanceOf(FooElementSubclass)
+		expect(subEl.subProp).toBe('pre-upgrade', 'should have the pre-upgrade value in the subclass instance')
 	})
 
 	// This test is equivalent to the previous one, but not using decorators.
 	// This is what plain JS users would need to do.
-	it('initializes pre-upgrade properties by deleting them and re-assigning them after construction in a microtask, no decorator syntax', async () => {
-		const fooEl = document.createElement('foo-elemento') as FooElemento
-		els.push(fooEl)
+	it('initializes pre-upgrade properties by deleting them and re-assigning them after construction, no decorator syntax', async () => {
+		const el = document.createElement('foo-elemento') as FooElemento
+		els.push(el)
 
+		expect(customElements.get('foo-elemento') === undefined).toBe(true)
 		// fooEl is instanceof HTMLElement (not FooElement) at this point (ignore the type cast)
-		expect(fooEl).toBeInstanceOf(HTMLElement)
+		expect(el).toBeInstanceOf(HTMLElement)
 
-		document.body.append(fooEl)
+		document.body.append(el)
 
-		fooEl.foo = 1
-		fooEl.bar = 2
-		fooEl.setAttribute('baz', '3')
-		fooEl.lorem = 4
-		fooEl.ipsum = 5
-		fooEl.ping = '456'
-		fooEl.setAttribute('ping', 'ping')
-		fooEl.pong = '456'
-		fooEl.setAttribute('pong', 'pong')
-		fooEl.bop = 'beep'
+		el.foo = 1
+		el.bar = 2
+		el.setAttribute('baz', '3')
+		el.lorem = 4
+		el.ipsum = 5
+		el.ping = '456'
+		el.setAttribute('ping', 'ping')
+		el.pong = '456'
+		el.setAttribute('pong', 'pong')
+		el.bop = 'beep'
 
-		let fooDescriptor = Object.getOwnPropertyDescriptor(fooEl, 'foo')
+		let fooDescriptor = Object.getOwnPropertyDescriptor(el, 'foo')
 		let initialValuesHandled = !('value' in fooDescriptor!)
 		let attributeChangedCalled = false
 
@@ -568,11 +624,10 @@ describe('LumeElement', () => {
 
 		type FooElemento = InstanceType<typeof FooElemento>
 
-		// const FooElemento = element(
-		const FooElemento = element('foo-elemento')(
+		const FooElemento = element(
 			class FooElemento extends Element {
-				// @ts-ignore, in case TS complains about overiding an accessor (valid JS)
-				templateRoot = this
+				// @ts-expect-error, TS complains about overiding an accessor (totally valid in plain JS)
+				override templateRoot = this
 
 				// When not using decorators, we can define the reactive attributes like this instead.
 				static override observedAttributeHandlers: AttributeHandlerMap = {
@@ -615,106 +670,132 @@ describe('LumeElement', () => {
 		// This triggers the Custom Element upgrade process for fooEl.
 		// customElements.define('foo-elemento', FooElemento)
 
-		fooDescriptor = Object.getOwnPropertyDescriptor(fooEl, 'foo')
+		fooDescriptor = Object.getOwnPropertyDescriptor(el, 'foo')
 		initialValuesHandled = !('value' in fooDescriptor!)
 
 		expect(initialValuesHandled).toBe(true, 'should have handled pre-upgrade values (they have accessor descriptors)')
 		expect(attributeChangedCalled).toBe(true, 'should have handled initial attributes')
 
+		expect(customElements.get('foo-elemento')).toBe(FooElemento)
 		// At this point, fooEl is now instanceof FooElement due to the Custom
 		// Element upgrade process.
-		expect(fooEl).toBeInstanceOf(FooElemento)
+		expect(el).toBeInstanceOf(FooElemento)
 
 		// Pre-upgrade values are in place thanks to the @element class decorator.
-		expect(fooEl.foo).toBe(1, 'pre-upgrade values should be in place 1')
-		expect(fooEl.bar).toBe(2, 'pre-upgrade values should be in place 2')
-		expect(fooEl.baz).toBe('3', 'pre-upgrade values should be in place 3')
-		expect(fooEl.lorem).toBe(4, 'pre-upgrade values should be in place 4')
-		expect(fooEl.ipsum).toBe(5, 'pre-upgrade values should be in place 5')
-		expect(fooEl.getAttribute('baz')).toBe('3', 'pre-upgrade values should be in place 6')
-		expect(fooEl.ping).toBe('ping', 'pre-upgrade values should be in place 7')
-		expect(fooEl.getAttribute('ping')).toBe('ping', 'pre-upgrade values should be in place 8')
-		expect(fooEl.pong).toBe('pong', 'pre-upgrade values should be in place 9')
-		expect(fooEl.getAttribute('pong')).toBe('pong', 'pre-upgrade values should be in place 10')
-		expect(fooEl.beep).toBe('beep', 'pre-upgrade values should be in place 11')
+		expect(el.foo).toBe(1, 'pre-upgrade values should be in place 1')
+		expect(el.bar).toBe(2, 'pre-upgrade values should be in place 2')
+		expect(el.baz).toBe('3', 'pre-upgrade values should be in place 3')
+		expect(el.lorem).toBe(4, 'pre-upgrade values should be in place 4')
+		expect(el.ipsum).toBe(5, 'pre-upgrade values should be in place 5')
+		expect(el.getAttribute('baz')).toBe('3', 'pre-upgrade values should be in place 6')
+		expect(el.ping).toBe('ping', 'pre-upgrade values should be in place 7')
+		expect(el.getAttribute('ping')).toBe('ping', 'pre-upgrade values should be in place 8')
+		expect(el.pong).toBe('pong', 'pre-upgrade values should be in place 9')
+		expect(el.getAttribute('pong')).toBe('pong', 'pre-upgrade values should be in place 10')
+		expect(el.beep).toBe('beep', 'pre-upgrade values should be in place 11')
 		// We haven't explicitly set the attribute, and props don't map back to
 		// attributes (for performance). Use `setAttribute` if you intend to set
 		// an attribute.
-		expect(fooEl.getAttribute('beep')).toBe(null, 'pre-upgrade values should be in place 12')
-		expect(fooEl.boop).toBe('boop', 'pre-upgrade values should be in place 13')
-		expect(fooEl.getAttribute('boop')).toBe(null, 'pre-upgrade values should be in place 14')
+		expect(el.getAttribute('beep')).toBe(null, 'pre-upgrade values should be in place 12')
+		expect(el.boop).toBe('boop', 'pre-upgrade values should be in place 13')
+		expect(el.getAttribute('boop')).toBe(null, 'pre-upgrade values should be in place 14')
 
-		expect(fooEl.templateRoot).toBe(fooEl)
+		expect(el.templateRoot).toBe(el)
 
 		let count = 0
 		createEffect(() => {
-			fooEl.foo
-			fooEl.bar
-			fooEl.baz
-			fooEl.lorem
-			fooEl.ipsum // Not tracked.
-			fooEl.beep
-			fooEl.boop // Not tracked.
+			el.foo
+			el.bar
+			el.baz
+			el.lorem
+			el.ipsum // Not tracked.
+			el.beep
+			el.boop // Not tracked.
 			count++
 		})
 		expect(count).toBe(1)
 
-		fooEl.foo = 10 // run 2
+		el.foo = 10 // run 2
 		expect(count).toBe(2)
-		fooEl.bar = 20 // run 3
+		el.bar = 20 // run 3
 		expect(count).toBe(3)
-		fooEl.lorem = 30 // run 4
+		el.lorem = 30 // run 4
 		expect(count).toBe(4)
-		fooEl.ipsum = 40 // Does not trigger effects.
+		el.ipsum = 40 // Does not trigger effects.
 		expect(count).toBe(4)
 		// Sets the prop via attributeChangedCallback, hence triggers effects.
-		fooEl.setAttribute('beep', 'bop') // run 5
+		el.setAttribute('beep', 'bop') // run 5
 
-		// Reactivity with classy-solid currently triggers immediately (not a microtask).
-		// If this expectation fails, check to make sure there are not duplicate solid-js libs.
-		// TODO we want effects to run async in the next microtask (use this:
-		// https://github.com/solidjs/solid/discussions/943#discussioncomment-6654607)).
-		// But we can update this separately in a next step.
-		//
-		// await null
 		expect(count).toBe(5, 'reactivity should be triggered')
 
-		expect(fooEl.foo).toBe(10, 'reactivity check 1')
-		expect(fooEl.bar).toBe(20, 'reactivity check 2')
-		expect(fooEl.lorem).toBe(30, 'reactivity check 3')
-		expect(fooEl.ipsum).toBe(40, 'reactivity check 4')
-		expect(fooEl.beep).toBe('bop', 'reactivity check 5')
-		expect(fooEl.getAttribute('beep')).toBe('bop', 'reactivity check 6')
-		expect(fooEl.bop).toBe('beep', 'reactivity check 7') // pre-upgrade value
+		expect(el.foo).toBe(10, 'reactivity check 1')
+		expect(el.bar).toBe(20, 'reactivity check 2')
+		expect(el.lorem).toBe(30, 'reactivity check 3')
+		expect(el.ipsum).toBe(40, 'reactivity check 4')
+		expect(el.beep).toBe('bop', 'reactivity check 5')
+		expect(el.getAttribute('beep')).toBe('bop', 'reactivity check 6')
+		expect(el.bop).toBe('beep', 'reactivity check 7') // pre-upgrade value
 
-		// defer to the next microtask
+		// previously pre-upgrade worked with a microtask, but that is no longer
+		// needed, ensure things still work.
 		await null
 
-		expect(fooEl.foo).toBe(10, 'post-deferral check')
-		expect(fooEl.bar).toBe(20, 'post-deferral check')
-		expect(fooEl.baz).toBe('3', 'post-deferral check')
-		expect(fooEl.lorem).toBe(30, 'post-deferral check')
-		expect(fooEl.ipsum).toBe(40, 'post-deferral check')
-		expect(fooEl.ping).toBe('ping', 'post-deferral check')
-		expect(fooEl.pong).toBe('pong', 'post-deferral check')
-		expect(fooEl.beep).toBe('bop', 'post-deferral check')
-		expect(fooEl.getAttribute('beep')).toBe('bop', 'post-deferral check')
-		expect(fooEl.boop).toBe('boop', 'post-deferral check')
-		expect(fooEl.getAttribute('boop')).toBe(null, 'post-deferral check')
+		expect(el.foo).toBe(10, 'post-deferral check')
+		expect(el.bar).toBe(20, 'post-deferral check')
+		expect(el.baz).toBe('3', 'post-deferral check')
+		expect(el.lorem).toBe(30, 'post-deferral check')
+		expect(el.ipsum).toBe(40, 'post-deferral check')
+		expect(el.ping).toBe('ping', 'post-deferral check')
+		expect(el.pong).toBe('pong', 'post-deferral check')
+		expect(el.beep).toBe('bop', 'post-deferral check')
+		expect(el.getAttribute('beep')).toBe('bop', 'post-deferral check')
+		expect(el.boop).toBe('boop', 'post-deferral check')
+		expect(el.getAttribute('boop')).toBe(null, 'post-deferral check')
 		// TODO test reactive var that wasn't set before the await
-		expect(fooEl.bop).toBe('beep', "reactive var that wasn't set before the await should have the pre-upgrade value")
+		expect(el.bop).toBe('beep', "reactive var that wasn't set before the await should have the pre-upgrade value")
 
 		// Regression fix: The initial prop handling process should not mess with the private
 		// variables defined in the LumeElement class, and thus this expectation
 		// should still hold after deferral.
-		expect(fooEl.templateRoot).toBe(fooEl, 'LumeElement base class properties should be intact after upgrade')
+		expect(el.templateRoot).toBe(el, 'LumeElement base class properties should be intact after upgrade')
+
+		////////////////
+		// Basic test that unshadowing of pre-upgrade properties works in
+		// subclasses of a direct subclass of LumeElement.
+		const subEl = document.createElement('foo-elemento-subclass') as InstanceType<typeof FooElementoSubclass>
+
+		expect(customElements.get('foo-elemento-subclass') === undefined).toBe(true)
+		expect(subEl).toBeInstanceOf(HTMLElement)
+
+		document.body.append(subEl)
+		els.push(subEl)
+
+		subEl.subProp = 'pre-upgrade'
+
+		const FooElementoSubclass = element('foo-elemento-subclass')(
+			class FooElementoSubclass extends FooElemento {
+				static override observedAttributeHandlers: AttributeHandlerMap = {
+					subProp: attribute.string,
+				}
+
+				subProp = 'initializer'
+
+				constructor() {
+					super()
+					expect(subEl.subProp).toBe(
+						'initializer',
+						'subProp should still be the initializer value in the subclass constructor',
+					)
+				}
+			},
+		)
+
+		expect(customElements.get('foo-elemento-subclass')).toBe(FooElementoSubclass)
+		expect(subEl).toBeInstanceOf(FooElementoSubclass)
+		expect(subEl.subProp).toBe('pre-upgrade', 'should have the pre-upgrade value in the subclass instance')
 	})
 
-	xit(
-		'TODO similar to the previous test, but instead of using @reactive + @element, using signalify() with customElements.define() for plain JS environments.',
-	)
-
-	it('ensure wrapped @reactive decorator still automatically does not track reactivity in constructors', () => {
+	it('ensure wrapped @untracked decorator still automatically does not track reactivity in constructors', () => {
 		@element
 		class FooEl extends Element {
 			@attribute amount = 3
@@ -757,7 +838,7 @@ describe('LumeElement', () => {
 		expect(count).toBe(1)
 	})
 
-	it('ensure wrapped @reactive decorator still automatically does not track reactivity in constructors even when not the root most decorator', () => {
+	it('ensure wrapped @untracked decorator still automatically does not track reactivity in constructors even when not the root most decorator', () => {
 		@element
 		class FooEl2 extends Element {
 			@attribute amount = 3
@@ -881,5 +962,66 @@ describe('LumeElement', () => {
 		// static style is removed because there are no more instances of the
 		// element.
 		expect(document.querySelectorAll('style').length).toBe(0)
+	})
+
+	it('stops effects on disconnect, starts effects on reconnect, with new-style effects and memos', () => {
+		@element('effect-reconnect-test')
+		class EffectReconnectTest extends Element {
+			effectCount = 0
+			effectCount2 = 0
+
+			@signal count = 0
+
+			@signal n = 0
+
+			@memo get sum() {
+				return this.count + this.n
+			}
+
+			override template = () => html`<div>${() => this.count}</div>`
+
+			// new-style effects
+			@effect testEffect() {
+				this.effectCount++
+				this.count // track
+			}
+
+			// Test old-style effects too
+			override connectedCallback(): void {
+				super.connectedCallback()
+
+				this.createEffect(() => {
+					this.effectCount2++
+					this.sum // track
+				})
+			}
+		}
+
+		const el = new EffectReconnectTest()
+		els.push(el)
+		document.body.append(el)
+
+		expect(el.effectCount).toBe(1)
+		expect(el.effectCount2).toBe(1)
+
+		el.count = 1
+		expect(el.effectCount).toBe(2)
+		expect(el.effectCount2).toBe(2)
+
+		el.remove()
+
+		el.count = 2
+		expect(el.effectCount).toBe(2, 'effect should not run when disconnected')
+		expect(el.effectCount2).toBe(2, 'old-style effect should not run when disconnected')
+
+		document.body.append(el)
+
+		expect(el.effectCount).toBe(3, 'effect should run once on reconnect')
+		expect(el.effectCount2).toBe(3, 'old-style effect should run once on reconnect')
+
+		el.count = 3
+		el.n = 5 // triggers old-style effect second time
+		expect(el.effectCount).toBe(4, 'effect should run on reactive changes after reconnecting')
+		expect(el.effectCount2).toBe(5, 'old-style effect should run on reactive changes after reconnecting')
 	})
 })

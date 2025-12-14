@@ -1,6 +1,7 @@
 import './metadata-shim.js';
 import type { ElementCtor } from './element.js';
-export declare const __classFinishers: ((Class: ElementCtor) => void)[];
+import type { PropKey } from 'classy-solid/dist/decorators/types.js';
+export declare const classFinishers__: ((Class: ElementCtor) => void)[];
 type AttributeDecoratorContext<This = unknown, Value = unknown> = ClassFieldDecoratorContext<This, Value> | ClassGetterDecoratorContext<This, Value> | ClassSetterDecoratorContext<This, Value> | ClassAccessorDecoratorContext<This, Value>;
 /**
  * A decorator that when used on a property or accessor causes an HTML attribute
@@ -43,9 +44,13 @@ export declare namespace attribute {
  * still receive values from the HTML attribute.
  */
 export declare const noSignal: (_value: unknown, context: AttributeDecoratorContext) => void;
-export declare function __setUpAttribute(ctor: ElementCtor, attrName: string, propName: string, attributeHandler: AttributeHandler): any;
-export declare const __hasAttributeChangedCallback: unique symbol;
-export declare const __attributesToProps: unique symbol;
+export interface AttributeDecoratorMetadata {
+    attributeCount?: number;
+    noSignal?: Set<PropKey>;
+}
+export declare function setUpAttribute__(elementDecoratedClass: ElementCtor, attrName: string, propName: string, attributeHandler: AttributeHandler): any;
+export declare const hasAttributeChangedCallback__: unique symbol;
+export declare const attributesToProps__: unique symbol;
 export type AttributePropSpec = {
     name: string;
     default?: unknown;
@@ -317,6 +322,10 @@ export type EventListener<T extends Event = Event> = (event: T) => void;
 export type EventHandler<T extends Event = Event> = {
     handleEvent: EventListener<T>;
 };
+/**
+ * A decorator for mapping a JSON-valued attribute to a JS property. The string
+ * value of the attribute will be parsed into a JS value using `JSON.parse()`.
+ */
 export declare const jsonAttribute: (value: unknown, context: AttributeDecoratorContext) => any;
 export type JSONValue = string | number | boolean | null | {
     [key: string]: JSONValue;

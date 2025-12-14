@@ -1,7 +1,7 @@
 import './metadata-shim.js'; // TODO remove this shim once decorators land natively.
 import { signal } from 'classy-solid';
 import { camelCaseToDash, defineProp } from '../utils.js';
-export const __classFinishers = [];
+export const classFinishers__ = [];
 export function attribute(handlerOrValue, context) {
     // if used as a decorator directly with no options
     if (arguments.length === 2)
@@ -16,32 +16,51 @@ export function attribute(handlerOrValue, context) {
  * still receive values from the HTML attribute.
  */
 export const noSignal = (_value, context) => {
+    const metadata = context.metadata;
     if (!Object.hasOwn(context.metadata, 'noSignal'))
-        context.metadata.noSignal = new Set();
-    context.metadata.noSignal.add(context.name);
+        metadata.noSignal = new Set();
+    metadata.noSignal.add(context.name);
 };
 function handleAttributeDecoration(value, context, attributeHandler = {}) {
-    const { kind, name, private: isPrivate, static: isStatic, metadata } = context;
-    // Check only own metadata.noSignal, we don't want to use the one inherited from a base class.
-    const noSignal = (Object.hasOwn(metadata, 'noSignal') && metadata.noSignal) || undefined;
-    const useSignal = !noSignal?.has(name);
+    const { kind, name, private: isPrivate, static: isStatic } = context;
+    const metadata = context.metadata;
     if (typeof name === 'symbol')
         throw new Error('@attribute is not supported on symbol fields yet.');
     if (isPrivate)
         throw new Error('@attribute is not supported on private fields yet.');
     if (isStatic)
         throw new Error('@attribute is not supported on static fields.');
+    if (kind !== 'field' && kind !== 'getter' && kind !== 'setter' && kind !== 'accessor')
+        throw new Error('@attribute is only for use on fields, getters/setters, and auto accessors.');
+    // Check only own metadata.noSignal, we don't want to use the one inherited from a base class.
+    const noSignal = (Object.hasOwn(metadata, 'noSignal') && metadata.noSignal) || undefined;
+    const useSignal = !noSignal?.has(name);
     const attrName = (attributeHandler.name ?? (attributeHandler.dashcase === false ? name : camelCaseToDash(name))).toLowerCase();
-    __classFinishers.push((Class) => __setUpAttribute(Class, attrName, name, attributeHandler));
+    if (!Object.hasOwn(metadata, 'attributeCount'))
+        metadata.attributeCount = 0;
+    metadata.attributeCount++;
+    classFinishers__.push((elementDecoratedClass) => setUpAttribute__(elementDecoratedClass, attrName, name, attributeHandler));
+    function checkMapping(obj) {
+        if (!obj[attributesToProps__])
+            throw new Error('Missing attribute-property mapping. Make sure the @element decorator is used on any class that also uses @attribute decorators.');
+        if (classFinishers__.length > 0)
+            throw new Error('Class finishers have not been run. Make sure the @element decorator is used on any class that also uses @attribute decorators.');
+    }
     if (kind === 'field') {
         const signalInitializer = useSignal ? signal(value, context) : (v) => v;
         return function (initialValue) {
-            initialValue = signalInitializer(initialValue);
-            const propSpec = this[__attributesToProps][attrName];
+            initialValue = signalInitializer.call(this, initialValue);
+            checkMapping(this);
+            // TODO this isn't quite right, because the field may be in a super
+            // class, but it will set the propSpec default value for the
+            // leaf-most subclass. Update to use metadata, and we'll always run
+            // logic specifically for the current class (without neeing `this`
+            // or the class itself).
+            const propSpec = this[attributesToProps__][attrName];
             // Typically the first initializer to run for a class field (on
             // instantiation of the first instance of its class) will be our
             // source of truth for our default attribute value, but we check for
-            // 'default' in attributeHandler just in case that a an attribute
+            // 'default' in attributeHandler just in case that an attribute
             // decorator was passed an explicit default, f.e.
             // `@attribute({default: 123})`.
             propSpec.default = 'default' in attributeHandler ? attributeHandler.default : initialValue;
@@ -49,21 +68,37 @@ function handleAttributeDecoration(value, context, attributeHandler = {}) {
         };
     }
     else if (kind === 'getter' || kind === 'setter') {
-        if (useSignal)
-            return signal(value, context);
-    }
-    else if (kind === 'accessor') {
         context.addInitializer(function () {
-            const initialValue = this[name];
-            const propSpec = this[__attributesToProps][attrName];
-            propSpec.default = 'default' in attributeHandler ? attributeHandler.default : initialValue;
-            // attributeHandler.sideEffect?.(this, name, initialValue)
+            checkMapping(this);
         });
         if (useSignal)
             return signal(value, context);
     }
-    else {
-        throw new Error('@attribute is only for use on fields, getters/setters, and auto accessors.');
+    else if (kind === 'accessor') {
+        const target = value;
+        let initialValue;
+        context.addInitializer(function () {
+            checkMapping(this);
+            // TODO this isn't quite right, because the field may be in a super
+            // class, but it will set the propSpec default value for the
+            // leaf-most subclass. Update to use metadata, and we'll always run
+            // logic specifically for the current class (without neeing `this`
+            // or the class itself).
+            const propSpec = this[attributesToProps__][attrName];
+            propSpec.default = 'default' in attributeHandler ? attributeHandler.default : initialValue;
+        });
+        if (useSignal) {
+            const signalResult = signal(target, context);
+            return {
+                ...signalResult,
+                init: function (initVal) {
+                    initVal = signalResult.init ? signalResult.init.call(this, initVal) : initVal;
+                    return (initialValue = initVal);
+                },
+            };
+        }
+        else
+            return { ...target, init: (initVal) => (initialValue = initVal) };
     }
     return undefined; // shush TS
 }
@@ -72,20 +107,17 @@ function handleAttributeDecoration(value, context, attributeHandler = {}) {
 // template method, so users don't have to extend from the LumeElement base class.
 // Extending from the LumeElement base class will be the method that non-decorator
 // users must use.
-export function __setUpAttribute(ctor, attrName, propName, attributeHandler) {
-    if (
-    //
-    !ctor.observedAttributes ||
-        !ctor.hasOwnProperty('observedAttributes')) {
-        const inheritedAttrs = ctor.__proto__.observedAttributes;
+export function setUpAttribute__(elementDecoratedClass, attrName, propName, attributeHandler) {
+    if (!elementDecoratedClass.observedAttributes || !elementDecoratedClass.hasOwnProperty('observedAttributes')) {
+        const inheritedAttrs = elementDecoratedClass.__proto__.observedAttributes;
         // @prod-prune
         if (inheritedAttrs && !Array.isArray(inheritedAttrs)) {
             throw new TypeError('observedAttributes is in the wrong format. Did you forget to decorate your custom element class with the `@element` decorator?');
         }
-        defineProp(ctor, 'observedAttributes', [...(inheritedAttrs || [])]);
+        defineProp(elementDecoratedClass, 'observedAttributes', [...(inheritedAttrs || [])]);
     }
     // @prod-prune
-    if (!Array.isArray(ctor.observedAttributes)) {
+    if (!Array.isArray(elementDecoratedClass.observedAttributes)) {
         throw new TypeError('observedAttributes is in the wrong format. Maybe you forgot to decorate your custom element class with the `@element` decorator.');
     }
     // @prod-prune
@@ -93,41 +125,46 @@ export function __setUpAttribute(ctor, attrName, propName, attributeHandler) {
         !attributeHandler.name &&
         attributeHandler.dashcase === false &&
         attrName !== propName && // uppercase letters in propName
-        ctor.observedAttributes.includes(attrName)) {
+        elementDecoratedClass.observedAttributes.includes(attrName)) {
         console.warn(`The attribute name "${attrName}" is already used by another property that might have a different letter casing. If you know what you're doing, such as overriding a property in a subclass, disable this warning by setting the attribute option 'noWarn' to 'true'. If you don't know why you're seeing this warning, then it means you've caused an attribute name clash on your custom element from two different properties with possibly varying name case such as "fooBar" and "foobar" along with the attribute option 'dashcase' set to 'false', and you should either set 'dashcase' to 'true' to avoid name collisions, manually set a different attribute 'name', or change the property name to have different letters case insensitively.`);
     }
     // @prod-prune
-    if (!attributeHandler.noWarn && attributeHandler.name && ctor.observedAttributes.includes(attrName)) {
+    if (!attributeHandler.noWarn &&
+        attributeHandler.name &&
+        elementDecoratedClass.observedAttributes.includes(attrName)) {
         console.warn(`The attribute name "${attrName}" is already used by another property with the same attribute name. If you know what you're doing, such as overriding a property in a subclass, disable this warning by setting the attribute option 'noWarn' to 'true'. If you don't know why you're seeing this warning, then it means you've caused an attribute name clash on your custom element from two different properties with the same attribute name, and you should either pick a different attribute 'name' value, or unset the attribute 'name' option (without setting the 'dashcase' option) to avoid name collisions.`);
     }
-    if (!ctor.observedAttributes.includes(attrName))
-        ctor.observedAttributes.push(attrName);
-    mapAttributeToProp(ctor.prototype, attrName, propName, attributeHandler);
+    if (!elementDecoratedClass.observedAttributes.includes(attrName))
+        elementDecoratedClass.observedAttributes.push(attrName);
+    mapAttributeToProp(elementDecoratedClass.prototype, attrName, propName, attributeHandler);
 }
-export const __hasAttributeChangedCallback = Symbol('hasAttributeChangedCallback');
-export const __attributesToProps = Symbol('attributesToProps');
+export const hasAttributeChangedCallback__ = Symbol('hasAttributeChangedCallback');
+export const attributesToProps__ = Symbol('attributesToProps');
 // This stores attribute definitions as an inheritance chain on the constructor.
-function mapAttributeToProp(prototype, attr, prop, attributeHandler) {
+function mapAttributeToProp(elementDecoratedProto, attr, prop, attributeHandler) {
     // Only define attributeChangedCallback once.
-    if (!prototype[__hasAttributeChangedCallback]) {
-        prototype[__hasAttributeChangedCallback] = true;
-        const originalAttrChanged = prototype.attributeChangedCallback;
-        prototype.attributeChangedCallback = function (attr, oldVal, newVal) {
-            // If the class already has an attributeChangedCallback, let is run,
-            // and let it call or not call super.attributeChangedCallback.
-            if (originalAttrChanged) {
-                originalAttrChanged.call(this, attr, oldVal, newVal);
-            }
-            // Otherwise, let's not intentionally break inheritance and be sure
-            // we call the super method (if it exists).
-            else {
+    if (!elementDecoratedProto[hasAttributeChangedCallback__]) {
+        elementDecoratedProto[hasAttributeChangedCallback__] = true;
+        // const originalAttrChanged = elementDecoratedProto.attributeChangedCallback
+        const originalAttrChanged = Object.getOwnPropertyDescriptor(elementDecoratedProto, 'attributeChangedCallback')
+            ?.value;
+        Object.defineProperty(elementDecoratedProto, 'attributeChangedCallback', {
+            value: function attributeChangedCallback(attr, oldVal, newVal) {
+                // If the class already has an attributeChangedCallback (patching it), let it run,
+                // and let it call or not call super.attributeChangedCallback as it
+                // sees fit.
+                if (originalAttrChanged)
+                    originalAttrChanged.call(this, attr, oldVal, newVal);
+                // Otherwise, let's not intentionally break inheritance and be sure
+                // we call the super method (if it exists).
                 // This is equivalent to `super.attributeChangedCallback?()`
-                prototype.__proto__?.attributeChangedCallback?.call(this, attr, oldVal, newVal);
-            }
-            // map from attribute to property
-            const prop = this[__attributesToProps][attr];
-            this[prop.name] = newVal;
-        };
+                else
+                    elementDecoratedProto.__proto__?.attributeChangedCallback?.call(this, attr, oldVal, newVal);
+                // map from attribute to property
+                const propSpec = this[attributesToProps__][attr];
+                this[propSpec.name] = newVal;
+            },
+        });
     }
     // Extend the current prototype's attributesToProps object from the super
     // prototype's attributesToProps object.
@@ -135,9 +172,11 @@ function mapAttributeToProp(prototype, attr, prop, attributeHandler) {
     // We use inheritance here or else all classes would pile their
     // attribute-prop definitions on a shared base class (they can clash,
     // override each other willy nilly and seemingly randomly).
-    if (!Object.hasOwn(prototype, __attributesToProps))
-        prototype[__attributesToProps] = { __proto__: prototype[__attributesToProps] || Object.prototype };
-    prototype[__attributesToProps][attr] = { name: prop, attributeHandler };
+    if (!Object.hasOwn(elementDecoratedProto, attributesToProps__))
+        elementDecoratedProto[attributesToProps__] = {
+            __proto__: elementDecoratedProto[attributesToProps__] ?? Object.prototype,
+        };
+    elementDecoratedProto[attributesToProps__][attr] = { name: prop, attributeHandler };
 }
 // The function form is deprecated, but still around for back compat.
 // type AttributeType<T> = AttributeHandler<T> & (() => AttributeHandler<T>)
@@ -419,5 +458,9 @@ attribute.event = eventAttributeHandler;
  */
 export const eventAttribute = attribute(attribute.event);
 attribute.json = { from: (str) => JSON.parse(str) };
+/**
+ * A decorator for mapping a JSON-valued attribute to a JS property. The string
+ * value of the attribute will be parsed into a JS value using `JSON.parse()`.
+ */
 export const jsonAttribute = attribute(attribute.json);
 //# sourceMappingURL=attribute.js.map

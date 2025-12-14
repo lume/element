@@ -11,6 +11,56 @@ import {
 } from '../index.js'
 
 describe('@element decorator', () => {
+	describe('classy-solid @signal properties with @element decorator', () => {
+		it('reacts to updates using createEffect', () => {
+			@element('foo-el')
+			class FooEl extends HTMLElement {
+				@signal foo = 123
+			}
+
+			const f = new FooEl()
+			let count = 0
+
+			// Runs once initially, then re-runs any time f.foo has changed.
+			createEffect(() => {
+				f.foo
+				count++
+			})
+
+			expect(count).toBe(1)
+			f.foo = 123
+			expect(count).toBe(2)
+			expect(f.foo).toBe(123)
+		})
+
+		it('maintains reactivity for overridden fields', () => {
+			@element('foo-el2')
+			class FooEl extends HTMLElement {
+				@signal foo = 123
+			}
+
+			@element('override-el')
+			class OverrideEl extends FooEl {
+				@signal override foo = 456
+			}
+
+			const f = new OverrideEl()
+			let count = 0
+
+			// Runs once initially, then re-runs any time f.foo has changed.
+			createEffect(() => {
+				f.foo
+				count++
+			})
+
+			expect(f.foo).toBe(456)
+			expect(count).toBe(1)
+			f.foo = 789
+			expect(count).toBe(2)
+			expect(f.foo).toBe(789)
+		})
+	})
+
 	it('reads options from static class fields', () => {
 		@element
 		class ElementWithStaticName extends Element {
@@ -244,11 +294,12 @@ describe('@element decorator', () => {
 				baz
 				baz2: string | null = null
 
+				_val = 123
 				get gettersetter() {
-					return this.num
+					return this._val
 				}
 				set gettersetter(v) {
-					this.num = v
+					this._val = v
 				}
 			},
 		)
@@ -521,6 +572,76 @@ describe('@element decorator', () => {
 		expect(count).toBe(1)
 		expect(b!).toBe(b2)
 	})
+
+	it('works with prototype value property', () => {
+		const MyElement = element(
+			(() => {
+				const Class = class extends Element {
+					static override elementName = 'my-element-attr-to-proto'
+
+					static override observedAttributeHandlers: AttributeHandlerMap = {
+						someProp: attribute.number,
+					}
+
+					declare someProp: number
+				}
+
+				Class.prototype.someProp = 123
+
+				return Class
+			})(),
+		)
+
+		const el = new MyElement()
+		expect(el.someProp).toBe(123)
+		document.body.append(el)
+
+		el.setAttribute('some-prop', '456')
+		expect(el.someProp).toBe(456)
+
+		el.removeAttribute('some-prop')
+		expect(el.someProp).toBe(123)
+	})
+
+	describe('invalid usages', () => {
+		it('throws when mapping an attribute to missing property', () => {
+			const MyElement = element(
+				class extends Element {
+					static override elementName = 'my-element-missing-prop'
+
+					static override observedAttributeHandlers: AttributeHandlerMap = {
+						someProp: attribute.number,
+					}
+				},
+			)
+			// ;(MyElement.prototype as any).someProp = 123
+
+			expect(() => new MyElement()).toThrow(
+				'Missing descriptor for property "someProp" while mapping attributes to properties.',
+			)
+		})
+
+		it('throws when mapping an attribute to a readonly accessor', () => {
+			@element
+			class MyElement extends Element {
+				static override elementName = 'my-element-readonly-accessor'
+
+				@numberAttribute // readonly accessor
+				get someProp() {
+					return 123
+				}
+			}
+
+			expect(() => new MyElement()).toThrow('An attribute decorator cannot be used on readonly property "someProp".')
+		})
+
+		it('throws on non-classes', () => {
+			expect(() => {
+				// @ts-expect-error
+				element('my-el')({})
+			}).toThrow('@element is only for use on classes.')
+		})
+	})
 })
 
 function testAttributes(
@@ -537,6 +658,7 @@ function testAttributes(
 	el.setAttribute(foo, 'blah')
 	// @ts-ignore
 	expect(el[foo]).toBe('blah')
+	// debugger
 	el.removeAttribute(foo)
 	// @ts-ignore
 	expect(el[foo]).toBe('foo')

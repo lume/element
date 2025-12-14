@@ -1,10 +1,10 @@
 var _a;
 import { render } from 'solid-js/web';
-// __isPropSetAtLeastOnce was exposed by classy-solid specifically for
+// isPropSetAtLeastOnce__ was exposed by classy-solid specifically for
 // @lume/element to use. It tells us if a signal property has been set at
 // least once, and if so allows us to skip overwriting it with a custom
 // element preupgrade value.
-import { Effectful, __isPropSetAtLeastOnce } from 'classy-solid';
+import { Effects, isPropSetAtLeastOnce__, startEffects, stopEffects } from 'classy-solid';
 // TODO `templateMode: 'append' | 'replace'`, which allows a subclass to specify
 // if template content replaces the content of `root`, or is appended to `root`.
 const HTMLElement = globalThis.HTMLElement ??
@@ -15,7 +15,7 @@ const HTMLElement = globalThis.HTMLElement ??
     };
 const root = Symbol('root');
 // TODO Make LumeElement `abstract`
-class LumeElement extends Effectful(HTMLElement) {
+class LumeElement extends HTMLElement {
     /**
      * The default tag name of the elements this class instantiates. When using
      * the `@element` decorator, if this field has not been specified, it will
@@ -86,6 +86,13 @@ class LumeElement extends Effectful(HTMLElement) {
      * ```
      */
     static observedAttributeHandlers;
+    /**
+     * When `true`, effects created via the classy-solid `@effect` decorator
+     * will automatically start upon instance construction.
+     *
+     * Defaults to `false` with effects starting in `connectedCallback()`.
+     */
+    static autoStartEffects = false;
     #handleInitialPropertyValuesIfAny() {
         // We need to delete initial value-descriptor properties (if they exist)
         // and store the initial values in the storage for our @signal property
@@ -127,7 +134,7 @@ class LumeElement extends Effectful(HTMLElement) {
                 // non-decorator usage, and eventually remove code intended for
                 // non-decorator usage such as this.
                 queueMicrotask(() => {
-                    const propSetAtLeastOnce = __isPropSetAtLeastOnce(this, propName);
+                    const propSetAtLeastOnce = isPropSetAtLeastOnce__(this, propName);
                     // ... (2/2) and re-assign the value so that it goes through
                     // a @signal accessor that got defined, or through an
                     // inherited accessor that the preupgrade value shadowed.
@@ -232,15 +239,23 @@ class LumeElement extends Effectful(HTMLElement) {
             console.warn('Element already has a root defined.');
         return (this[root] = super.attachShadow(options));
     }
+    #effects = new Effects();
+    // For old-style (non-decorator) effects (f.e. subclasses creating effects
+    // in connectedCallback).
+    createEffect(fn) {
+        this.#effects.createEffect(fn);
+    }
     #disposeTemplate;
     connectedCallback() {
         const template = this.template;
         if (template)
             this.#disposeTemplate = render(typeof template === 'function' ? template.bind(this) : () => template, this.templateRoot);
         this.#setStyle();
+        startEffects(this); // start new-style (decorator) effects
     }
     disconnectedCallback() {
-        this.stopEffects();
+        this.#effects.clearEffects(); // Clean up old-style (non-decorator) effects.
+        stopEffects(this); // Clean up new-style (decorator) effects
         this.#disposeTemplate?.();
         this.#cleanupStyle();
     }

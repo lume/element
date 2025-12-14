@@ -1,4 +1,4 @@
-# @lume/element
+# @lume/element <!-- omit in toc -->
 
 Easily and concisely write Custom Elements with simple templates and reactivity.
 
@@ -21,7 +21,7 @@ experience no matter which base component system your app uses.
 > Elements compared to writing them with vanilla APIs, but sometimes vanilla
 > APIs are all that is needed.
 
-# Live demos
+# Live demos <!-- omit in toc -->
 
 - [Lume 3D HTML](https://lume.io) (The landing page, all of Lume's 3D elements, and the live code editors themselves in the doc pages)
 - [CodePen, html template tag, no decorators](https://codepen.io/trusktr/pen/zYeRqaR)
@@ -29,7 +29,66 @@ experience no matter which base component system your app uses.
 - [Stackblitz with Vite, JSX, TypeScript, decorators](https://stackblitz.com/edit/solidjs-templates-wyjc1i?file=src%2Findex.tsx)
 - [Solid Playground, TypeScript, no decorators](https://playground.solidjs.com/anonymous/0cc05f53-b665-44d2-a73c-1db9eb992a4f)
 
-# Cliché Usage Example
+# Table of contents <!-- omit in toc -->
+
+- [Cliché Click Counter Example](#cliché-click-counter-example)
+- [Intro](#intro)
+- [Basic Usage](#basic-usage)
+  - [Create custom elements](#create-custom-elements)
+  - [Easily create and manipulate DOM](#easily-create-and-manipulate-dom)
+  - [Create functional components](#create-functional-components)
+  - [Using functional components inside custom elements](#using-functional-components-inside-custom-elements)
+  - [Functional components vs custom elements](#functional-components-vs-custom-elements)
+- [API](#api)
+  - [`Element`](#element)
+    - [`static elementName`](#static-elementname)
+    - [`template`](#template)
+    - [`static css`](#static-css)
+    - [`css`](#css)
+    - [`static observedAttributes`](#static-observedattributes)
+    - [`static observedAttributeHandlers`](#static-observedattributehandlers)
+      - [events with `static observedAttributeHandlers`](#events-with-static-observedattributehandlers)
+    - [`attributeChangedCallback`](#attributechangedcallback)
+    - [`connectedCallback`](#connectedcallback)
+    - [`disconnectedCallback`](#disconnectedcallback)
+    - [`adoptedCallback`](#adoptedcallback)
+    - [`createEffect` (prefer `@effect` decorator instead)](#createeffect-prefer-effect-decorator-instead)
+    - [`static autoDefine`](#static-autodefine)
+    - [`static defineElement`](#static-defineelement)
+    - [`hasShadow`](#hasshadow)
+    - [`templateRoot`](#templateroot)
+    - [`shadowOptions`](#shadowoptions)
+    - [`styleRoot`](#styleroot)
+  - [Decorators](#decorators)
+    - [`@element`](#element-1)
+    - [`@attribute`](#attribute)
+      - [Custom attribute handlers](#custom-attribute-handlers)
+    - [`@stringAttribute`](#stringattribute)
+    - [`@numberAttribute`](#numberattribute)
+    - [`@booleanAttribute`](#booleanattribute)
+    - [`@eventAttribute`](#eventattribute)
+    - [`@jsonAttribute`](#jsonattribute)
+    - [`@signal`](#signal)
+    - [`@memo`](#memo)
+    - [`@effect`](#effect)
+    - [`@noSignal`](#nosignal)
+- [Runtime Type Checking](#runtime-type-checking)
+- [TypeScript](#typescript)
+  - [Attribute property types](#attribute-property-types)
+  - [Solid.js JSX expressions](#solidjs-jsx-expressions)
+  - [Type definitions for custom elements in frameworks](#type-definitions-for-custom-elements-in-frameworks)
+    - [In Solid JSX (in Lume Elements)](#in-solid-jsx-in-lume-elements)
+    - [In React JSX](#in-react-jsx)
+    - [In Preact JSX](#in-preact-jsx)
+    - [In Angular](#in-angular)
+    - [In Vue](#in-vue)
+    - [In Svelte](#in-svelte)
+    - [In Stencil.js JSX](#in-stenciljs-jsx)
+  - [Setter types in framework templates](#setter-types-in-framework-templates)
+- [Resources](#resources)
+- [Status](#status)
+
+# Cliché Click Counter Example
 
 Define a `<click-counter>` element:
 
@@ -51,13 +110,9 @@ class ClickCounter extends Element {
 		}
 	`
 
-  connectedCallback() {
-    super.connectedCallback()
-
-    // Log the `count` any time it changes:
-    createEffect(() => {
-      console.log('count is:', this.count)
-    })
+  // Log the `count` any time it changes:
+  @effect logCount() {
+    console.log('count is:', this.count)
   }
 }
 ```
@@ -1215,7 +1270,7 @@ Nothing new here, this is simply a part of the browser's [native Custom Elements
 It is triggered when the element is connected into the document. Use it to
 create initialize any processes.
 
-With Lume Element, the main use case of this is to create effects.
+With Lume Element, the main use case of this is to create effects when not using decorator-style effects.
 
 ```js
 import {Element} from '@lume/element'
@@ -1225,11 +1280,31 @@ class CoolElement extends Element {
     // Don't forget to call the super method from the Element class!
     super.connectedCallback()
 
-    // ...Create processes, such effects...
+    // ...Create processes, such as effects...
 
     this.createEffect(() => {
       // ... re-runs when any properties or signals change ...
     })
+  }
+  // ...
+}
+```
+
+When using decorators, the following is preferred for less boilerplate:
+
+```js
+import {Element} from '@lume/element'
+
+class CoolElement extends Element {
+  // Use the method name to describe the effect for readability.
+  @effect someEffect() {
+    // ... re-runs when any signals change ...
+  }
+
+  connectedCallback() {
+    super.connectedCallback() // Don't forget to call the base-class method!
+
+    // ...Create processes (non-effects)...
   }
   // ...
 }
@@ -1244,30 +1319,32 @@ clean things up.
 
 > ![Note]
 > When using only effects, it is unnecessary to define `disconnectedCallback`.
+> This example shows how to clean up custom processes.
 
 ```js
 import {Element} from '@lume/element'
+import {effect} from 'classy-solid'
 
 class CoolElement extends Element {
+  @effect someEffect() {
+    // ...
+  }
+
   connectedCallback() {
-    super.connectedCallback()
+    super.connectedCallback() // Don't forget to call the base-class method!
 
     this.interval = setInterval(() => {...}, 1000)
-
-    this.createEffect(() => {
-      // ...
-    })
   }
 
   disconnectedCallback() {
-    // Don't forget to call the super method from the Element class!
-    super.disconnectedCallback()
+    super.disconnectedCallback() // Don't forget to call the base-class method!
 
     // ...Clean up anything that is not Lume-Element-specific...
     clearInterval(this.interval)
 
     // You do not need to manually clean up effects made with `this.createEffect()`.
   }
+
   // ...
 }
 ```
@@ -1284,8 +1361,7 @@ import {Element} from '@lume/element'
 
 class CoolElement extends Element {
   adoptedCallback() {
-    // Don't forget to call the super method from the Element class!
-    super.adoptedCallback()
+    super.adoptedCallback() // Don't forget to call the base-class method!
 
     // ...Do something when the element was transferred into another window's or iframe's document...
   }
@@ -1293,15 +1369,20 @@ class CoolElement extends Element {
 }
 ```
 
-### `createEffect`
+### `createEffect` (prefer [`@effect`](#effect) decorator instead)
 
-The `createEffect` method is a wrapper around Solid's `createEffect` with some differences for convenience:
+The `createEffect` method is a wrapper around Solid's `createEffect` with some
+differences for convenience and when not using decorators:
 
 - `createRoot` is not required in order to dispose of effects created with `this.createEffect()`
 - Effects created with `this.createEffect()` will automatically be cleaned up when the element is disconnected.
 - Besides being useful for re-running logic on signals changes,
   `this.createEffect()` is useful as an alternative to `disconnectedCallback` when
   paired with Solid's `onCleanup`.
+
+> [!Note]
+> When using decorators, use the `@effect` decorator instead, for conciseness
+> (see concise decorator example further below).
 
 ```js
 import {Element} from '@lume/element'
@@ -1377,6 +1458,41 @@ class CoolElement extends Element {
 customElements.define('cool-element', CoolElement)
 ```
 
+Here's what the more concise example looks like with decorators.
+
+```js
+import {Element} from '@lume/element'
+import {createSignal, onCleanup} from 'solid-js'
+import {effect} from 'classy-solid'
+
+const [count, setCount] = createSignal(0)
+
+setInterval(() => setCount(n => ++n), 1000)
+
+class CoolElement extends Element {
+  @effect logCount() {
+    console.log(count())
+  }
+
+  // This effect does not re-run on signal changes, but is useful for setup+cleanup.
+  @effect makeIntervals() {
+    const interval1 = setInterval(() => console.log('interval 1'), 1000)
+    onCleanup(() => clearInterval(interval1))
+
+    const interval2 = setInterval(() => console.log('interval 2'), 1000)
+    onCleanup(() => clearInterval(interval2))
+  }
+}
+
+customElements.define('cool-element', CoolElement)
+
+// After removing the element, onCleanup fires and cleans up the intervals created in connectedCallback (not the count interval outside the element)
+setTimeout(() => {
+  const el = document.querySelector('cool-element')
+  el.remove()
+}, 2000)
+```
+
 > :bulb:**Tip:**
 >
 > Prefer `onCleanup` instead of `disconnectedCallback` because composition of
@@ -1392,39 +1508,39 @@ customElements.define('cool-element', CoolElement)
 ```js
 import {Element} from '@lume/element'
 import {createSignal, onCleanup} from 'solid-js'
+import {effect} from 'classy-solid'
 
 const [count, setCount] = createSignal(0)
 
 setInterval(() => setCount(n => ++n), 1000)
 
 class CoolElement extends Element {
-  connectedCallback() {
-    super.connectedCallback()
+  @effect logCount() {
+    console.log(count())
+  }
 
-    // Log `count()` any time it changes.
-    this.createEffect(() => console.log(count()))
-
-    this.createEffect(() => {
-      // Run the interval only during moments that count() is an even number.
-      // Whenever count() is odd, the running interval will be cleaned up and a new interval will not be created.
-      // Also, when the element is disconnected (while count() is even), the interval will be cleaned up.
-      if (count() % 2 !== 0) return
-      const interval = setInterval(() => console.log('interval'), 100)
-      onCleanup(() => clearInterval(interval))
-    })
+  @effect conditionalInterval() {
+    // Run the interval only during moments that count() is an even number.
+    // Whenever count() is odd, the running interval will be cleaned up and a new interval will not be created.
+    // Also, when the element is disconnected (while count() is even), the interval will be cleaned up.
+    if (count() % 2 !== 0) return
+    const interval = setInterval(() => console.log('interval'), 100)
+    onCleanup(() => clearInterval(interval))
   }
 }
 
 customElements.define('cool-element', CoolElement)
 
-// After removing the element, onCleanup fires and cleans up any interval currently created in connectedCallback (not the count interval outside the element)
+// After removing the element, onCleanup fires and cleans up any interval
+// currently created within the element (not the count interval outside the
+// element)
 setTimeout(() => {
   const el = document.querySelector('cool-element')
   el.remove()
 }, 2500)
 ```
 
-[Example on CodePen](https://codepen.io/trusktr/pen/qBeWOLz?editors=1011)
+[Example on CodePen (without decorators)](https://codepen.io/trusktr/pen/qBeWOLz?editors=1011)
 
 The beauty of this is we can write logic based on signals, without worrying
 about `disconnectedCallback`, and we'll rest assured things clean up properly.
@@ -1655,9 +1771,21 @@ equivalents:
 - Use `@eventAttribute foo` in place of `foo: attribute.event`
 - Use `@jsonAttribute foo` in place of `foo: attribute.json`
 
+The `@noSignal` decorator can be paired with attribute decorators to disable
+reactivity on specific attribute-decorated properties. This is not recommended
+unless you have a very special reason to do so, and refactoring to avoid this
+is preferred.
+
 > [!Warning]
-> When using attribute decorators, the `@element` decorator is also required on
+> When using attribute decorators, the `@element` decorator is currently also required on
 > the class, or the attribute decorators won't work.
+
+Additional decorators from `classy-solid` are also available:
+
+- Use `@signal` in place of `createSignal()` or for non-attribute properties
+  that need to be reactive.
+- Use `@memo` in place of `createMemo()`
+- Use `@effect` in place of `this.createEffect()`
 
 Below are more details on each decorator:
 
@@ -2251,16 +2379,18 @@ class HTMLInterfaceForSomeAPI extends Element {
 
   @jsonAttribute data = {}
 
-  connectedCallback() {
-    super.connectedCallback()
+  @memo get api() {
+    if (Object.keys(this.data).length === 0) return null
+    const obj = new SomeAPI(this.data)
+    onCleanup(() => obj.dispose())
+    return obj
+  }
 
-    this.createEffect(() => {
-      const obj = new SomeAPI(data)
-
-      // ...
-
-      onCleanup(() => obj.dispose())
-    })
+  @effect useData() {
+    const api = this.api
+    if (!api) return
+    const result = api.doSomething()
+    onCleanup(() => api.undoSomething(result))
   }
 }
 ```
@@ -2299,6 +2429,66 @@ class CoolElement extends Element {
 
   // ...
 }
+```
+
+### `@memo`
+
+Also from `classy-solid`, this decorator creates a memoized property that
+automatically updates when any signals it reads from update:
+
+```ts
+import {Element, element, booleanAttribute} from '@lume/element'
+import {memo} from 'classy-solid'
+
+@element
+class CoolElement extends Element {
+  @booleanAttribute hasPizza = false
+  @booleanAttribute hasDrink = false
+
+  @memo get isHappy() {
+    return this.hasPizza && this.hasDrink
+  }
+}
+
+const el = new CoolElement()
+
+// initially logs "isHappy: false"
+createEffect(() => {
+  console.log(`isHappy: ${el.isHappy}`)
+})
+
+el.hasPizza = true // does not log anything because isHappy is still false
+el.hasDrink = true // logs "isHappy: true"
+```
+
+### `@effect`
+
+Also from `classy-solid`, this decorator creates an effect that automatically
+runs when any signals it reads from update:
+
+```ts
+import {Element, element, booleanAttribute} from '@lume/element'
+import {effect} from 'classy-solid'
+
+@element
+class CoolElement extends Element {
+  @booleanAttribute hasPizza = false
+  @booleanAttribute hasDrink = false
+
+  @memo isHappy() {
+    return this.hasPizza && this.hasDrink
+  }
+
+  @effect logHappiness() {
+    if (this.isHappy) console.log('I am happy!')
+    else console.log('I am sad.')
+  }
+}
+
+const el = document.createElement('cool-element') // initially logs "I am sad."
+
+el.toggleAttribute('has-pizza') // does not log anything because isHappy is still false
+el.toggleAttribute('has-drink') // logs "I am happy!"
 ```
 
 ### `@noSignal`
