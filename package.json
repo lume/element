@@ -32,7 +32,7 @@
 	},
 	"dependencies": {
 		"babel-preset-solid": "^1.0.0",
-		"classy-solid": "^0.4.0",
+		"classy-solid": "^0.4.4 || ^0.5.2",
 		"lowclass": "^8.0.0",
 		"solid-js": "^1.0.0"
 	},

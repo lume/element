@@ -48,16 +48,24 @@ type ElementClassDecorator = <T extends AnyConstructor<HTMLElement>>(Class: T, c
  * ```
  *
  * Sometimes you may not want to define a name for the element,
- * however the decorator is still needed for key functionality. In
- * this case use the decorator without calling it first, then you can
- * manually define the element in another way as needed:
+ * however the decorator is still needed for key functionality.
+ * To accomplish this, call it with `autoDefine` set to false,
  *
  * ```js
- * ⁣@element
+ * ⁣@element({ autoDefine: false })
  * class CoolElement extends HTMLElement {
  *   // ...
  * }
- *
+ * ```
+ * or
+ * ```js
+ * ⁣@element('', false)
+ * class CoolElement extends HTMLElement {
+ *   // ...
+ * }
+ * ```
+ * Then you can manually define the element later with a name of your choosing:
+ * ```js
  * // ...Manually define it at some point after making the class...
  * CoolElement.defineElement('cool-element')
  *
@@ -70,7 +78,9 @@ type ElementClassDecorator = <T extends AnyConstructor<HTMLElement>>(Class: T, c
  * document.body.append(document.createElement('cool-element'))
  * ```
  *
- * If you call it with an empty string, it behaves the same as the previous example:
+ * If you call it with an empty string, an empty options object, or as a
+ * decorator directly, it will fall back to using the class name as the element
+ * name:
  *
  * ```js
  * ⁣@element('')
@@ -78,12 +88,70 @@ type ElementClassDecorator = <T extends AnyConstructor<HTMLElement>>(Class: T, c
  *
  * // is the same as
  *
+ * ⁣@element()
+ * class CoolElement extends HTMLElement {...}
+ *
+ * // is the same as
+ *
  * ⁣@element
  * class CoolElement extends HTMLElement {...}
+ *
+ * // is the same as
+ *
+ * ⁣@element('cool-element')
+ * class CoolElement extends HTMLElement {...}
+ *
+ * // is the same as
+ *
+ * ⁣@element
+ * class CoolElement extends HTMLElement {
+ *   static elementName = 'cool-element'
+ * }
+ *
+ * // is the same as
+ *
+ * ⁣@element({ elementName: 'cool-element' })
+ * class CoolElement extends HTMLElement {...}
+ *
+ * // is the same as
+ *
+ * @element('', false)
+ * class CoolElement extends HTMLElement {...}
+ * customElements.define('cool-element', CoolElement)
+ *
+ * // is the same as
+ *
+ * @element('', false)
+ * class CoolElement extends HTMLElement {...}
+ * CoolElement.defineElement('cool-element')
+ *
+ * // is the same as
+ *
+ * @element({autoDefine: false})
+ * class CoolElement extends HTMLElement {
+ *   static elementName = 'cool-element'
+ * }
+ * CoolElement.defineElement()
  * ```
+ *
+ * If using `@attribute` decorators, make sure `@element` is the first
+ * decorator applied to the class so that it can set up the attributes
+ * properly.
+ *
+ * @param tagName - The custom element name to define the class as.
+ * @param autoDefine - If `true`, the element will be defined automatically
+ * when the class is declared. If `false`, you must manually call
+ *
  */
 export declare function element(tagName: string, autoDefine?: boolean): ElementClassDecorator;
+/**
+ * @param Class - The class to decorate.
+ * @param context - The decorator context.
+ */
 export declare function element<T extends AnyConstructor<HTMLElement>>(Class: T, context?: ClassDecoratorContext): T;
+/**
+ * @param options - Options object.
+ */
 export declare function element(options: ElementDecoratorOptions): ElementClassDecorator;
 export {};
 //# sourceMappingURL=element.d.ts.map

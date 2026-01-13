@@ -1,5 +1,5 @@
 import {createEffect} from 'solid-js'
-import {signal} from 'classy-solid'
+import {memo, effect, signal} from 'classy-solid'
 import {
 	Element,
 	element,
@@ -10,59 +10,10 @@ import {
 	noSignal,
 	stringAttribute,
 	type AttributeHandlerMap,
+	jsonAttribute,
 } from '../index.js'
 
-describe('classy-solid @signal properties with lume/element @element decorators on plain HTMLElements', () => {
-	it('reacts to updates using createEffect', () => {
-		@element('foo-el')
-		class FooEl extends HTMLElement {
-			@signal foo = 123
-		}
-
-		const f = new FooEl()
-		let count = 0
-
-		// Runs once initially, then re-runs any time f.foo has changed.
-		createEffect(() => {
-			f.foo
-			count++
-		})
-
-		expect(count).toBe(1)
-		f.foo = 123
-		expect(count).toBe(2)
-		expect(f.foo).toBe(123)
-	})
-
-	it('maintains reactivity for overridden fields', () => {
-		@element('foo-el2')
-		class FooEl extends HTMLElement {
-			@signal foo = 123
-		}
-
-		@element('override-el')
-		class OverrideEl extends FooEl {
-			@signal override foo = 456
-		}
-
-		const f = new OverrideEl()
-		let count = 0
-
-		// Runs once initially, then re-runs any time f.foo has changed.
-		createEffect(() => {
-			f.foo
-			count++
-		})
-
-		expect(f.foo).toBe(456)
-		expect(count).toBe(1)
-		f.foo = 789
-		expect(count).toBe(2)
-		expect(f.foo).toBe(789)
-	})
-})
-
-describe('@attribute tests', () => {
+describe('@attribute', () => {
 	it('attributes can be mapped to properties with @attribute', () => {
 		@element('foo-bar')
 		class FooBar extends HTMLElement {
@@ -111,39 +62,6 @@ describe('@attribute tests', () => {
 		expect(ff.foo).toBe('good night!')
 	})
 
-	// Ensure we didn't break this feature of classy-solid's @signal decorator.
-	it('maintains reactivity for overridden fields', () => {
-		@element('foo-bar2')
-		class FooBar extends HTMLElement {
-			@attribute foo = '0'
-		}
-
-		@element('overridden-foo')
-		class OverrideFoo extends FooBar {
-			@attribute override foo = '1'
-		}
-
-		const f = new OverrideFoo()
-		let count = 0
-
-		// Runs once initially, then re-runs any time f.foo has changed.
-		createEffect(() => {
-			f.foo
-			count++
-		})
-
-		expect(f.foo).toBe('1')
-		expect(count).toBe(1)
-		f.setAttribute('foo', '123')
-		expect(count).toBe(2)
-		expect(f.foo).toBe('123')
-
-		// Check that the default value for attribute removed is from the overriden initial value.
-		f.removeAttribute('foo')
-		expect(count).toBe(3)
-		expect(f.foo).toBe('1')
-	})
-
 	it("@signal doesn't need to be used if using @attribute, as those are @signal too", () => {
 		@element('pur-pose')
 		class Purpose extends Element {
@@ -153,29 +71,30 @@ describe('@attribute tests', () => {
 		const f = new Purpose()
 
 		let count = 0
+		let val = ''
 
 		createEffect(() => {
-			f.purpose
+			val = f.purpose
 			count++
 		})
 
 		f.purpose = 'Alive to discover.'
 
 		expect(count).toBe(2)
+		expect(val).toBe('Alive to discover.')
 
 		f.setAttribute('purpose', 'Born to create!')
 		expect(count).toBe(3)
-		expect(f.purpose).toBe('Born to create!')
+		expect(val).toBe('Born to create!')
 
 		f.purpose = 'To inspire.'
 		expect(count).toBe(4)
-		expect(f.purpose).toBe('To inspire.')
-
+		expect(val).toBe('To inspire.')
 		// There is no option to reflect props to attributes yet. Do we want that?
 		expect(f.getAttribute('purpose')).toBe('Born to create!')
 	})
 
-	it('@attribute works with accessors', () => {
+	it('works with accessors', () => {
 		@element('pur-pose-2')
 		class Purpose extends Element {
 			__purpose: string | null = null
@@ -217,7 +136,7 @@ describe('@attribute tests', () => {
 		expect(f.getAttribute('purpose')).toBe('Born to create!')
 	})
 
-	it('skip composing with @signal if @noSignal is used before it, class field', async () => {
+	it('skips composing with @signal if @noSignal is used before it, class field', async () => {
 		@element('no-signal')
 		class NoSignal extends Element {
 			@attribute @noSignal foo = '123'
@@ -288,7 +207,7 @@ describe('@attribute tests', () => {
 		expect(count2).toBe(2) // still 2, bar is not reactive
 	})
 
-	it('skip composing with @signal if @noSignal is used before it, class getter/setter', async () => {
+	it('skips composing with @signal if @noSignal is used before it, class getter/setter', async () => {
 		@element('no-signal3')
 		class NoSignal3 extends Element {
 			#val1 = '123'
@@ -407,12 +326,10 @@ describe('@attribute tests', () => {
 
 		#bar = '123'
 
-		@stringAttribute
-		get bar() {
+		@stringAttribute get bar() {
 			return this.#bar
 		}
-		@stringAttribute
-		set bar(v) {
+		@stringAttribute set bar(v) {
 			this.#bar = v
 		}
 
@@ -426,14 +343,12 @@ describe('@attribute tests', () => {
 
 		#bar = 123
 
-		@numberAttribute
 		// @ts-expect-error overriding with an incompatible type is fine in plain JS
-		override get bar() {
+		@numberAttribute override get bar() {
 			return this.#bar
 		}
-		@numberAttribute
 		// @ts-expect-error overriding with an incompatible type is fine in plain JS
-		override set bar(v) {
+		@numberAttribute override set bar(v) {
 			this.#bar = v
 		}
 
@@ -604,9 +519,438 @@ describe('@attribute tests', () => {
 
 		el.remove()
 	})
+
+	describe('invalid usages', () => {
+		it('throws on symbol property names', () => {
+			const createClass = () => {
+				@element('symbol-attribute')
+				class Test extends Element {
+					@attribute
+					// @ts-expect-error testing invalid usage
+					[Symbol('foo')] = '123'
+				}
+				Test
+			}
+
+			expect(createClass).toThrow('@attribute is not supported on symbol fields yet.')
+		})
+
+		it('throws on private fields', () => {
+			const createClass = () => {
+				@element('private-attribute')
+				class Test extends Element {
+					@attribute
+					// @ts-expect-error testing invalid usage
+					#foo = '123'
+				}
+				Test
+			}
+
+			expect(createClass).toThrow('@attribute is not supported on private fields yet.')
+		})
+
+		it('throws on static fields', () => {
+			const createClass = () => {
+				@element('static-attribute')
+				class Test extends Element {
+					@attribute static foo = '123'
+				}
+				Test
+			}
+
+			expect(createClass).toThrow('@attribute is not supported on static fields.')
+		})
+
+		it('throws on methods', () => {
+			const createClass = () => {
+				@element('method-attribute')
+				class Test extends Element {
+					// @ts-expect-error testing invalid usage
+					@attribute method() {}
+				}
+				Test
+			}
+
+			expect(createClass).toThrow('@attribute is only for use on fields, getters/setters, and auto accessors.')
+		})
+	})
+
+	describe('subclass extension', () => {
+		it('supports overridden fields', () => {
+			@element('foo-bar2')
+			class FooBar extends HTMLElement {
+				@attribute foo = '0'
+			}
+
+			@element('overridden-foo')
+			class OverrideFoo extends FooBar {
+				@attribute override foo = '1'
+			}
+
+			const f = new OverrideFoo()
+			testOverriden(f)
+		})
+
+		it('supports overridden auto accessor', () => {
+			@element('foo-bar3')
+			class FooBar extends HTMLElement {
+				@attribute accessor foo = '0'
+			}
+
+			@element('overridden-foo2')
+			class OverrideFoo extends FooBar {
+				@attribute override accessor foo = '1'
+			}
+
+			const f = new OverrideFoo()
+			testOverriden(f)
+		})
+
+		it('supports overridden getter/setter', () => {
+			@element('foo-bar4')
+			class FooBar extends HTMLElement {
+				_foo = '0'
+				@attribute get foo() {
+					return this._foo
+				}
+				@attribute set foo(v) {
+					this._foo = v
+				}
+			}
+
+			@element('overridden-foo3')
+			class OverrideFoo extends FooBar {
+				_foo2 = '1'
+				@attribute override get foo() {
+					return this._foo2
+				}
+				@attribute override set foo(v) {
+					this._foo2 = v
+				}
+			}
+
+			const f = new OverrideFoo()
+			testOverriden(f)
+		})
+
+		function testOverriden(f: {foo: string} & HTMLElement) {
+			let count = 0
+			let val = ''
+
+			// Runs once initially, then re-runs any time f.foo has changed.
+			createEffect(() => {
+				val = f.foo
+				count++
+			})
+
+			expect(val).toBe('1')
+			expect(count).toBe(1)
+			f.setAttribute('foo', '123')
+			expect(count).toBe(2)
+			expect(val).toBe('123')
+
+			// Check that the default value for attribute removed is from the overriden initial value.
+			f.removeAttribute('foo')
+			expect(count).toBe(3)
+			expect(val).toBe('1')
+		}
+	})
+
+	describe('compatibility with classy-solid decoraters', () => {
+		it('works with @attribute field and @memo getter', () => {
+			@element('memo-attribute')
+			class MemoAttribute extends HTMLElement {
+				@attribute foo = '0'
+
+				@memo get fooMemo() {
+					return this.foo + '_foo'
+				}
+			}
+
+			const f = new MemoAttribute()
+
+			let count = 0
+			let val = ''
+
+			createEffect(() => {
+				val = f.fooMemo
+				count++
+			})
+
+			expect(count).toBe(1)
+			expect(val).toBe('0_foo')
+
+			f.setAttribute('foo', '123')
+			expect(count).toBe(2)
+			expect(val).toBe('123_foo')
+
+			f.foo = '456'
+			expect(count).toBe(3)
+			expect(val).toBe('456_foo')
+
+			f.removeAttribute('foo')
+			expect(count).toBe(4)
+			expect(val).toBe('0_foo')
+		})
+
+		it('works with @attribute auto accessor and @memo getter', () => {
+			// FIXME This currently doesn't work. Needs a fix in classy-solid.
+			// difficulties: https://github.com/tc39/proposal-decorators/issues/574
+			// For now, use only attribute fields (not auto accessors or getter/setters).
+
+			expect(test).toThrow('Cannot read private member')
+
+			function test() {
+				@element('memo-attribute2')
+				class MemoAttribute extends HTMLElement {
+					@attribute accessor foo = '0'
+
+					@memo get fooMemo() {
+						return this.foo + '_foo'
+					}
+				}
+
+				const f = new MemoAttribute()
+
+				let count = 0
+				let val = ''
+
+				createEffect(() => {
+					val = f.fooMemo
+					count++
+				})
+
+				expect(count).toBe(1)
+				expect(val).toBe('0_foo')
+
+				f.setAttribute('foo', '123')
+				expect(count).toBe(2)
+				expect(val).toBe('123_foo')
+
+				f.foo = '456'
+				expect(count).toBe(3)
+				expect(val).toBe('456_foo')
+
+				f.removeAttribute('foo')
+				expect(count).toBe(4)
+				expect(val).toBe('0_foo')
+			}
+		})
+
+		it('works with @attribute getter/setter and @memo getter', () => {
+			// FIXME This currently doesn't work. Needs a fix in classy-solid.
+			// difficulties: https://github.com/tc39/proposal-decorators/issues/574
+			// For now, use only attribute fields (not auto accessors or getter/setters).
+
+			expect(test).toThrow('Received: undefined_foo')
+
+			function test() {
+				@element('memo-attribute3')
+				class MemoAttribute extends HTMLElement {
+					_foo = '0'
+					@attribute get foo() {
+						return this._foo
+					}
+					@attribute set foo(v) {
+						this._foo = v
+					}
+
+					@memo get fooMemo() {
+						return this.foo + '_foo'
+					}
+				}
+
+				const f = new MemoAttribute()
+
+				let count = 0
+				let val = ''
+
+				createEffect(() => {
+					val = f.fooMemo
+					count++
+				})
+
+				expect(count).toBe(1)
+				expect(val).toBe('0_foo')
+
+				f.setAttribute('foo', '123')
+				expect(count).toBe(2)
+				expect(val).toBe('123_foo')
+
+				f.foo = '456'
+				expect(count).toBe(3)
+				expect(val).toBe('456_foo')
+
+				f.removeAttribute('foo')
+				expect(count).toBe(4)
+				expect(val).toBe('0_foo')
+			}
+		})
+
+		it('works with @attribute field and @effect method', () => {
+			let count = 0
+			let value = ''
+
+			@element('effect-attribute')
+			class EffectAttribute extends HTMLElement {
+				@attribute foo = '0'
+
+				@effect testEffect() {
+					console.log('effect running')
+					count++
+					value = this.foo
+				}
+			}
+
+			const f = new EffectAttribute()
+			document.body.append(f)
+
+			expect(count).toBe(1)
+			expect(value).toBe('0')
+
+			f.setAttribute('foo', '123')
+			expect(count).toBe(2)
+			expect(value).toBe('123')
+
+			f.foo = '456'
+			expect(count).toBe(3)
+			expect(value).toBe('456')
+
+			f.removeAttribute('foo')
+			expect(count).toBe(4)
+			expect(value).toBe('0')
+
+			f.remove()
+		})
+
+		it('works with @attribute auto accessor and @effect method', () => {
+			// FIXME This currently doesn't work. Needs a fix in classy-solid.
+			// difficulties: https://github.com/tc39/proposal-decorators/issues/574
+			// For now, use only attribute fields (not auto accessors or getter/setters).
+
+			expect(test).toThrow('Cannot read private member')
+
+			function test() {
+				let count = 0
+				let value = ''
+
+				@element('effect-attribute2')
+				class EffectAttribute extends HTMLElement {
+					@attribute accessor foo = '0'
+
+					@effect testEffect() {
+						console.log('effect running')
+						count++
+						value = this.foo
+					}
+				}
+
+				const f = new EffectAttribute()
+				document.body.append(f)
+
+				expect(count).toBe(1)
+				expect(value).toBe('0')
+
+				f.setAttribute('foo', '123')
+				expect(count).toBe(2)
+				expect(value).toBe('123')
+
+				f.foo = '456'
+				expect(count).toBe(3)
+				expect(value).toBe('456')
+
+				f.removeAttribute('foo')
+				expect(count).toBe(4)
+				expect(value).toBe('0')
+
+				f.remove()
+			}
+		})
+
+		it('works with @attribute getter/setter and @effect method', () => {
+			// FIXME This currently doesn't work. Needs a fix in classy-solid.
+			// difficulties: https://github.com/tc39/proposal-decorators/issues/574
+			// For now, use only attribute fields (not auto accessors or getter/setters).
+
+			expect(test).toThrow('Received: undefined_test')
+
+			function test() {
+				let count = 0
+				let value = ''
+
+				@element('effect-attribute3')
+				class EffectAttribute extends HTMLElement {
+					_foo = '0'
+					@attribute get foo() {
+						return this._foo
+					}
+					@attribute set foo(v) {
+						this._foo = v
+					}
+
+					@effect testEffect() {
+						console.log('effect running')
+						count++
+						value = this.foo
+					}
+				}
+
+				const f = new EffectAttribute()
+				document.body.append(f)
+
+				expect(count).toBe(1)
+				expect(value + '_test').toBe('0' + '_test')
+
+				f.setAttribute('foo', '123')
+				expect(count).toBe(2)
+				expect(value).toBe('123')
+
+				f.foo = '456'
+				expect(count).toBe(3)
+				expect(value).toBe('456')
+
+				f.removeAttribute('foo')
+				expect(count).toBe(4)
+				expect(value).toBe('0')
+
+				f.remove()
+			}
+		})
+
+		it('subclass overrides attribute field with signal field', () => {
+			@element('attribute-signal-base')
+			class AttributeSignalBase extends HTMLElement {
+				@attribute foo = 'base'
+			}
+
+			@element('attribute-signal-sub')
+			class AttributeSignalSub extends AttributeSignalBase {
+				@signal override foo = 'sub'
+			}
+
+			const f = new AttributeSignalSub()
+
+			let count = 0
+			let val = ''
+
+			createEffect(() => {
+				val = f.foo
+				count++
+			})
+
+			expect(val).toBe('sub')
+			expect(count).toBe(1)
+			f.setAttribute('foo', 'changed')
+			expect(count).toBe(2)
+			expect(val).toBe('changed')
+			f.removeAttribute('foo')
+			expect(count).toBe(3)
+			expect(val).toBe('base') // goes back to base class default because the subclass field does not track a new default attribute value
+		})
+	})
 })
 
-describe('various types of attributes', () => {
+describe('types of attributes', () => {
 	it('@numberAttribute decorator for working with number values', () => {
 		@element('x-person')
 		class Person extends HTMLElement {
@@ -648,37 +992,31 @@ describe('various types of attributes', () => {
 		expect(p.weight).toBe(0)
 		expect(p.height).toBe(0)
 
-		// TODO should this work too? Currently attributeChangedCallback
-		// does the coercion (falls the attributeHandler.from() method).
-		// Should it instead be a setter? Measure performance.
-		// p.age = '43'
-		// expect(count).toBe(6)
-		// expect(p.age).toBe(43)
+		// @ts-expect-error string type to test coercion
+		p.age = '43'
+		expect(count).toBe(6)
+		expect(p.age).toBe(43)
 
 		p.age = 44
-		expect(count).toBe(6)
+		expect(count).toBe(7)
 		expect(p.age).toBe(44)
 
-		// TODO should this work too? Currently attributeChangedCallback
-		// does the coercion (falls the attributeHandler.from() method).
-		// Should it instead be a setter? Measure performance.
-		// p.weight = '168'
-		// expect(count).toBe(8)
-		// expect(p.weight).toBe(168)
+		// @ts-expect-error string type to test coercion
+		p.weight = '168'
+		expect(count).toBe(8)
+		expect(p.weight).toBe(168)
 
 		p.weight = 169
-		expect(count).toBe(7)
+		expect(count).toBe(9)
 		expect(p.weight).toBe(169)
 
-		// TODO should this work too? Currently attributeChangedCallback
-		// does the coercion (falls the attributeHandler.from() method).
-		// Should it instead be a setter? Measure performance.
-		// p.height = '5.9'
-		// expect(count).toBe(9)
-		// expect(p.height).toBe(5.9)
+		// @ts-expect-error string type to test coercion
+		p.height = '5.9'
+		expect(count).toBe(9)
+		expect(p.height).toBe(5.9)
 
 		p.height = 6
-		expect(count).toBe(7)
+		expect(count).toBe(9)
 		expect(p.height).toBe(6)
 	})
 
@@ -744,6 +1082,7 @@ describe('various types of attributes', () => {
 		it('registers event listeners when assigned to event-named properties, using decorators', () => {
 			let testEvent: Event | null = null
 			const ontestevent = (e: Event) => (testEvent = e)
+			const ontestevent2 = (e: Event) => (testEvent = e)
 
 			let otherEvent: Event | null = null
 			const onotherevent = (e: Event) => (otherEvent = e)
@@ -813,132 +1152,167 @@ describe('various types of attributes', () => {
 				}
 			}
 
+			@element('event-listeners-sub')
+			class MyElSub extends MyEl {
+				abc = 123
+			}
+
+			@element('event-listeners-sub2')
+			class MyElSub2 extends MyEl {
+				@eventAttribute override accessor ontestevent = ontestevent
+			}
+
+			@element('event-listeners-sub3')
+			class MyElSub3 extends MyEl {
+				@eventAttribute override accessor ontestevent = ontestevent2
+			}
+
 			const el = new MyEl()
+			const el2 = new MyElSub()
+			const el3 = new MyElSub2()
+			const el4 = new MyElSub3()
 
-			el.onotherevent = onotherevent
-			el.onyetanother = onyetanother
-			el.onlastone = onlastone
-			el.onLastOneForReal = onLastOneForReal
-			el['onlast-one-for-real-for-real'] = onLastOneForRealForReal
-			el.onload = onload
+			testEvents(el)
+			testEvents(el2)
+			testEvents(el3)
+			testEvents(el4)
 
-			document.body.append(el)
+			function testEvents(el: MyEl) {
+				testEvent = null
+				otherEvent = null
+				anotherEvent = null
+				yetanotherEvent = null
+				onemoreEvent = null
+				lastoneEvent = null
+				LastOneForRealEvent = null
+				lastOneForRealForRealEvent = null
+				loadEvent = null
 
-			expect(testEvent).toBeInstanceOf(Event)
-			expect(otherEvent).toBeInstanceOf(Event)
-			expect(anotherEvent).toBeInstanceOf(Event)
-			expect(yetanotherEvent).toBeInstanceOf(Event)
-			expect(onemoreEvent).toBeInstanceOf(Event)
-			expect(lastoneEvent).toBeInstanceOf(Event)
-			expect(LastOneForRealEvent).toBeInstanceOf(Event)
-			expect(lastOneForRealForRealEvent).toBeInstanceOf(Event)
-			expect(loadEvent).toBeInstanceOf(Event)
+				el.onotherevent = onotherevent
+				el.onyetanother = onyetanother
+				el.onlastone = onlastone
+				el.onLastOneForReal = onLastOneForReal
+				el['onlast-one-for-real-for-real'] = onLastOneForRealForReal
+				el.onload = onload
 
-			testEvent = null
-			otherEvent = null
-			anotherEvent = null
-			yetanotherEvent = null
-			onemoreEvent = null
-			lastoneEvent = null
-			LastOneForRealEvent = null
-			lastOneForRealForRealEvent = null
-			loadEvent = null
+				document.body.append(el)
 
-			el.dispatchEvent(new Event('testevent'))
-			el.dispatchEvent(new Event('otherevent'))
-			el.dispatchEvent(new Event('another'))
-			el.dispatchEvent(new Event('yetanother'))
-			el.dispatchEvent(new Event('onemore'))
-			el.dispatchEvent(new Event('lastone'))
-			el.dispatchEvent(new Event('LastOneForReal'))
-			el.dispatchEvent(new Event('last-one-for-real-for-real'))
-			el.dispatchEvent(new Event('load'))
+				expect(testEvent).toBeInstanceOf(Event)
+				expect(otherEvent).toBeInstanceOf(Event)
+				expect(anotherEvent).toBeInstanceOf(Event)
+				expect(yetanotherEvent).toBeInstanceOf(Event)
+				expect(onemoreEvent).toBeInstanceOf(Event)
+				expect(lastoneEvent).toBeInstanceOf(Event)
+				expect(LastOneForRealEvent).toBeInstanceOf(Event)
+				expect(lastOneForRealForRealEvent).toBeInstanceOf(Event)
+				expect(loadEvent).toBeInstanceOf(Event)
 
-			expect(testEvent).toBeInstanceOf(Event)
-			expect(otherEvent).toBeInstanceOf(Event)
-			expect(anotherEvent).toBeInstanceOf(Event)
-			expect(yetanotherEvent).toBeInstanceOf(Event)
-			expect(onemoreEvent).toBeInstanceOf(Event)
-			expect(lastoneEvent).toBeInstanceOf(Event)
-			expect(LastOneForRealEvent).toBeInstanceOf(Event)
-			expect(lastOneForRealForRealEvent).toBeInstanceOf(Event)
-			expect(loadEvent).toBeInstanceOf(Event)
+				testEvent = null
+				otherEvent = null
+				anotherEvent = null
+				yetanotherEvent = null
+				onemoreEvent = null
+				lastoneEvent = null
+				LastOneForRealEvent = null
+				lastOneForRealForRealEvent = null
+				loadEvent = null
 
-			testEvent = null
-			otherEvent = null
-			anotherEvent = null
-			yetanotherEvent = null
-			onemoreEvent = null
-			lastoneEvent = null
-			LastOneForRealEvent = null
-			lastOneForRealForRealEvent = null
-			loadEvent = null
+				el.dispatchEvent(new Event('testevent'))
+				el.dispatchEvent(new Event('otherevent'))
+				el.dispatchEvent(new Event('another'))
+				el.dispatchEvent(new Event('yetanother'))
+				el.dispatchEvent(new Event('onemore'))
+				el.dispatchEvent(new Event('lastone'))
+				el.dispatchEvent(new Event('LastOneForReal'))
+				el.dispatchEvent(new Event('last-one-for-real-for-real'))
+				el.dispatchEvent(new Event('load'))
 
-			let testEvent2: Event | null = null
-			const ontestevent2 = (e: Event) => (testEvent2 = e)
-			el.ontestevent = ontestevent2
+				expect(testEvent).toBeInstanceOf(Event)
+				expect(otherEvent).toBeInstanceOf(Event)
+				expect(anotherEvent).toBeInstanceOf(Event)
+				expect(yetanotherEvent).toBeInstanceOf(Event)
+				expect(onemoreEvent).toBeInstanceOf(Event)
+				expect(lastoneEvent).toBeInstanceOf(Event)
+				expect(LastOneForRealEvent).toBeInstanceOf(Event)
+				expect(lastOneForRealForRealEvent).toBeInstanceOf(Event)
+				expect(loadEvent).toBeInstanceOf(Event)
 
-			let otherEvent2: Event | null = null
-			const onotherevent2 = (e: Event) => (otherEvent2 = e)
-			el.onotherevent = onotherevent2
+				testEvent = null
+				otherEvent = null
+				anotherEvent = null
+				yetanotherEvent = null
+				onemoreEvent = null
+				lastoneEvent = null
+				LastOneForRealEvent = null
+				lastOneForRealForRealEvent = null
+				loadEvent = null
 
-			let anotherEvent2: Event | null = null
-			const onanother2 = (e: Event) => (anotherEvent2 = e)
-			el.onanother = onanother2
+				let testEvent2: Event | null = null
+				const ontestevent2 = (e: Event) => (testEvent2 = e)
+				el.ontestevent = ontestevent2
 
-			let yetanotherEvent2: Event | null = null
-			const onyetanother2 = (e: Event) => (yetanotherEvent2 = e)
-			el.onyetanother = onyetanother2
+				let otherEvent2: Event | null = null
+				const onotherevent2 = (e: Event) => (otherEvent2 = e)
+				el.onotherevent = onotherevent2
 
-			let onemoreEvent2: Event | null = null
-			const ononemore2 = (e: Event) => (onemoreEvent2 = e)
-			el.ononemore = ononemore2
+				let anotherEvent2: Event | null = null
+				const onanother2 = (e: Event) => (anotherEvent2 = e)
+				el.onanother = onanother2
 
-			let lastoneEvent2: Event | null = null
-			const onlastone2 = (e: Event) => (lastoneEvent2 = e)
-			el.onlastone = onlastone2
+				let yetanotherEvent2: Event | null = null
+				const onyetanother2 = (e: Event) => (yetanotherEvent2 = e)
+				el.onyetanother = onyetanother2
 
-			let LastOneForRealEvent2: Event | null = null
-			const onLastOneForReal2 = (e: Event) => (LastOneForRealEvent2 = e)
-			el.onLastOneForReal = onLastOneForReal2
+				let onemoreEvent2: Event | null = null
+				const ononemore2 = (e: Event) => (onemoreEvent2 = e)
+				el.ononemore = ononemore2
 
-			let lastOneForRealForRealEvent2: Event | null = null
-			const onLastOneForRealForReal2 = (e: Event) => (lastOneForRealForRealEvent2 = e)
-			el['onlast-one-for-real-for-real'] = onLastOneForRealForReal2
+				let lastoneEvent2: Event | null = null
+				const onlastone2 = (e: Event) => (lastoneEvent2 = e)
+				el.onlastone = onlastone2
 
-			let loadEvent2: Event | null = null
-			const onload2 = (e: Event) => (loadEvent2 = e)
-			el.onload = onload2
+				let LastOneForRealEvent2: Event | null = null
+				const onLastOneForReal2 = (e: Event) => (LastOneForRealEvent2 = e)
+				el.onLastOneForReal = onLastOneForReal2
 
-			el.dispatchEvent(new Event('testevent'))
-			el.dispatchEvent(new Event('otherevent'))
-			el.dispatchEvent(new Event('another'))
-			el.dispatchEvent(new Event('yetanother'))
-			el.dispatchEvent(new Event('onemore'))
-			el.dispatchEvent(new Event('lastone'))
-			el.dispatchEvent(new Event('LastOneForReal'))
-			el.dispatchEvent(new Event('last-one-for-real-for-real'))
-			el.dispatchEvent(new Event('load'))
+				let lastOneForRealForRealEvent2: Event | null = null
+				const onLastOneForRealForReal2 = (e: Event) => (lastOneForRealForRealEvent2 = e)
+				el['onlast-one-for-real-for-real'] = onLastOneForRealForReal2
 
-			expect(String(testEvent)).toBe('null')
-			expect(String(otherEvent)).toBe('null')
-			expect(String(anotherEvent)).toBe('null')
-			expect(String(yetanotherEvent)).toBe('null')
-			expect(String(onemoreEvent)).toBe('null')
-			expect(String(lastoneEvent)).toBe('null')
-			expect(String(LastOneForRealEvent)).toBe('null')
-			expect(String(lastOneForRealForRealEvent)).toBe('null')
-			expect(String(loadEvent)).toBe('null')
+				let loadEvent2: Event | null = null
+				const onload2 = (e: Event) => (loadEvent2 = e)
+				el.onload = onload2
 
-			expect(testEvent2).toBeInstanceOf(Event)
-			expect(otherEvent2).toBeInstanceOf(Event)
-			expect(anotherEvent2).toBeInstanceOf(Event)
-			expect(yetanotherEvent2).toBeInstanceOf(Event)
-			expect(onemoreEvent2).toBeInstanceOf(Event)
-			expect(lastoneEvent2).toBeInstanceOf(Event)
-			expect(LastOneForRealEvent2).toBeInstanceOf(Event)
-			expect(lastOneForRealForRealEvent2).toBeInstanceOf(Event)
-			expect(loadEvent2).toBeInstanceOf(Event)
+				el.dispatchEvent(new Event('testevent'))
+				el.dispatchEvent(new Event('otherevent'))
+				el.dispatchEvent(new Event('another'))
+				el.dispatchEvent(new Event('yetanother'))
+				el.dispatchEvent(new Event('onemore'))
+				el.dispatchEvent(new Event('lastone'))
+				el.dispatchEvent(new Event('LastOneForReal'))
+				el.dispatchEvent(new Event('last-one-for-real-for-real'))
+				el.dispatchEvent(new Event('load'))
+
+				expect(String(testEvent)).toBe('null')
+				expect(String(otherEvent)).toBe('null')
+				expect(String(anotherEvent)).toBe('null')
+				expect(String(yetanotherEvent)).toBe('null')
+				expect(String(onemoreEvent)).toBe('null')
+				expect(String(lastoneEvent)).toBe('null')
+				expect(String(LastOneForRealEvent)).toBe('null')
+				expect(String(lastOneForRealForRealEvent)).toBe('null')
+				expect(String(loadEvent)).toBe('null')
+
+				expect(testEvent2).toBeInstanceOf(Event)
+				expect(otherEvent2).toBeInstanceOf(Event)
+				expect(anotherEvent2).toBeInstanceOf(Event)
+				expect(yetanotherEvent2).toBeInstanceOf(Event)
+				expect(onemoreEvent2).toBeInstanceOf(Event)
+				expect(lastoneEvent2).toBeInstanceOf(Event)
+				expect(LastOneForRealEvent2).toBeInstanceOf(Event)
+				expect(lastOneForRealForRealEvent2).toBeInstanceOf(Event)
+				expect(loadEvent2).toBeInstanceOf(Event)
+			}
 		})
 
 		it('registers event listeners when assigned to event-named properties, not using decorators', () => {
@@ -1177,6 +1551,47 @@ describe('various types of attributes', () => {
 			expect(win.loadEvent2).toBeInstanceOf(Event)
 			expect(win.seriouslyTheLastOneEvent2).toBeInstanceOf(Event)
 			expect(win.okThisIsTheFinalOneEvent2).toBeInstanceOf(Event)
+		})
+	})
+
+	describe('@jsonAttribute', () => {
+		it('handles JSON attribute values', () => {
+			@element('json-attribute-test')
+			class JsonAttributeTest extends HTMLElement {
+				@jsonAttribute data: object = {a: 1, b: 2}
+			}
+			const el = new JsonAttributeTest()
+
+			expect(el.data).toEqual({a: 1, b: 2})
+
+			el.setAttribute('data', '{"a":10,"b":20,"c":30}')
+			expect(el.data).toEqual({a: 10, b: 20, c: 30})
+
+			// TODO prop-to-attribute reflection
+			// el.data = {x: 'hello', y: 'world'}
+			// expect(el.getAttribute('data')).toBe('{"x":"hello","y":"world"}')
+
+			function testInvalidJson() {
+				let error
+				window.addEventListener(
+					'error',
+					e => {
+						e.preventDefault()
+						e.stopImmediatePropagation()
+						error = e.error
+					},
+					{once: true, capture: true},
+				)
+
+				try {
+					el.setAttribute('data', 'invalid json') // this line still makes WTR report an uncaught error.
+				} finally {
+				}
+				expect(error).toBeInstanceOf(SyntaxError) // this works
+			}
+
+			// TODO invalid json causes uncaught error in WTR as expected, but we can't catch it in the test right now.
+			testInvalidJson //()
 		})
 	})
 })

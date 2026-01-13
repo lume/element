@@ -1,15 +1,15 @@
 import {render} from 'solid-js/web'
-// __isPropSetAtLeastOnce was exposed by classy-solid specifically for
+// isPropSetAtLeastOnce__ was exposed by classy-solid specifically for
 // @lume/element to use. It tells us if a signal property has been set at
 // least once, and if so allows us to skip overwriting it with a custom
 // element preupgrade value.
-import {Effectful, __isPropSetAtLeastOnce} from 'classy-solid'
+import {Effects, isPropSetAtLeastOnce__, startEffects, stopEffects} from 'classy-solid'
 
 import type {
 	AttributeHandler,
 	AttributePropSpecs,
-	__attributesToProps,
-	__hasAttributeChangedCallback,
+	attributesToProps__,
+	hasAttributeChangedCallback__,
 } from './decorators/attribute.js'
 import type {DashCasedProps} from './utils.js'
 
@@ -30,7 +30,7 @@ const root = Symbol('root')
 
 // TODO Make LumeElement `abstract`
 
-class LumeElement extends Effectful(HTMLElement) {
+class LumeElement extends HTMLElement {
 	/**
 	 * The default tag name of the elements this class instantiates. When using
 	 * the `@element` decorator, if this field has not been specified, it will
@@ -125,13 +125,21 @@ class LumeElement extends Effectful(HTMLElement) {
 	 * )
 	 * ```
 	 */
-	static observedAttributeHandlers?: AttributeHandlerMap;
+	static observedAttributeHandlers?: AttributeHandlerMap
+
+	/**
+	 * When `true`, effects created via the classy-solid `@effect` decorator
+	 * will automatically start upon instance construction.
+	 *
+	 * Defaults to `false` with effects starting in `connectedCallback()`.
+	 */
+	static autoStartEffects = false;
 
 	/** Note, this is internal and used by the @attribute decorator, see attribute.ts. */
-	declare [__attributesToProps]?: AttributePropSpecs;
+	declare [attributesToProps__]?: AttributePropSpecs;
 
 	/** Note, this is internal and used by the @attribute decorator, see attribute.ts. */
-	declare [__hasAttributeChangedCallback]?: true
+	declare [hasAttributeChangedCallback__]?: true
 
 	/**
 	 * This can be used by a subclass, or other frameworks handling elements, to
@@ -193,7 +201,7 @@ class LumeElement extends Effectful(HTMLElement) {
 				// non-decorator usage, and eventually remove code intended for
 				// non-decorator usage such as this.
 				queueMicrotask(() => {
-					const propSetAtLeastOnce = __isPropSetAtLeastOnce(this, propName as string | symbol)
+					const propSetAtLeastOnce = isPropSetAtLeastOnce__(this, propName as string | symbol)
 
 					// ... (2/2) and re-assign the value so that it goes through
 					// a @signal accessor that got defined, or through an
@@ -323,11 +331,18 @@ class LumeElement extends Effectful(HTMLElement) {
 		return (this[root] = super.attachShadow(options))
 	}
 
+	#effects = new Effects()
+
+	// For old-style (non-decorator) effects (f.e. subclasses creating effects
+	// in connectedCallback).
+	createEffect(fn: () => void) {
+		this.#effects.createEffect(fn)
+	}
+
 	#disposeTemplate?: () => void
 
 	connectedCallback() {
 		const template = this.template
-
 		if (template)
 			this.#disposeTemplate = render(
 				typeof template === 'function' ? template.bind(this) : () => template,
@@ -335,10 +350,12 @@ class LumeElement extends Effectful(HTMLElement) {
 			)
 
 		this.#setStyle()
+		startEffects(this) // start new-style (decorator) effects
 	}
 
 	disconnectedCallback() {
-		this.stopEffects()
+		this.#effects.clearEffects() // Clean up old-style (non-decorator) effects.
+		stopEffects(this) // Clean up new-style (decorator) effects
 		this.#disposeTemplate?.()
 		this.#cleanupStyle()
 	}

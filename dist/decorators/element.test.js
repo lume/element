@@ -36,6 +36,119 @@ import { createEffect } from 'solid-js';
 import { signal } from 'classy-solid';
 import { Element, element, attribute, numberAttribute, booleanAttribute, stringAttribute, } from '../index.js';
 describe('@element decorator', () => {
+    describe('classy-solid @signal properties with @element decorator', () => {
+        it('reacts to updates using createEffect', () => {
+            let FooEl = (() => {
+                let _classDecorators = [element('foo-el')];
+                let _classDescriptor;
+                let _classExtraInitializers = [];
+                let _classThis;
+                let _classSuper = HTMLElement;
+                let _foo_decorators;
+                let _foo_initializers = [];
+                let _foo_extraInitializers = [];
+                var FooEl = class extends _classSuper {
+                    static { _classThis = this; }
+                    static {
+                        const _metadata = typeof Symbol === "function" && Symbol.metadata ? Object.create(_classSuper[Symbol.metadata] ?? null) : void 0;
+                        _foo_decorators = [signal];
+                        __esDecorate(null, null, _foo_decorators, { kind: "field", name: "foo", static: false, private: false, access: { has: obj => "foo" in obj, get: obj => obj.foo, set: (obj, value) => { obj.foo = value; } }, metadata: _metadata }, _foo_initializers, _foo_extraInitializers);
+                        __esDecorate(null, _classDescriptor = { value: _classThis }, _classDecorators, { kind: "class", name: _classThis.name, metadata: _metadata }, null, _classExtraInitializers);
+                        FooEl = _classThis = _classDescriptor.value;
+                        if (_metadata) Object.defineProperty(_classThis, Symbol.metadata, { enumerable: true, configurable: true, writable: true, value: _metadata });
+                        __runInitializers(_classThis, _classExtraInitializers);
+                    }
+                    foo = __runInitializers(this, _foo_initializers, 123);
+                    constructor() {
+                        super(...arguments);
+                        __runInitializers(this, _foo_extraInitializers);
+                    }
+                };
+                return FooEl = _classThis;
+            })();
+            const f = new FooEl();
+            let count = 0;
+            // Runs once initially, then re-runs any time f.foo has changed.
+            createEffect(() => {
+                f.foo;
+                count++;
+            });
+            expect(count).toBe(1);
+            f.foo = 123;
+            expect(count).toBe(2);
+            expect(f.foo).toBe(123);
+        });
+        it('maintains reactivity for overridden fields', () => {
+            let FooEl = (() => {
+                let _classDecorators = [element('foo-el2')];
+                let _classDescriptor;
+                let _classExtraInitializers = [];
+                let _classThis;
+                let _classSuper = HTMLElement;
+                let _foo_decorators;
+                let _foo_initializers = [];
+                let _foo_extraInitializers = [];
+                var FooEl = class extends _classSuper {
+                    static { _classThis = this; }
+                    static {
+                        const _metadata = typeof Symbol === "function" && Symbol.metadata ? Object.create(_classSuper[Symbol.metadata] ?? null) : void 0;
+                        _foo_decorators = [signal];
+                        __esDecorate(null, null, _foo_decorators, { kind: "field", name: "foo", static: false, private: false, access: { has: obj => "foo" in obj, get: obj => obj.foo, set: (obj, value) => { obj.foo = value; } }, metadata: _metadata }, _foo_initializers, _foo_extraInitializers);
+                        __esDecorate(null, _classDescriptor = { value: _classThis }, _classDecorators, { kind: "class", name: _classThis.name, metadata: _metadata }, null, _classExtraInitializers);
+                        FooEl = _classThis = _classDescriptor.value;
+                        if (_metadata) Object.defineProperty(_classThis, Symbol.metadata, { enumerable: true, configurable: true, writable: true, value: _metadata });
+                        __runInitializers(_classThis, _classExtraInitializers);
+                    }
+                    foo = __runInitializers(this, _foo_initializers, 123);
+                    constructor() {
+                        super(...arguments);
+                        __runInitializers(this, _foo_extraInitializers);
+                    }
+                };
+                return FooEl = _classThis;
+            })();
+            let OverrideEl = (() => {
+                let _classDecorators = [element('override-el')];
+                let _classDescriptor;
+                let _classExtraInitializers = [];
+                let _classThis;
+                let _classSuper = FooEl;
+                let _foo_decorators;
+                let _foo_initializers = [];
+                let _foo_extraInitializers = [];
+                var OverrideEl = class extends _classSuper {
+                    static { _classThis = this; }
+                    static {
+                        const _metadata = typeof Symbol === "function" && Symbol.metadata ? Object.create(_classSuper[Symbol.metadata] ?? null) : void 0;
+                        _foo_decorators = [signal];
+                        __esDecorate(null, null, _foo_decorators, { kind: "field", name: "foo", static: false, private: false, access: { has: obj => "foo" in obj, get: obj => obj.foo, set: (obj, value) => { obj.foo = value; } }, metadata: _metadata }, _foo_initializers, _foo_extraInitializers);
+                        __esDecorate(null, _classDescriptor = { value: _classThis }, _classDecorators, { kind: "class", name: _classThis.name, metadata: _metadata }, null, _classExtraInitializers);
+                        OverrideEl = _classThis = _classDescriptor.value;
+                        if (_metadata) Object.defineProperty(_classThis, Symbol.metadata, { enumerable: true, configurable: true, writable: true, value: _metadata });
+                        __runInitializers(_classThis, _classExtraInitializers);
+                    }
+                    foo = __runInitializers(this, _foo_initializers, 456);
+                    constructor() {
+                        super(...arguments);
+                        __runInitializers(this, _foo_extraInitializers);
+                    }
+                };
+                return OverrideEl = _classThis;
+            })();
+            const f = new OverrideEl();
+            let count = 0;
+            // Runs once initially, then re-runs any time f.foo has changed.
+            createEffect(() => {
+                f.foo;
+                count++;
+            });
+            expect(f.foo).toBe(456);
+            expect(count).toBe(1);
+            f.foo = 789;
+            expect(count).toBe(2);
+            expect(f.foo).toBe(789);
+        });
+    });
     it('reads options from static class fields', () => {
         let ElementWithStaticName = (() => {
             let _classDecorators = [element];
@@ -527,11 +640,12 @@ describe('@element decorator', () => {
             // @ts-expect-error
             baz;
             baz2 = null;
+            _val = 123;
             get gettersetter() {
-                return this.num;
+                return this._val;
             }
             set gettersetter(v) {
-                this.num = v;
+                this._val = v;
             }
         });
         let el = document.createElement('default-values-without-decorators');
@@ -826,11 +940,84 @@ describe('@element decorator', () => {
         expect(count).toBe(1);
         expect(b).toBe(b2);
     });
+    it('works with prototype value property', () => {
+        const MyElement = element((() => {
+            const Class = class extends Element {
+                static elementName = 'my-element-attr-to-proto';
+                static observedAttributeHandlers = {
+                    someProp: attribute.number,
+                };
+            };
+            Class.prototype.someProp = 123;
+            return Class;
+        })());
+        const el = new MyElement();
+        expect(el.someProp).toBe(123);
+        document.body.append(el);
+        el.setAttribute('some-prop', '456');
+        expect(el.someProp).toBe(456);
+        el.removeAttribute('some-prop');
+        expect(el.someProp).toBe(123);
+    });
+    describe('invalid usages', () => {
+        it('throws when mapping an attribute to missing property', () => {
+            const MyElement = element(class extends Element {
+                static elementName = 'my-element-missing-prop';
+                static observedAttributeHandlers = {
+                    someProp: attribute.number,
+                };
+            });
+            // ;(MyElement.prototype as any).someProp = 123
+            expect(() => new MyElement()).toThrow('Missing descriptor for property "someProp" while mapping attributes to properties.');
+        });
+        it('throws when mapping an attribute to a readonly accessor', () => {
+            let MyElement = (() => {
+                let _classDecorators = [element];
+                let _classDescriptor;
+                let _classExtraInitializers = [];
+                let _classThis;
+                let _classSuper = Element;
+                let _instanceExtraInitializers = [];
+                let _get_someProp_decorators;
+                var MyElement = class extends _classSuper {
+                    static { _classThis = this; }
+                    static {
+                        const _metadata = typeof Symbol === "function" && Symbol.metadata ? Object.create(_classSuper[Symbol.metadata] ?? null) : void 0;
+                        _get_someProp_decorators = [numberAttribute];
+                        __esDecorate(this, null, _get_someProp_decorators, { kind: "getter", name: "someProp", static: false, private: false, access: { has: obj => "someProp" in obj, get: obj => obj.someProp }, metadata: _metadata }, null, _instanceExtraInitializers);
+                        __esDecorate(null, _classDescriptor = { value: _classThis }, _classDecorators, { kind: "class", name: _classThis.name, metadata: _metadata }, null, _classExtraInitializers);
+                        MyElement = _classThis = _classDescriptor.value;
+                        if (_metadata) Object.defineProperty(_classThis, Symbol.metadata, { enumerable: true, configurable: true, writable: true, value: _metadata });
+                    }
+                    static elementName = 'my-element-readonly-accessor';
+                    get someProp() {
+                        return 123;
+                    }
+                    constructor() {
+                        super(...arguments);
+                        __runInitializers(this, _instanceExtraInitializers);
+                    }
+                    static {
+                        __runInitializers(_classThis, _classExtraInitializers);
+                    }
+                };
+                return MyElement = _classThis;
+            })();
+            expect(() => new MyElement()).toThrow('An attribute decorator cannot be used on readonly property "someProp".');
+        });
+        it('throws on non-classes', () => {
+            expect(() => {
+                // @ts-expect-error
+                element('my-el')({});
+            }).toThrow('@element is only for use on classes.');
+        });
+    });
 });
 function testAttributes(el, gettersetter = '', foo = 'foo', bar = 'bar', num = 'num', bool = 'bool', bool2 = 'bool2', baz = 'baz', baz2 = 'baz2') {
     el.setAttribute(foo, 'blah');
     // @ts-ignore
     expect(el[foo]).toBe('blah');
+    // debugger
     el.removeAttribute(foo);
     // @ts-ignore
     expect(el[foo]).toBe('foo');

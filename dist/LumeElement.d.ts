@@ -1,21 +1,11 @@
-import type { AttributeHandler, AttributePropSpecs, __attributesToProps, __hasAttributeChangedCallback } from './decorators/attribute.js';
+import type { AttributeHandler, AttributePropSpecs, attributesToProps__, hasAttributeChangedCallback__ } from './decorators/attribute.js';
 import type { DashCasedProps } from './utils.js';
-declare const root: unique symbol;
-declare const LumeElement_base: (new (...a: any[]) => {
-    "__#1@#effects": Set<import("classy-solid").Effect>;
-    createEffect(fn: () => void): void;
-    stopEffects(): void;
-    "__#1@#createEffect1"(fn: () => void): void;
-    "__#1@#stopEffects1"(): void;
-    "__#1@#owner": import("solid-js").Owner | null;
-    "__#1@#dispose": (() => void) | null;
-    "__#1@#createEffect2"(fn: () => void): void;
-    "__#1@#stopEffects2"(): void;
-}) & {
+declare const HTMLElement: {
     new (): HTMLElement;
     prototype: HTMLElement;
 };
-declare class LumeElement extends LumeElement_base {
+declare const root: unique symbol;
+declare class LumeElement extends HTMLElement {
     #private;
     /**
      * The default tag name of the elements this class instantiates. When using
@@ -89,10 +79,17 @@ declare class LumeElement extends LumeElement_base {
      * ```
      */
     static observedAttributeHandlers?: AttributeHandlerMap;
+    /**
+     * When `true`, effects created via the classy-solid `@effect` decorator
+     * will automatically start upon instance construction.
+     *
+     * Defaults to `false` with effects starting in `connectedCallback()`.
+     */
+    static autoStartEffects: boolean;
     /** Note, this is internal and used by the @attribute decorator, see attribute.ts. */
-    [__attributesToProps]?: AttributePropSpecs;
+    [attributesToProps__]?: AttributePropSpecs;
     /** Note, this is internal and used by the @attribute decorator, see attribute.ts. */
-    [__hasAttributeChangedCallback]?: true;
+    [hasAttributeChangedCallback__]?: true;
     /**
      * This can be used by a subclass, or other frameworks handling elements, to
      * detect property values that exist from before custom element upgrade.
@@ -163,6 +160,7 @@ declare class LumeElement extends LumeElement_base {
      */
     protected get styleRoot(): Node;
     attachShadow(options: ShadowRootInit): ShadowRoot;
+    createEffect(fn: () => void): void;
     connectedCallback(): void;
     disconnectedCallback(): void;
     attributeChangedCallback?(name: string, oldVal: string | null, newVal: string | null): void;
