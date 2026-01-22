@@ -1,4 +1,5 @@
 import {render} from 'solid-js/web'
+import {createRoot, getOwner, runWithOwner, type Owner} from 'solid-js'
 // isPropSetAtLeastOnce__ was exposed by classy-solid specifically for
 // @lume/element to use. It tells us if a signal property has been set at
 // least once, and if so allows us to skip overwriting it with a custom
@@ -333,10 +334,30 @@ class LumeElement extends HTMLElement {
 
 	#effects = new Effects()
 
+	#disposeRoot?: () => void
+
+	#reactiveRoot_?: Owner
+
+	get #reactiveRoot() {
+		if (this.#reactiveRoot_) return this.#reactiveRoot_
+
+		createRoot(dispose => {
+			this.#reactiveRoot_ = getOwner()!
+			;(this.#reactiveRoot_ as any).FOO = 123
+			this.#disposeRoot = () => {
+				dispose()
+				this.#reactiveRoot_ = undefined
+				this.#disposeRoot = undefined
+			}
+		})
+
+		return this.#reactiveRoot_!
+	}
+
 	// For old-style (non-decorator) effects (f.e. subclasses creating effects
 	// in connectedCallback).
 	createEffect(fn: () => void) {
-		this.#effects.createEffect(fn)
+		runWithOwner(this.#reactiveRoot, () => this.#effects.createEffect(fn))
 	}
 
 	#disposeTemplate?: () => void
@@ -350,12 +371,13 @@ class LumeElement extends HTMLElement {
 			)
 
 		this.#setStyle()
-		startEffects(this) // start new-style (decorator) effects
+		runWithOwner(this.#reactiveRoot, () => startEffects(this)) // start new-style (decorator) effects
 	}
 
 	disconnectedCallback() {
 		this.#effects.clearEffects() // Clean up old-style (non-decorator) effects.
 		stopEffects(this) // Clean up new-style (decorator) effects
+		this.#disposeRoot?.()
 		this.#disposeTemplate?.()
 		this.#cleanupStyle()
 	}

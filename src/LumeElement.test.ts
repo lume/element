@@ -1,4 +1,4 @@
-import {createEffect} from 'solid-js'
+import {createEffect, createSignal} from 'solid-js'
 import html from 'solid-js/html'
 import {effect, memo, signal, signalify} from 'classy-solid'
 import {Element, element, type AttributeHandlerMap} from './index.js'
@@ -1023,5 +1023,51 @@ describe('LumeElement', () => {
 		el.n = 5 // triggers old-style effect second time
 		expect(el.effectCount).toBe(4, 'effect should run on reactive changes after reconnecting')
 		expect(el.effectCount2).toBe(5, 'old-style effect should run on reactive changes after reconnecting')
+	})
+
+	it('does not keep elements in template from managing their own effect life cycle', () => {
+		const [count, setCount] = createSignal(0)
+
+		@element('parent-el')
+		class ParentEl extends Element {
+			override template = () => html`<child-el></child-el>`
+		}
+
+		@element('child-el')
+		class ChildEl extends Element {
+			effectRuns = 0
+			value = 0
+
+			@effect testEffect() {
+				this.value = count() // track
+				this.effectRuns++
+			}
+		}
+
+		const parent = new ParentEl()
+		document.body.append(parent)
+		els.push(parent)
+
+		const child = parent.shadowRoot!.querySelector('child-el') as ChildEl
+
+		expect(child.effectRuns).toBe(1)
+		expect(child.value).toBe(0)
+
+		setCount(1)
+		expect(child.effectRuns).toBe(2)
+		expect(child.value).toBe(1)
+
+		child.remove()
+		setCount(2)
+		expect(child.effectRuns).toBe(2, 'effect should not run when disconnected')
+		expect(child.value).toBe(1, 'value should not change when disconnected')
+
+		document.body.append(child)
+		expect(child.effectRuns).toBe(3, 'effect should run once on reconnect')
+		expect(child.value).toBe(2, 'value should update on reconnect')
+
+		setCount(3)
+		expect(child.effectRuns).toBe(4, 'effect should run on reactive changes after reconnecting')
+		expect(child.value).toBe(3, 'value should update on reactive changes after reconnecting')
 	})
 })

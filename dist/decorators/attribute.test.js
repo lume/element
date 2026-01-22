@@ -1238,7 +1238,6 @@ describe('@attribute', () => {
                     }
                     foo = (__runInitializers(this, _instanceExtraInitializers), __runInitializers(this, _foo_initializers, '0'));
                     testEffect() {
-                        console.log('effect running');
                         count++;
                         value = this.foo;
                     }
