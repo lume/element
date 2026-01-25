@@ -32,7 +32,9 @@ var __runInitializers = (this && this.__runInitializers) || function (thisArg, i
     }
     return useValue ? value : void 0;
 };
-import { createEffect } from 'solid-js';
+import { createEffect, createSignal } from 'solid-js';
+import html from 'solid-js/html';
+import { render } from 'solid-js/web';
 import { signal } from 'classy-solid';
 import { Element, element, attribute, numberAttribute, booleanAttribute, stringAttribute, } from '../index.js';
 describe('@element decorator', () => {
@@ -1011,6 +1013,73 @@ describe('@element decorator', () => {
                 element('my-el')({});
             }).toThrow('@element is only for use on classes.');
         });
+    });
+    // https://github.com/solidjs/solid/issues/2580
+    it('works around a Solid.js bug causing some effects to never run', () => {
+        let DrippyScene = (() => {
+            let _classDecorators = [element('drippy-scene')];
+            let _classDescriptor;
+            let _classExtraInitializers = [];
+            let _classThis;
+            let _classSuper = Element;
+            var DrippyScene = class extends _classSuper {
+                static { _classThis = this; }
+                static {
+                    const _metadata = typeof Symbol === "function" && Symbol.metadata ? Object.create(_classSuper[Symbol.metadata] ?? null) : void 0;
+                    __esDecorate(null, _classDescriptor = { value: _classThis }, _classDecorators, { kind: "class", name: _classThis.name, metadata: _metadata }, null, _classExtraInitializers);
+                    DrippyScene = _classThis = _classDescriptor.value;
+                    if (_metadata) Object.defineProperty(_classThis, Symbol.metadata, { enumerable: true, configurable: true, writable: true, value: _metadata });
+                    __runInitializers(_classThis, _classExtraInitializers);
+                }
+                effectRuns = 0;
+                connectedCallback() {
+                    super.connectedCallback();
+                    // This never runs without the untrack workaround in the @element decorator:
+                    createEffect(() => {
+                        this.effectRuns++;
+                    });
+                }
+            };
+            return DrippyScene = _classThis;
+        })();
+        DrippyScene;
+        const [someValue, setSomeValue] = createSignal(false);
+        let BottomSheet = (() => {
+            let _classDecorators = [element('bottom-sheet')];
+            let _classDescriptor;
+            let _classExtraInitializers = [];
+            let _classThis;
+            let _classSuper = HTMLElement;
+            var BottomSheet = class extends _classSuper {
+                static { _classThis = this; }
+                static {
+                    const _metadata = typeof Symbol === "function" && Symbol.metadata ? Object.create(_classSuper[Symbol.metadata] ?? null) : void 0;
+                    __esDecorate(null, _classDescriptor = { value: _classThis }, _classDecorators, { kind: "class", name: _classThis.name, metadata: _metadata }, null, _classExtraInitializers);
+                    BottomSheet = _classThis = _classDescriptor.value;
+                    if (_metadata) Object.defineProperty(_classThis, Symbol.metadata, { enumerable: true, configurable: true, writable: true, value: _metadata });
+                    __runInitializers(_classThis, _classExtraInitializers);
+                }
+                connectedCallback() {
+                    if (!someValue())
+                        setSomeValue(true);
+                }
+            };
+            return BottomSheet = _classThis;
+        })();
+        BottomSheet;
+        render(() => html `
+				<drippy-scene></drippy-scene>
+
+				${
+        // this empty text content interpolation site, along with the read/write of someValue above, causes the drippy-scene effect to never run without the untrack workaround in the @element decorator
+        () => ''}
+
+				<bottom-sheet></bottom-sheet>
+			`, document.body);
+        const el = document.body.querySelector('drippy-scene');
+        expect(el.effectRuns).toBe(1);
+        document.body.querySelector('bottom-sheet').remove();
+        el.remove();
     });
 });
 function testAttributes(el, gettersetter = '', foo = 'foo', bar = 'bar', num = 'num', bool = 'bool', bool2 = 'bool2', baz = 'baz', baz2 = 'baz2') {
