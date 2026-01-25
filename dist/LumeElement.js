@@ -248,7 +248,6 @@ class LumeElement extends HTMLElement {
             return this.#reactiveRoot_;
         createRoot(dispose => {
             this.#reactiveRoot_ = getOwner();
-            this.#reactiveRoot_.FOO = 123;
             this.#disposeRoot = () => {
                 dispose();
                 this.#reactiveRoot_ = undefined;
