@@ -1,4 +1,6 @@
-import {createEffect} from 'solid-js'
+import {createEffect, createSignal} from 'solid-js'
+import html from 'solid-js/html'
+import {render} from 'solid-js/web'
 import {signal} from 'classy-solid'
 import {
 	Element,
@@ -641,6 +643,55 @@ describe('@element decorator', () => {
 				element('my-el')({})
 			}).toThrow('@element is only for use on classes.')
 		})
+	})
+
+	// https://github.com/solidjs/solid/issues/2580
+	it('works around a Solid.js bug causing some effects to never run', () => {
+		@element('drippy-scene')
+		class DrippyScene extends Element {
+			effectRuns = 0
+
+			override connectedCallback() {
+				super.connectedCallback()
+
+				// This never runs without the untrack workaround in the @element decorator:
+				createEffect(() => {
+					this.effectRuns++
+				})
+			}
+		}
+		DrippyScene
+
+		const [someValue, setSomeValue] = createSignal(false)
+
+		@element('bottom-sheet')
+		class BottomSheet extends HTMLElement {
+			connectedCallback() {
+				if (!someValue()) setSomeValue(true)
+			}
+		}
+		BottomSheet
+
+		render(
+			() => html`
+				<drippy-scene></drippy-scene>
+
+				${
+					// this empty text content interpolation site, along with the read/write of someValue above, causes the drippy-scene effect to never run without the untrack workaround in the @element decorator
+					() => ''
+				}
+
+				<bottom-sheet></bottom-sheet>
+			`,
+			document.body,
+		)
+
+		const el = document.body.querySelector('drippy-scene') as DrippyScene
+
+		expect(el.effectRuns).toBe(1)
+
+		document.body.querySelector('bottom-sheet')!.remove()
+		el.remove()
 	})
 })
 

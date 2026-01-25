@@ -459,6 +459,15 @@ function applyElementDecoration(
 				handlePreUpgradeValues(this)
 			})
 		}
+
+		override connectedCallback() {
+			// Workaround for Solid.js bug causing some effects to never run
+			// when a component is created during another component's render.
+			// See the test "works around a Solid.js bug causing some effects to
+			// never run" in element.test.ts.
+			// https://github.com/solidjs/solid/issues/2580
+			untrack(() => super.connectedCallback?.())
+		}
 	}
 
 	if (metadata) {

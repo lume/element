@@ -796,7 +796,6 @@ describe('@attribute', () => {
 				@attribute foo = '0'
 
 				@effect testEffect() {
-					console.log('effect running')
 					count++
 					value = this.foo
 				}
